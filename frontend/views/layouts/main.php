@@ -19,7 +19,7 @@ AppAsset::register($this);
     <meta charset="<?= Yii::$app->charset ?>">
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
     <?php $this->registerCsrfMetaTags() ?>
-    <title>MHEEWATCH</title>
+    <title>Slapsis</title>
     <?php $this->head() ?>
 
     <style>
@@ -190,7 +190,7 @@ AppAsset::register($this);
 <header>
     <?php
     NavBar::begin([
-        'brandLabel' => 'MHEEWATCH',
+        'brandLabel' => 'SLAPSIS',
         'brandUrl' => Yii::$app->homeUrl,
         'options' => [
             'class' => 'navbar navbar-expand-md navbar-dark bg-success fixed-top',
@@ -249,7 +249,7 @@ AppAsset::register($this);
 
 <footer class="footer mt-auto py-3 text-muted">
     <div class="container">
-        <p class="float-start">&copy; <?= Html::encode('MHEEWATCH') ?> <?= date('Y') ?></p>
+        <p class="float-start">&copy; <?= Html::encode('Slapsis') ?> <?= date('Y') ?></p>
     </div>
 </footer>
 
