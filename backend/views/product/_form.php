@@ -1,0 +1,265 @@
+<?php
+
+use yii\helpers\ArrayHelper;
+use yii\helpers\Html;
+use yii\widgets\ActiveForm;
+
+/** @var yii\web\View $this */
+/** @var backend\models\Product $model */
+/** @var yii\widgets\ActiveForm $form */
+$data_warehouse = \backend\models\Warehouse::find()->all();
+
+$yesno = [['id' => 1, 'YES'], ['id' => 0, 'NO']];
+
+$model_warehouse_product = null;
+
+if (!$model->isNewRecord) {
+    $sql = "SELECT w.name as warehouse_name,st.qty 
+            FROM product as p 
+                left join stock_sum as st on p.id = st.product_id 
+                inner join warehouse as w on st.warehouse_id = w.id 
+            where st.qty > 0 and p.id = " . $model->id;
+
+    $model_warehouse_product = Yii::$app->db->createCommand($sql)->queryAll();
+
+}
+
+?>
+
+    <div class="product-form">
+
+        <?php $form = ActiveForm::begin(['options' => ['enctype' => 'multipart/form-data']]); ?>
+        <input type="hidden" class="remove-list" name="remove_list" value="">
+        <input type="hidden" class="remove-customer-list" name="remove_customer_list" value="">
+        <div class="row">
+            <div class="col-lg-3">
+                <?= $form->field($model, 'name')->textInput(['maxlength' => true]) ?>
+            </div>
+            <div class="col-lg-3">
+                <?= $form->field($model, 'product_group_id')->widget(\kartik\select2\Select2::className(), [
+                    'data' => \yii\helpers\ArrayHelper::map(\backend\models\Productgroup::find()->all(), 'id', 'name'),
+                    'options' => [
+
+                    ],
+                    'pluginOptions' => [
+                        'allowClear' => true,
+                    ]
+                ]) ?>
+            </div>
+            <div class="col-lg-3">
+                <?= $form->field($model, 'product_type_id')->widget(\kartik\select2\Select2::className(), [
+                    'data' => \yii\helpers\ArrayHelper::map(\backend\helpers\ProductType::asArrayObject(), 'id', 'name'),
+                    'options' => [
+                        'placeholder' => '-- เลือกประเภทสินค้า --',
+                    ],
+                    'pluginOptions' => [
+                        'allowClear' => true,
+                    ]
+                ]) ?>
+            </div>
+            <div class="col-lg-3">
+                <?= $form->field($model, 'brand_id')->widget(\kartik\select2\Select2::className(), [
+                    'data' => ArrayHelper::map(\backend\models\Productbrand::find()->all(), 'id', 'name'),
+                    'options' => [
+                        'placeholder' => '-- เลือกยี่ห้อ --',
+                    ]
+                ]) ?>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-lg-6">
+                <?= $form->field($model, 'description')->textarea(['maxlength' => true]) ?>
+            </div>
+            <div class="col-lg-3">
+                <?= $form->field($model, 'type_id')->widget(\kartik\select2\Select2::className(), [
+                    'data' => \yii\helpers\ArrayHelper::map(\backend\helpers\CatType::asArrayObject(), 'id', 'name'),
+                    'options' => [
+                        'placeholder' => '-- เลือกสภาพสินค้า --',
+                    ],
+                    'pluginOptions' => [
+                        'allowClear' => true,
+                    ]
+                ]) ?>
+            </div>
+            <div class="col-lg-3">
+                <?php echo $form->field($model, 'status')->widget(\toxor88\switchery\Switchery::className(), ['options' => ['label' => '', 'class' => 'form-control']])->label() ?>
+            </div>
+        </div>
+        <div class="row">
+            <?php if (\Yii::$app->user->can('ViewCostPrice')): ?>
+                <div class="col-lg-3">
+                    <?= $form->field($model, 'cost_price')->textInput() ?>
+
+                </div>
+            <?php endif; ?>
+            <?php if (\Yii::$app->user->can('ViewSalePrice')): ?>
+                <div class="col-lg-3">
+                    <?= $form->field($model, 'sale_price')->textInput() ?>
+                </div>
+            <?php endif; ?>
+            <div class="col-lg-3">
+                <?= $form->field($model, 'stock_qty')->textInput(['readonly' => 'readonly']) ?>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-lg-6">
+                <?= $form->field($model, 'remark')->textInput(['maxlength' => true])->label('หมายเหตุ') ?>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-lg-3">
+                <input type="hidden" name="old_photo" value="<?= $model->photo ?>">
+            </div>
+        </div>
+        <br/>
+        <div class="row">
+            <div class="col-lg-6">
+                <label for="">รูปภาพ</label>
+                <?php if ($model->isNewRecord): ?>
+                    <table style="width: 100%">
+                        <tr>
+                            <td style="border: 1px dashed grey;height: 250px;text-align: center;">
+                                <i class="fa fa-ban fa-lg" style="color: grey"></i>
+                                <span style="color: lightgrey">ไม่พบไฟล์แนบ</span>
+                            </td>
+                        </tr>
+                    </table>
+                <?php else: ?>
+                    <table style="width: 100%">
+                        <tr>
+                            <?php if ($model->photo != ''): ?>
+                                <td style="border: 1px dashed grey;height: 250px;text-align: center;">
+                                    <a href="<?= \Yii::$app->getUrlManager()->baseUrl . '/uploads/product_photo/' . $model->photo ?>"
+                                       target="_blank"><img
+                                                src="<?= \Yii::$app->getUrlManager()->baseUrl . '/uploads/product_photo/' . $model->photo ?>"
+                                                style="max-width: 130px;margin-top: 5px;" alt=""></a>
+                                </td>
+                            <?php else: ?>
+                                <td style="border: 1px dashed grey;height: 250px;text-align: center;">
+                                    <i class="fa fa-ban fa-lg" style="color: grey"></i>
+                                    <span style="color: lightgrey">ไม่พบไฟล์แนบ</span>
+                                </td>
+                            <?php endif; ?>
+                        </tr>
+                    </table>
+                <?php endif; ?>
+                <input type="file" name="product_photo" class="form-control">
+            </div>
+            <div class="col-lg-6">
+                <label for="">สินค้าคงเหลือ</label>
+                <table class="table table-bordered table-striped">
+                    <thead>
+                    <tr>
+                        <td>คลังจัดเก็บ</td>
+                        <td>จำนวน</td>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <?php if ($model_warehouse_product != null): ?>
+                        <?php for ($i = 0; $i <= count($model_warehouse_product) - 1; $i++): ?>
+                            <tr>
+                                <td><?= $model_warehouse_product[$i]['warehouse_name'] ?></td>
+                                <td><?= number_format($model_warehouse_product[$i]['qty'], 0) ?></td>
+                            </tr>
+                        <?php endfor; ?>
+                    <?php endif; ?>
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+        <br/>
+        <div class="form-group">
+            <?= Html::submitButton('Save', ['class' => 'btn btn-success']) ?>
+        </div>
+
+        <?php ActiveForm::end(); ?>
+
+    </div>
+    <div class="row">
+        <form action="<?= \yii\helpers\Url::to(['product/importproduct'], true) ?>" method="post"
+              enctype="multipart/form-data">
+            <input type="file" name="file_product" class="form-control">
+            <button class="btn btn-success">Import</button>
+        </form>
+    </div>
+<?php
+$js = <<<JS
+var removelist = [];
+var removecustomerpricelist = [];
+$(function(){
+  // $(".line-exp-date").datepicker(); 
+});
+function addline(e){
+    var tr = $("#table-list tbody tr:last");
+    var clone = tr.clone();
+                    //clone.find(":text").val("");
+                    // clone.find("td:eq(1)").text("");
+    clone.find(".line-warehouse-id").val("-1").change();
+    clone.find(".line-qty").val("");
+    clone.find(".line-exp-date").val("");
+    clone.find(".line-rec-id").val("0");
+
+    tr.after(clone);
+     
+}
+function removeline(e) {
+        if (confirm("ต้องการลบรายการนี้ใช่หรือไม่?")) {
+            if (e.parent().parent().attr("data-var") != '') {
+                removelist.push(e.parent().parent().attr("data-var"));
+                $(".remove-list").val(removelist);
+            }
+            // alert(removelist);
+            // alert(e.parent().parent().attr("data-var"));
+
+            if ($("#table-list tbody tr").length == 1) {
+                $("#table-list tbody tr").each(function () {
+                    $(this).find(":text").val("");
+                    $(this).find(".line-warehouse-id").val("-1").change();
+                    $(this).find(".line-qty").val("");
+                    $(this).find(".line-exp-date").val("");
+                    $(this).find(".line-rec-id").val("0");
+                });
+            } else {
+                e.parent().parent().remove();
+            }
+            // cal_linenum();
+            // cal_all();
+        }
+}
+function removecustomerpriceline(e) {
+        if (confirm("ต้องการลบรายการนี้ใช่หรือไม่?")) {
+            if (e.parent().parent().attr("data-var") != '') {
+                removecustomerpricelist.push(e.parent().parent().attr("data-var"));
+                $(".remove-customer-list").val(removecustomerpricelist);
+            }
+            // alert(removelist);
+            // alert(e.parent().parent().attr("data-var"));
+
+            if ($("#table-list2 tbody tr").length == 1) {
+                $("#table-list2 tbody tr").each(function () {
+                    $(this).find(":text").val("");
+                    $(this).find(".line-product-customer-id").val("-1").change();
+                    $(this).find(".line-customer-price").val("0");
+                });
+            } else {
+                e.parent().parent().remove();
+            }
+            // cal_linenum();
+            // cal_all();
+        }
+}
+function addcustomerpriceline(e){
+    var tr = $("#table-list2 tbody tr:last");
+    var clone = tr.clone();
+                    //clone.find(":text").val("");
+                    // clone.find("td:eq(1)").text("");
+    clone.find(".line-product-customer-id").val("-1").change();
+    clone.find(".line-customer-price").val("0");
+
+    tr.after(clone);
+     
+}
+JS;
+$this->registerJs($js, static::POS_END);
+?>

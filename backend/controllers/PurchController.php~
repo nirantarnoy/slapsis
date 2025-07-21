@@ -1,0 +1,344 @@
+<?php
+
+namespace backend\controllers;
+
+use backend\models\Purch;
+use backend\models\PurchSearch;
+use backend\models\Reports;
+use yii\base\BaseObject;
+use yii\web\Controller;
+use yii\web\NotFoundHttpException;
+use yii\filters\VerbFilter;
+use yii\web\Response;
+
+/**
+ * PurchController implements the CRUD actions for Purch model.
+ */
+class PurchController extends Controller
+{
+    public $enableCsrfValidation = false;
+    public function behaviors()
+    {
+        return array_merge(
+            parent::behaviors(),
+            [
+                'verbs' => [
+                    'class' => VerbFilter::className(),
+                    'actions' => [
+                        'delete' => ['POST'],
+                    ],
+                ],
+            ]
+        );
+    }
+
+    /**
+     * Lists all Purch models.
+     * @return mixed
+     */
+    public function actionIndex()
+    {
+        $pageSize = \Yii::$app->request->post("perpage");
+        $searchModel = new PurchSearch();
+        $dataProvider = $searchModel->search(\Yii::$app->request->queryParams);
+        $dataProvider->setSort(['defaultOrder' => ['id' => SORT_DESC]]);
+        $dataProvider->pagination->pageSize = $pageSize;
+
+        return $this->render('index', [
+            'searchModel' => $searchModel,
+            'dataProvider' => $dataProvider,
+            'perpage' => $pageSize,
+        ]);
+    }
+
+    /**
+     * Displays a single Purch model.
+     * @param integer $id
+     * @return mixed
+     * @throws NotFoundHttpException if the model cannot be found
+     */
+    public function actionView($id)
+    {
+        return $this->render('view', [
+            'model' => $this->findModel($id),
+        ]);
+    }
+
+    /**
+     * Creates a new Purch model.
+     * If creation is successful, the browser will be redirected to the 'view' page.
+     * @return mixed
+     */
+    public function actionCreate()
+    {
+        $model = new Purch();
+
+        if ($this->request->isPost) {
+            if ($model->load($this->request->post())) {
+                $prod_id = \Yii::$app->request->post('line_prod_id');
+                $line_product_name = \Yii::$app->request->post('line_prod_name');
+                $line_qty = \Yii::$app->request->post('line_qty');
+                $line_price = \Yii::$app->request->post('line_price');
+                $line_total = \Yii::$app->request->post('line_total');
+
+                $x_date = explode('/', $model->purch_date);
+                $p_date = date('Y-m-d');
+                if (count($x_date) > 1) {
+                    $p_date = $x_date[2] . '/' . $x_date[1] . '/' . $x_date[0];
+                }
+
+                $model->purch_no = $model->getLastNo();
+                $model->purch_date = date('Y-m-d' , strtotime($p_date));
+                $model->status = 1;
+                if ($model->save()) {
+                    if ($prod_id != null) {
+                        for ($i = 0; $i <= count($prod_id) - 1; $i++) {
+                            if ($prod_id[$i] == null || $prod_id[$i] == '') continue;
+                           // $line_total_new = str_replace(',', '', $line_total[$i]);
+                            $model_line = new \common\models\PurchLine();
+                            $model_line->purch_id = $model->id;
+                            $model_line->product_id = $prod_id[$i];
+                            $model_line->qty = $line_qty[$i];
+                            $model_line->price = (float)$line_price[$i];
+                            $model_line->remain_qty = $line_qty[$i];
+                            $model_line->line_total = (float)$line_qty[$i]*(float)$line_price[$i];
+                            $model_line->status = 1;
+                            $model_line->product_name = $line_product_name[$i];
+                            $model_line->save(false);
+                        }
+                    }
+                }
+                return $this->redirect(['view', 'id' => $model->id]);
+            }
+        } else {
+            $model->loadDefaultValues();
+        }
+
+        return $this->render('create', [
+            'model' => $model,
+        ]);
+    }
+
+    /**
+     * Updates an existing Purch model.
+     * If update is successful, the browser will be redirected to the 'view' page.
+     * @param integer $id
+     * @return mixed
+     * @throws NotFoundHttpException if the model cannot be found
+     */
+    public function actionUpdate($id)
+    {
+        $model = $this->findModel($id);
+        $model_line = \common\models\PurchLine::find()->where(['purch_id' => $id])->all();
+
+        if ($this->request->isPost && $model->load($this->request->post())) {
+            $prod_id = \Yii::$app->request->post('line_prod_id');
+            $line_product_name = \Yii::$app->request->post('line_prod_name');
+            $line_qty = \Yii::$app->request->post('line_qty');
+            $line_price = \Yii::$app->request->post('line_price');
+            $line_total = \Yii::$app->request->post('line_total');
+            $removelist = \Yii::$app->request->post('removelist');
+
+            $x_date = explode('/', $model->purch_date);
+            $p_date = date('Y-m-d');
+            if (count($x_date) > 1) {
+                $p_date = $x_date[2] . '/' . $x_date[1] . '/' . $x_date[0];
+            }
+            $model->purch_date = date('Y-m-d',strtotime($p_date));
+            if ($model->save(false)) {
+                if ($prod_id != null) {
+                   // print_r(\Yii::$app->request->post());return;
+                  //  print_r($prod_id);return;
+                    for ($i = 0; $i <= count($prod_id) - 1; $i++) {
+                        if ($prod_id[$i] == null || $prod_id[$i] == '') continue;
+
+                        $line_total_new = str_replace(',', '', $line_total[$i]);
+                        \common\models\PurchLine::deleteAll(['purch_id' => $model->id]);
+
+//                        $model_check = \common\models\PurchLine::find()->where(['purch_id' => $model->id, 'product_id' => $prod_id[$i]])->one();
+//                        if ($model_check) {
+//                          //  echo 'hsa';return;
+//                            $model_check->qty = $line_qty[$i];
+//                            $model_check->price = (float)$line_price[$i];
+//                            $model_check->line_total = (float)$line_total_new;
+//                            $model_check->remain_qty = $line_qty[$i];
+//                            $model_check->product_name = $line_product_name[$i];
+//                            $model_check->save(false);
+//                        } else {
+                            $model_line = new \common\models\PurchLine();
+                            $model_line->purch_id = $model->id;
+                            $model_line->product_id = $prod_id[$i];
+                            $model_line->qty = $line_qty[$i];
+                            $model_line->price =  (float)$line_price[$i];
+                            $model_line->line_total =  (float)$line_total_new;
+                            $model_line->status = 1;
+                            $model_line->remain_qty = $line_qty[$i];
+                            $model_line->product_name =  $line_product_name[$i];
+                            $model_line->save(false);
+                       // }
+
+                    }
+                }
+                if ($removelist != '') {
+                    $x = explode(',', $removelist);
+                    if (count($x) > 0) {
+                        for ($m = 0; $m <= count($x) - 1; $m++) {
+                            \common\models\PurchLine::deleteAll(['id' => $x[$m]]);
+                        }
+                    }
+                }
+                $session = \Yii::$app->session;
+                $session->setFlash('msg', 'บันทึกรายการเรียบร้อย');
+                return $this->redirect(['view', 'id' => $model->id]);
+            }
+        }
+
+        return $this->render('update', [
+            'model' => $model,
+            'model_line' => $model_line
+        ]);
+    }
+
+    /**
+     * Deletes an existing Purch model.
+     * If deletion is successful, the browser will be redirected to the 'index' page.
+     * @param integer $id
+     * @return mixed
+     * @throws NotFoundHttpException if the model cannot be found
+     */
+    public function actionDelete($id)
+    {
+        if(\backend\models\Purchline::deleteAll(['purch_id'=>$id])){
+            $this->findModel($id)->delete();
+        }
+
+        return $this->redirect(['index']);
+    }
+
+    /**
+     * Finds the Purch model based on its primary key value.
+     * If the model is not found, a 404 HTTP exception will be thrown.
+     * @param integer $id
+     * @return Purch the loaded model
+     * @throws NotFoundHttpException if the model cannot be found
+     */
+    protected function findModel($id)
+    {
+        if (($model = Purch::findOne($id)) !== null) {
+            return $model;
+        }
+
+        throw new NotFoundHttpException('The requested page does not exist.');
+    }
+
+    public function actionPurchreceive()
+    {
+
+        $purch_id = \Yii::$app->request->post('purch_id');
+        $html = '';
+        $model = null;
+        if ($purch_id != '') {
+
+            $model = \common\models\PurchLine::find()->where(['purch_id' => $purch_id])->andFilterWhere(['>', 'remain_qty', 0])->all();
+
+            foreach ($model as $value) {
+                $line_product_name = $value->product_name != ''? $value->product_name : \backend\models\Product::findName($value->product_id);
+                $html .= '<tr data-var="' . $value->id . '">';
+                $html .= '<td style="text-align: left">
+                        <input type="hidden" name="line_id[]" value="' . $value->id . '">
+                        <input type="hidden" name="line_product_id[]" value="' . $value->product_id . '">
+                        <input type="text" class="line-code form-control" value="' . \backend\models\Product::findCode($value->product_id) . '">
+                       </td>';
+                $html .= '<td style="text-align: left">' . $line_product_name . '</td>';
+                $html .= '<td style="text-align: right">' . $value->qty . '</td>';
+                $html .= '<td style="text-align: right">' . $value->remain_qty . '</td>';
+                $html .= '<td><input type="text" class="line-receive-qty form-control" name="line_receive_qty[]" style="text-align: right" value="0"></td>';
+                $html .= '<td><div class="btn btn-secondary btn-sm">ยกเลิก</div></td>';
+                $html .= '</tr>';
+            }
+        }
+        echo $html;
+    }
+
+    public function actionSavereceive()
+    {
+        $po_id = \Yii::$app->request->post('po_id');
+        $line_id = \Yii::$app->request->post('line_id');
+        $line_product_id = \Yii::$app->request->post('line_product_id');
+        $line_qty = \Yii::$app->request->post('line_receive_qty');
+
+       // prinr_r(\Yii::$app->request->post());return;
+
+        if ($line_id != null) {
+            for ($i = 0; $i <= count($line_id) - 1; $i++) {
+
+                if($line_qty[$i] == null || $line_qty[$i] <= 0)continue;
+
+                $model = new \backend\models\Stocktrans();
+                $model->journal_no = $model->getRecieveLastNo();
+                $model->trans_date = date('Y-m-d H:i:s');
+                $model->product_id = $line_product_id[$i];
+                $model->qty = $line_qty[$i];
+                $model->ref_id = $po_id;
+                $model->trans_module_id = 2; // ซื้อ
+                $model->activity_type_id = 5; // กิจกกรรมรับเข้า
+                $model->stock_type_id = 1; // 1 in 2 out
+                $model->warehouse_id = 1;
+                if ($model->save(false)) {
+                    $model_check_stock = \backend\models\Stocksum::find()->where(['product_id' => $line_product_id[$i]])->one();
+                    if ($model_check_stock) {
+                        $model_check_stock->qty = ($model_check_stock->qty + $line_qty[$i]);
+                        if ($model_check_stock->save(false)) {
+                            $update_remain = \backend\models\Purchline::find()->where(['id' => $line_id[$i]])->one();
+                            if ($update_remain) {
+                                $update_remain->remain_qty = ($update_remain->remain_qty - $line_qty[$i]);
+                                $update_remain->save(false);
+                            }
+                        }
+                    } else {
+                        $model_stock_sum = new \backend\models\Stocksum();
+                        $model_stock_sum->product_id = $line_product_id[$i];
+                        $model_stock_sum->qty = $line_qty[$i];
+                        $model_stock_sum->warehouse_id = 1;
+                    //    $model_stock_sum->location_id = 1;
+                        $model_stock_sum->status = 1;
+                        if ($model_stock_sum->save()) {
+                            $update_remain = \backend\models\Purchline::find()->where(['id' => $line_id[$i]])->one();
+                            if ($update_remain) {
+                                $update_remain->remain_qty = ($update_remain->remain_qty - $line_qty[$i]);
+                                $update_remain->save(false);
+                            }
+                        }
+                    }
+                    $this->checkReceive($po_id);
+                }
+            }
+        }
+        return $this->redirect(['purch/index']);
+    }
+    function checkReceive($id)
+    {
+        $res = 0;
+        if ($id) {
+            $po_qty = \common\models\PurchLine::find()->where(['purch_id' => $id])->sum('qty');
+            $rec_qty = \common\models\StockTrans::find()->where(['trans_module_id' => 2, 'ref_id' => $id])->sum('qty');
+            if ($rec_qty >= $po_qty) {
+                $res = \backend\models\Purch::updateAll(['status'=>2],['id'=>$id]); // po completed
+            }
+        }
+
+    }
+    public function actionPrintpo(){
+        $id = \Yii::$app->request->get('purch_id');
+        if($id){
+//            \Yii::$app->response->format = Response::FORMAT_RAW;
+//            $content = $this->renderPartial('_printpo_new', ['purch_id' => $id]);
+//
+//            $pdf = Reports::reports_std($content);
+//            Reports::setFont($pdf);
+//            return $pdf->render();
+            return $this->render('_printpo_new',['purch_id'=>$id]);
+        }
+
+    }
+}

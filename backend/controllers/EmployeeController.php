@@ -1,0 +1,310 @@
+<?php
+
+namespace backend\controllers;
+
+use backend\models\Car;
+use backend\models\PricegroupSearch;
+use backend\models\WarehouseSearch;
+use Yii;
+use backend\models\Employee;
+use backend\models\EmployeeSearch;
+use yii\filters\AccessControl;
+use yii\web\Controller;
+use yii\web\ForbiddenHttpException;
+use yii\web\NotFoundHttpException;
+use yii\filters\VerbFilter;
+use yii\web\UploadedFile;
+
+/**
+ * EmployeeController implements the CRUD actions for Employee model.
+ */
+class EmployeeController extends Controller
+{
+
+    public $enableCsrfValidation = false;
+    /**
+     * {@inheritdoc}
+     */
+    public function behaviors()
+    {
+        return [
+            'verbs' => [
+                'class' => VerbFilter::className(),
+                'actions' => [
+                    'delete' => ['POST','GET'],
+                ],
+            ],
+            'access'=>[
+                'class'=>AccessControl::className(),
+                'denyCallback' => function ($rule, $action) {
+                    throw new ForbiddenHttpException('คุณไม่ได้รับอนุญาติให้เข้าใช้งาน!');
+                },
+                'rules'=>[
+                    [
+                        'allow'=>true,
+                        'roles'=>['@'],
+                        'matchCallback'=>function($rule,$action){
+                            $currentRoute = \Yii::$app->controller->getRoute();
+                            if(\Yii::$app->user->can($currentRoute)){
+                                return true;
+                            }
+                        }
+                    ]
+                ]
+            ],
+        ];
+    }
+
+    /**
+     * Lists all Employee models.
+     * @return mixed
+     */
+    public function actionIndex()
+    {
+        $viewstatus = 1;
+
+        if(\Yii::$app->request->get('viewstatus')!=null){
+            $viewstatus = \Yii::$app->request->get('viewstatus');
+        }
+
+        $pageSize = \Yii::$app->request->post("perpage");
+        $searchModel = new EmployeeSearch();
+        $dataProvider = $searchModel->search(Yii::$app->request->queryParams);
+//        if($viewstatus ==1){
+//            $dataProvider->query->andFilterWhere(['status'=>$viewstatus]);
+//        }
+//        if($viewstatus == 2){
+//            $dataProvider->query->andFilterWhere(['status'=>0]);
+//        }
+
+        $dataProvider->setSort(['defaultOrder' => ['id' => SORT_DESC]]);
+        $dataProvider->pagination->pageSize = $pageSize;
+
+        return $this->render('index', [
+            'searchModel' => $searchModel,
+            'dataProvider' => $dataProvider,
+            'perpage' => $pageSize,
+            'viewstatus'=>$viewstatus,
+        ]);
+    }
+
+    /**
+     * Displays a single Employee model.
+     * @param integer $id
+     * @return mixed
+     * @throws NotFoundHttpException if the model cannot be found
+     */
+    public function actionView($id)
+    {
+        return $this->render('view', [
+            'model' => $this->findModel($id),
+        ]);
+    }
+
+    /**
+     * Creates a new Employee model.
+     * If creation is successful, the browser will be redirected to the 'view' page.
+     * @return mixed
+     */
+    public function actionCreate()
+    {
+        $company_id = 1;
+
+
+        $model = new Employee();
+
+        if ($model->load(Yii::$app->request->post())) {
+            $photo = UploadedFile::getInstance($model, 'photo');
+            if (!empty($photo)) {
+                $photo_name = time() . "." . $photo->getExtension();
+                $photo->saveAs(Yii::getAlias('@backend') . '/web/uploads/images/employee/' . $photo_name);
+                $model->photo = $photo_name;
+            }
+            if($model->save(false)){
+                $session = Yii::$app->session;
+                $session->setFlash('msg', 'บันทึกข้อมูลเรียบร้อย');
+                return $this->redirect(['index']);
+            }
+        }
+
+        return $this->render('create', [
+            'model' => $model,
+        ]);
+    }
+
+    /**
+     * Updates an existing Employee model.
+     * If update is successful, the browser will be redirected to the 'view' page.
+     * @param integer $id
+     * @return mixed
+     * @throws NotFoundHttpException if the model cannot be found
+     */
+    public function actionUpdate($id)
+    {
+        $model = $this->findModel($id);
+
+        $model_line = \common\models\DriverLicense::find()->where(['emp_id'=>$model->id])->all();
+
+        if ($model->load(Yii::$app->request->post())) {
+            $photo = UploadedFile::getInstance($model, 'photo');
+            if (!empty($photo)) {
+                $photo_name = time() . "." . $photo->getExtension();
+                $photo->saveAs(Yii::getAlias('@backend') . '/web/uploads/images/employee/' . $photo_name);
+                $model->photo = $photo_name;
+            }
+
+            $card_type = \Yii::$app->request->post('card_type');
+            $card_no = \Yii::$app->request->post('card_no');
+            $start_date = \Yii::$app->request->post('start_date');
+            $expire_date = \Yii::$app->request->post('expire_date');
+
+            $removelist = \Yii::$app->request->post('remove_list');
+//            print_r($removelist);return ;
+
+            $model->emp_start = date('Y-m-d',strtotime($model->emp_start));
+            $model->card_issue_date = date('Y-m-d',strtotime($model->card_issue_date));
+            $model->card_exp_date = date('Y-m-d',strtotime($model->card_exp_date));
+            $model->passport_issue_date = date('Y-m-d',strtotime($model->passport_issue_date));
+            $model->passport_exp_date = date('Y-m-d',strtotime($model->passport_exp_date));
+
+            if($model->save()){
+
+                if (count($card_no)){
+                    for ($i = 0; $i <= count($card_no) - 1; $i++) {
+                        if ($card_no[$i] != ''){
+//                            echo 'ttt'; return;
+                            $driving_chk = \common\models\DriverLicense::find()->where(['emp_id'=>$model->id,'license_type_id'=>$card_type[$i]])->one();
+                            if ($driving_chk){
+//                                echo 'ttt'; return;
+                                $new_start_date = date('Y-m-d');
+                                $x_date = explode('-', $start_date[$i]);
+                                if (count($x_date) > 1) {
+                                    $new_start_date = $x_date[2] . '/' . $x_date[1] . '/' . $x_date[0];
+                                }
+//                                print_r($new_start_date);return ;
+                                $new_expire_date = date('Y-m-d');
+                                $x_date2 = explode('-', $expire_date[$i]);
+                                if (count($x_date2) > 1) {
+                                    $new_expire_date = $x_date2[2] . '/' . $x_date2[1] . '/' . $x_date2[0];
+                                }
+//                                print_r($new_start_date);return ;
+
+                                $driving_chk->license_type_id = $card_type[$i];
+                                $driving_chk->license_no = $card_no[$i];
+                                $driving_chk->issue_date = date('Y-m-d', strtotime($new_start_date));
+                                $driving_chk->expired_date = date('Y-m-d', strtotime($new_expire_date));
+                                $driving_chk->status = $model->status;
+                                if ($driving_chk->save(false)){
+
+                                }
+                            }else {
+
+                                $x_date = explode('-', $start_date[$i]);
+                                $new_start_date = date('Y-m-d');
+                                if (count($x_date) > 1) {
+                                    $new_start_date = $x_date[2] . '/' . $x_date[0] . '/' . $x_date[1];
+                                }
+//                                print_r($new_start_date);return ;
+                                $new_expire_date = date('Y-m-d');
+                                $x_date2 = explode('-', $expire_date[$i]);
+                                if (count($x_date2) > 1) {
+                                    $new_expire_date = $x_date2[2] . '/' . $x_date2[1] . '/' . $x_date2[0];
+                                }
+
+                                $new_driver_license = new \common\models\DriverLicense();
+                                $new_driver_license->emp_id = $model->id;
+                                $new_driver_license->license_type_id = $card_type[$i];
+                                $new_driver_license->license_no = $card_no[$i];
+                                $new_driver_license->issue_date = date('Y-m-d', strtotime($new_start_date));
+                                $new_driver_license->expired_date = date('Y-m-d', strtotime($new_expire_date));
+                                $new_driver_license->status = $model->status;
+                                if ($new_driver_license->save(false)){
+
+                                }
+                            }
+                        }
+                    }
+                }
+
+                $delete_rec = explode(",", $removelist);
+                if (count($delete_rec)) {
+                    \common\models\DriverLicense::deleteAll(['id' => $delete_rec]);
+                }
+
+
+                $session = Yii::$app->session;
+                $session->setFlash('msg', 'บันทึกข้อมูลเรียบร้อย');
+                return $this->redirect(['index']);
+            }
+        }
+
+        return $this->render('update', [
+            'model' => $model,
+            'model_line' => $model_line,
+        ]);
+    }
+
+    /**
+     * Deletes an existing Employee model.
+     * If deletion is successful, the browser will be redirected to the 'index' page.
+     * @param integer $id
+     * @return mixed
+     * @throws NotFoundHttpException if the model cannot be found
+     */
+    public function actionDelete($id)
+    {
+        $model_license = \common\models\DriverLicense::find()->where(['emp_id'=>$id])->all();
+        if ($model_license){
+            if (\common\models\DriverLicense::deleteAll(['emp_id' => $id])){
+                $this->findModel($id)->delete();
+            }
+        }else{
+            $this->findModel($id)->delete();
+        }
+
+        $session = Yii::$app->session;
+        $session->setFlash('msg', 'ดำเนินการเรียบร้อย');
+        return $this->redirect(['index']);
+    }
+
+    /**
+     * Finds the Employee model based on its primary key value.
+     * If the model is not found, a 404 HTTP exception will be thrown.
+     * @param integer $id
+     * @return Employee the loaded model
+     * @throws NotFoundHttpException if the model cannot be found
+     */
+    protected function findModel($id)
+    {
+        if (($model = Employee::findOne($id)) !== null) {
+            return $model;
+        }
+
+        throw new NotFoundHttpException(Yii::t('app', 'The requested page does not exist.'));
+    }
+    public function actionDeletephoto()
+    {
+        $id = \Yii::$app->request->post('delete_id');
+        if ($id) {
+            $photo = $this->getPhotoName($id);
+            if ($photo != '') {
+                if (unlink('../web/uploads/images/employee/' . $photo)) {
+                    Employee::updateAll(['photo' => ''], ['id' => $id]);
+                }
+            }
+
+        }
+        return $this->redirect(['employee/update', 'id' => $id]);
+    }
+    public function getPhotoName($id)
+    {
+        $photo_name = '';
+        if ($id) {
+            $model = Employee::find()->where(['id' => $id])->one();
+            if ($model) {
+                $photo_name = $model->photo;
+            }
+        }
+        return $photo_name;
+    }
+}
