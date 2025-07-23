@@ -31,7 +31,7 @@ class SiteController extends Controller
                         'allow' => true,
                     ],
                     [
-                        'actions' => ['logout', 'index', 'changepassword','grab','logoutdriver','connect-tiktok','tiktok-callback'],
+                        'actions' => ['logout', 'index', 'changepassword','grab','logoutdriver','connect-tiktok','tiktok-callback','shopee-callback'],
                         'allow' => true,
                         'roles' => ['@'],
                     ],
@@ -513,6 +513,59 @@ class SiteController extends Controller
         }
 
         return $this->redirect(['site/index']);
+    }
+
+    public function actionShopeeCallback()
+    {
+        $code = Yii::$app->request->get('code');
+
+        if (!$code) {
+            return 'Missing code from Shopee.';
+        }
+
+        // ข้อมูลแอปของคุณ (กรอกตามที่ Shopee ให้มา)
+        $partner_id = 123456; // เปลี่ยนเป็นของคุณ
+        $partner_key = 'xxxxxxxxxxxxxxxx'; // เปลี่ยนเป็นของคุณ
+        $redirect_url = 'https://pjrichth.com/site/shopee-callback'; // ต้องตรงกับที่ลงทะเบียนใน Shopee
+
+        $timestamp = time();
+
+        // สร้าง signature
+        $base_string = "$partner_id$redirect_url$timestamp$code";
+        $sign = hash_hmac('sha256', $base_string, $partner_key);
+
+        // ส่ง request ไปแลก access_token
+        $client = new Client();
+        $response = $client->createRequest()
+            ->setMethod('POST')
+            ->setUrl('https://partner.shopeemobile.com/api/v2/auth/token/get')
+            ->setData([
+                'code' => $code,
+                'partner_id' => $partner_id,
+                'sign' => $sign,
+                'timestamp' => $timestamp,
+                'redirect_uri' => $redirect_url,
+            ])
+            ->send();
+
+        if ($response->isOk) {
+            $data = $response->data;
+
+            // ตัวอย่าง: บันทึกลงฐานข้อมูล
+            /*
+            Yii::$app->db->createCommand()->insert('shopee_token', [
+                'access_token' => $data['access_token'],
+                'refresh_token' => $data['refresh_token'],
+                'expire_in' => $data['expire_in'],
+                'shop_id' => $data['shop_id'],
+                'created_at' => date('Y-m-d H:i:s')
+            ])->execute();
+            */
+
+            return 'Access Token: ' . $data['access_token'];
+        } else {
+            return 'Failed to get access token: ' . $response->content;
+        }
     }
 
 
