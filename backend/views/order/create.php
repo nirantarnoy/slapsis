@@ -2,17 +2,18 @@
 
 use yii\helpers\Html;
 
-/** @var yii\web\View $this */
-/** @var backend\models\Order $model */
+/* @var $this yii\web\View */
+/* @var $model backend\models\Order */
 
-$this->title = 'Create Order';
-$this->params['breadcrumbs'][] = ['label' => 'Orders', 'url' => ['index']];
+$this->title = 'เพิ่มคำสั่งซื้อ';
+$this->params['breadcrumbs'][] = ['label' => 'คำสั่งซื้อ', 'url' => ['index']];
 $this->params['breadcrumbs'][] = $this->title;
 ?>
 <div class="order-create">
+
+
     <?= $this->render('_form', [
         'model' => $model,
-        'model_line' => null,
     ]) ?>
 
 </div>

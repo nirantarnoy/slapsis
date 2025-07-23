@@ -44,10 +44,10 @@ use yii\helpers\Html;
 <!--                </div>-->
 
                 <div class="login-logo">
-<!--                    <a href="#">-->
-<!--                        <img src="../../backend/web/uploads/logo/mhee_logo.jpeg" width="65%" alt="">-->
-<!--                    </a>-->
-                    <h1 style="color: palevioletred">SlapSis</h1>
+                    <a href="#">
+                        <img src="../../backend/web/uploads/logo/slapsis_logo.jpg" width="60%" alt="">
+                    </a>
+<!--                    <h1 style="color: palevioletred">SlapSis</h1>-->
 <!--                    <h1 style="color: dodgerblue">Sis</h1>-->
                 </div>
                 <p class="login-box-msg">ลงชื่อเข้าเพื่อเข้าใช้งานระบบของคุณ</p>

@@ -111,6 +111,42 @@ return [
             'enablePrettyUrl' => false,
             'showScriptName' => true,
         ],
+        'urlManager' => [
+            'enablePrettyUrl' => false,
+            'showScriptName' => false,
+            'rules' => [
+                'order/export-excel' => 'order/export-excel',
+                'order/export-pdf' => 'order/export-pdf',
+                'order/sync-orders' => 'order/sync-orders',
+            ],
+        ],
+        'formatter' => [
+            'class' => 'yii\i18n\Formatter',
+            'defaultTimeZone' => 'Asia/Bangkok',
+            'timeZone' => 'Asia/Bangkok',
+            'dateFormat' => 'php:d/m/Y',
+            'datetimeFormat' => 'php:d/m/Y H:i:s',
+            'decimalSeparator' => '.',
+            'thousandSeparator' => ',',
+            'currencyCode' => 'THB',
+        ],
+        // API Components (uncomment and configure when ready)
+        /*
+        'tiktokApi' => [
+            'class' => 'backend\components\TikTokShopApi',
+            'appKey' => 'your-app-key',
+            'appSecret' => 'your-app-secret',
+            'accessToken' => 'your-access-token',
+            'shopId' => 'your-shop-id',
+        ],
+        'shopeeApi' => [
+            'class' => 'backend\components\ShopeeApi',
+            'partnerId' => 'your-partner-id',
+            'partnerKey' => 'your-partner-key',
+            'accessToken' => 'your-access-token',
+            'shopId' => 'your-shop-id',
+        ],
+        */
         /*
         'urlManager' => [
             'enablePrettyUrl' => true,

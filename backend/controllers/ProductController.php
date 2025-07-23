@@ -8,7 +8,6 @@ use backend\models\WarehouseSearch;
 use yii\web\Controller;
 use yii\web\NotFoundHttpException;
 use yii\filters\VerbFilter;
-use yii\web\Response;
 use yii\web\UploadedFile;
 use yii\web\ForbiddenHttpException;
 use yii\filters\AccessControl;
@@ -34,24 +33,24 @@ class ProductController extends Controller
                         'delete' => ['POST', 'GET'],
                     ],
                 ],
-//                'access' => [
-//                    'class' => AccessControl::className(),
-//                    'denyCallback' => function ($rule, $action) {
-//                        throw new ForbiddenHttpException('คุณไม่ได้รับอนุญาติให้เข้าใช้งาน!');
-//                    },
-//                    'rules' => [
-//                        [
-//                            'allow' => true,
-//                            'roles' => ['@'],
-//                            'matchCallback' => function ($rule, $action) {
-//                                $currentRoute = \Yii::$app->controller->getRoute();
-//                                if (\Yii::$app->user->can($currentRoute)) {
-//                                    return true;
-//                                }
-//                            }
-//                        ]
-//                    ]
-//                ],
+                'access' => [
+                    'class' => AccessControl::className(),
+                    'denyCallback' => function ($rule, $action) {
+                        throw new ForbiddenHttpException('คุณไม่ได้รับอนุญาติให้เข้าใช้งาน!');
+                    },
+                    'rules' => [
+                        [
+                            'allow' => true,
+                            'roles' => ['@'],
+                            'matchCallback' => function ($rule, $action) {
+                                $currentRoute = \Yii::$app->controller->getRoute();
+                                if (\Yii::$app->user->can($currentRoute)) {
+                                    return true;
+                                }
+                            }
+                        ]
+                    ]
+                ],
             ]
         );
     }
@@ -79,7 +78,7 @@ class ProductController extends Controller
 //            $dataProvider->query->andFilterWhere(['status'=>0]);
 //        }
 
-        $dataProvider->setSort(['defaultOrder' => ['id' => SORT_ASC]]);
+        $dataProvider->setSort(['defaultOrder' => ['id' => SORT_DESC]]);
         $dataProvider->pagination->pageSize = $pageSize;
 
         return $this->render('index', [
@@ -191,31 +190,107 @@ class ProductController extends Controller
     {
         $model = $this->findModel($id);
         $model_line = \common\models\StockSum::find()->where(['product_id'=>$id])->all();
+        $model_customer_line = \common\models\CustomerProductPrice::find()->where(['product_id'=>$id])->all();
         $work_photo = '';
         if ($this->request->isPost && $model->load($this->request->post())) {
-            $uploaded = UploadedFile::getInstanceByName('product_photo');
 
+            $line_warehouse = \Yii::$app->request->post('warehouse_id');
+            $line_qty = \Yii::$app->request->post('line_qty');
+            $line_exp_date = \Yii::$app->request->post('line_exp_date');
+
+            $uploaded = UploadedFile::getInstanceByName('product_photo');
+            $uploaded2 = UploadedFile::getInstanceByName('product_photo_2');
 
             $line_rec_id = \Yii::$app->request->post('line_rec_id');
             $removelist = \Yii::$app->request->post('remove_list');
-            $old_photo = \Yii::$app->request->post('old_photo');
+
+
+
+            /// customer price
+
+            $line_customer_rec_id = \Yii::$app->request->post('line_customer_rec_id');
+            $line_product_customer_id = \Yii::$app->request->post('line_product_customer_id');
+            $line_customer_price = \Yii::$app->request->post('line_customer_price');
+            $line_include_vat = \Yii::$app->request->post('line_include_vat');
+            $removecustomerlist = \Yii::$app->request->post('remove_customer_list');
 
             //  print_r($line_customer_rec_id);return;
-
+            $model->code = $model->sku;
             if ($model->save(false)) {
                 if (!empty($uploaded)) {
                     $upfiles = "photo_" . time() . "." . $uploaded->getExtension();
                     if ($uploaded->saveAs('uploads/product_photo/' . $upfiles)) {
                         \backend\models\Product::updateAll(['photo' => $upfiles], ['id' => $model->id]);
-
-                        if($old_photo != null){
-                            if(file_exists('uploads/product_photo/'.$old_photo)){
-                                unlink('uploads/product_photo/'.$old_photo);
-                            }
-                        }
                     }
 
                 }
+                if (!empty($uploaded2)) {
+                    $upfiles2 = "photo_" . time() . "." . $uploaded2->getExtension();
+                    if ($uploaded2->saveAs('uploads/product_photo/' . $upfiles2)) {
+                        \backend\models\Product::updateAll(['photo_2' => $upfiles2], ['id' => $model->id]);
+                    }
+
+                }
+                for($i=0;$i<count($line_warehouse);$i++){
+                    if($line_qty[$i] == 0){
+                        continue;
+                    }
+
+                    $model_trans = new \backend\models\Stocktrans();
+                    $model_trans->product_id = $model->id;
+                    $model_trans->trans_date = date('Y-m-d H:i:s');
+                    $model_trans->activity_type_id = 1; // 1 ปรับสต๊อก 2 เบิก 3 คำสั่งซื้อ
+                    $model_trans->qty = $line_qty[$i];
+                    $model_trans->status = 1;
+                    if($model_trans->save(false)){
+                  //      $model_sum = \backend\models\Stocksum::find()->where(['product_id'=>$model->id,'warehouse_id'=>$line_warehouse[$i],'expired_date'=>date('Y-m-d',strtotime($exp_date))])->one();
+                       if($line_rec_id[$i] != 0){
+
+                           $model_sum = \backend\models\Stocksum::find()->where(['product_id'=>$model->id,'id'=>$line_rec_id[$i]])->one();
+                           if($model_sum){
+                               $model_sum->warehouse_id = $line_warehouse[$i];
+                               $model_sum->qty = $line_qty[$i];
+                               $model_sum->save(false);
+                           }
+                       }else{
+                           $model_sum_new = new \backend\models\Stocksum();
+                           $model_sum_new->product_id = $model->id;
+                           $model_sum_new->warehouse_id = $line_warehouse[$i];
+                           $model_sum_new->qty = $line_qty[$i];
+                           $model_sum_new->save(false);
+                       }
+
+                    }
+                }
+
+
+                if($line_product_customer_id!=null){
+
+                    for($i=0;$i<count($line_product_customer_id);$i++){
+                        if($line_customer_price[$i] == 0){
+                            continue;
+                        }
+                       // echo "ok";return;
+                        $model_check = \common\models\CustomerProductPrice::find()->where(['id'=>$line_customer_rec_id[$i]])->one();
+                        if($model_check){
+                            $model_check->customer_id = $line_product_customer_id[$i];
+                            $model_check->sale_price = $line_customer_price[$i];
+                            $model_check->include_vat = $line_include_vat[$i];
+                            $model_check->save(false);
+                        }else{
+                            $model_customer = new \common\models\CustomerProductPrice();
+                            $model_customer->product_id = $model->id;
+                            $model_customer->customer_id = $line_product_customer_id[$i];
+                            $model_customer->sale_price = $line_customer_price[$i];
+                            $model_customer->include_vat = $line_include_vat[$i];
+                            $model_customer->status = 0;
+                            $model_customer->price_date = date('Y-m-d H:i:s');
+                            $model_customer->save(false);
+                        }
+
+                    }
+                }
+
 
                 if($removelist!=null){
                     $xdel = explode(',', $removelist);
@@ -224,6 +299,12 @@ class ProductController extends Controller
                     }
                 }
 
+                if($removecustomerlist!=null){
+                    $xdel2 = explode(',', $removecustomerlist);
+                    for($i=0;$i<count($xdel2);$i++){
+                        \common\models\CustomerProductPrice::deleteAll(['id'=>$xdel2[$i]]);
+                    }
+                }
             }
 
             return $this->redirect(['view', 'id' => $model->id]);
@@ -233,7 +314,7 @@ class ProductController extends Controller
             'model' => $model,
             'work_photo' => $work_photo,
             'model_line' => $model_line,
-            'model_customer_line'=>null,
+            'model_customer_line'=>$model_customer_line,
         ]);
     }
 
@@ -270,72 +351,72 @@ class ProductController extends Controller
     {
         return $this->render('_import');
     }
-//    public function actionImportproduct()
-//    {
-//        $uploaded = UploadedFile::getInstanceByName('file_import');
-//        if (!empty($uploaded)) {
-//            //echo "ok";return;
-//            $upfiles = time() . "." . $uploaded->getExtension();
-//            // if ($uploaded->saveAs(Yii::$app->request->baseUrl . '/uploads/files/' . $upfiles)) {
-//            if ($uploaded->saveAs('../web/uploads/files/products/' . $upfiles)) {
-//                //  echo "okk";return;
-//                // $myfile = Yii::$app->request->baseUrl . '/uploads/files/' . $upfiles;
-//                $myfile = '../web/uploads/files/products/' . $upfiles;
-//                $file = fopen($myfile, "r+");
-//                fwrite($file, "\xEF\xBB\xBF");
-//
-//                setlocale(LC_ALL, 'th_TH.TIS-620');
-//                $i = -1;
-//                $res = 0;
-//                $data = [];
-//                while (($rowData = fgetcsv($file, 10000, ",")) !== FALSE) {
-//                    $i += 1;
-//                    $catid = 0;
-//                    $qty = 0;
-//                    $price = 0;
-//                    $cost = 0;
-//                    if ($rowData[1] == '' || $i == 0) {
-//                        continue;
-//                    }
-//
-//                    $model_dup = \backend\models\Product::find()->where(['sku' => trim($rowData[1])])->one();
-//                    if ($model_dup != null) {
-//                        continue;
-//                    }
-//
-//
-//                    $modelx = new \backend\models\Product();
-//                    // $modelx->code = $rowData[0];
-//                    $modelx->code = $rowData[2];
-//                    $modelx->sku = $rowData[2];
-//                    $modelx->name = $rowData[1];
-//                    $modelx->barcode = $rowData[3];
-//                    $modelx->total_qty = $rowData[4];
-//                    $modelx->sale_price = $rowData[5];
-//                    $modelx->status = 1;
-//                    if ($modelx->save(false)) {
-//                        $res += 1;
-//                    }
-//                }
-//                //    print_r($qty_text);return;
-//
-//                if ($res > 0) {
-//                    $session = \Yii::$app->session;
-//                    $session->setFlash('msg', 'นำเข้าข้อมูลเรียบร้อย');
-//                    return $this->redirect(['index']);
-//                } else {
-//                    $session = \Yii::$app->session;
-//                    $session->setFlash('msg-error', 'พบข้อมผิดพลาดนะ');
-//                    return $this->redirect(['index']);
-//                }
-//                // }
-//                fclose($file);
-////            }
-////        }
+    public function actionImportproduct()
+    {
+        $uploaded = UploadedFile::getInstanceByName('file_import');
+        if (!empty($uploaded)) {
+            //echo "ok";return;
+            $upfiles = time() . "." . $uploaded->getExtension();
+            // if ($uploaded->saveAs(Yii::$app->request->baseUrl . '/uploads/files/' . $upfiles)) {
+            if ($uploaded->saveAs('../web/uploads/files/products/' . $upfiles)) {
+                //  echo "okk";return;
+                // $myfile = Yii::$app->request->baseUrl . '/uploads/files/' . $upfiles;
+                $myfile = '../web/uploads/files/products/' . $upfiles;
+                $file = fopen($myfile, "r+");
+                fwrite($file, "\xEF\xBB\xBF");
+
+                setlocale(LC_ALL, 'th_TH.TIS-620');
+                $i = -1;
+                $res = 0;
+                $data = [];
+                while (($rowData = fgetcsv($file, 10000, ",")) !== FALSE) {
+                    $i += 1;
+                    $catid = 0;
+                    $qty = 0;
+                    $price = 0;
+                    $cost = 0;
+                    if ($rowData[1] == '' || $i == 0) {
+                        continue;
+                    }
+
+                    $model_dup = \backend\models\Product::find()->where(['sku' => trim($rowData[1])])->one();
+                    if ($model_dup != null) {
+                        continue;
+                    }
+
+
+                    $modelx = new \backend\models\Product();
+                    // $modelx->code = $rowData[0];
+                    $modelx->code = $rowData[2];
+                    $modelx->sku = $rowData[2];
+                    $modelx->name = $rowData[1];
+                    $modelx->barcode = $rowData[3];
+                    $modelx->total_qty = $rowData[4];
+                    $modelx->sale_price = $rowData[5];
+                    $modelx->status = 1;
+                    if ($modelx->save(false)) {
+                        $res += 1;
+                    }
+                }
+                //    print_r($qty_text);return;
+
+                if ($res > 0) {
+                    $session = \Yii::$app->session;
+                    $session->setFlash('msg', 'นำเข้าข้อมูลเรียบร้อย');
+                    return $this->redirect(['index']);
+                } else {
+                    $session = \Yii::$app->session;
+                    $session->setFlash('msg-error', 'พบข้อมผิดพลาดนะ');
+                    return $this->redirect(['index']);
+                }
+                // }
+                fclose($file);
 //            }
-//            echo "ok";
 //        }
-//    }
+            }
+            echo "ok";
+        }
+    }
 
     public function actionFinditem()
     {
@@ -383,365 +464,5 @@ class ProductController extends Controller
 
     function getProductOnhand($product_id){
         return \common\models\StockSum::find()->where(['product_id' => $product_id])->sum('qty');
-    }
-
-    public function actionImportproduct()
-    {
-        $uploaded = UploadedFile::getInstanceByName('file_product');
-        if (!empty($uploaded)) {
-            //echo "ok";return;
-            $upfiles = time() . "." . $uploaded->getExtension();
-            // if ($uploaded->saveAs(Yii::$app->request->baseUrl . '/uploads/files/' . $upfiles)) {
-            if ($uploaded->saveAs('../web/uploads/files/products/' . $upfiles)) {
-                //  echo "okk";return;
-                // $myfile = Yii::$app->request->baseUrl . '/uploads/files/' . $upfiles;
-                $myfile = '../web/uploads/files/products/' . $upfiles;
-                $file = fopen($myfile, "r+");
-                fwrite($file, "\xEF\xBB\xBF");
-
-                setlocale(LC_ALL, 'th_TH.TIS-620');
-                $i = -1;
-                $res = 0;
-                $data = [];
-                while (($rowData = fgetcsv($file, 10000, ",")) !== FALSE) {
-                    $i += 1;
-                    $catid = 0;
-                    $qty = 0;
-                    $price = 0;
-                    $cost = 0;
-                    if ($rowData[2] == '' || $i == 0) {
-                        continue;
-                    }
-
-                    $model_dup = \backend\models\Product::find()->where(['name' => trim($rowData[0])])->one();
-                    if ($model_dup != null) {
-                        $new_stock_qty = 0;
-                        if($rowData[5] != null || $rowData[5] != ''){
-                            $new_stock_qty = $rowData[5];
-                        }
-                        $model_dup->description = $rowData[1];
-                        $model_dup->remark = $rowData[6];
-                        $model_dup->stock_qty = $new_stock_qty;
-                        if($model_dup->save(false)){
-                            $this->calStock($model_dup->id,1,$rowData[7],$rowData[5]);
-                            $res+=1;
-                        }
-                        continue;
-                    }else{
-                    //    echo "must new";
-                        $modelx = new \backend\models\Product();
-                        // $modelx->code = $rowData[0];
-                        $modelx->name = trim($rowData[0]);
-                        $modelx->description = trim($rowData[1]);
-                        $modelx->product_group_id = $rowData[2]; // watch or phone or etc
-                        $modelx->brand_id = $rowData[4];
-                        $modelx->product_type_id = 1; // normal or custom
-                        $modelx->type_id = 1; // 1 = new 2 = second used
-                        $modelx->unit_id = 1;
-                        $modelx->status = 1;
-                        $modelx->cost_price = 0;
-                        $modelx->sale_price = 0;
-                        $modelx->stock_qty = 0;//$rowData[5];
-                        $modelx->remark = $rowData[6];
-                        //
-                        if ($modelx->save(false)) {
-                            $this->calStock($modelx->id,1,$rowData[7],$rowData[5]);
-                            $res += 1;
-                        }
-                    }
-
-
-                }
-                //    print_r($qty_text);return;
-
-                if ($res > 0) {
-                    $session = \Yii::$app->session;
-                    $session->setFlash('msg', 'นำเข้าข้อมูลเรียบร้อย');
-                    return $this->redirect(['index']);
-                } else {
-                    $session = \Yii::$app->session;
-                    $session->setFlash('msg-error', 'พบข้อมผิดพลาดนะ');
-                    return $this->redirect(['index']);
-                }
-                // }
-                fclose($file);
-//            }
-//        }
-            }
-        }
-    }
-
-    public function calStock($product_id,$stock_type_id,$warehouse_name,$qty){
-
-        $warehouse_id = 0;
-        if($warehouse_name!='' || $warehouse_name!=null){
-            $warehouse = \common\models\Warehouse::find()->where(['name'=>trim($warehouse_name)])->one();
-            if($warehouse){
-                $warehouse_id = $warehouse->id;
-            }else{
-                    $warehouse = new \common\models\Warehouse();
-                    $warehouse->name = trim($warehouse_name);
-                    $warehouse->description = trim($warehouse_name);
-                    $warehouse->status = 1;
-                    if($warehouse->save(false)){
-                        $warehouse_id = $warehouse->id;
-                    }
-            }
-        }
-
-        if($product_id && $stock_type_id && $qty){
-            if($stock_type_id == 1){ // stock in
-                $model = \common\models\StockSum::find()->where(['product_id'=>$product_id,'warehouse_id'=>$warehouse_id])->one();
-                if($model){
-                    $model->qty = $qty; // initial stock
-                    $model->save(false);
-                }else{
-                    $model = new \common\models\StockSum();
-                    $model->product_id = $product_id;
-                    $model->warehouse_id = $warehouse_id;
-                    $model->qty = $qty;
-                    $model->updated_at = date('Y-m-d H:i:s');
-                    if($model->save(false)){
-                        $model_product = \backend\models\Product::findOne($product_id);
-                        if($model_product){
-                            $model_product->stock_qty = $qty; // update stock product
-                            $model_product->save(false);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * AJAX action for Select2 widget
-     * Returns product list in JSON format with stock information
-     */
-    public function actionProductList($q = null, $page = 1, $warehouse_id = null)
-    {
-        \Yii::$app->response->format = Response::FORMAT_JSON;
-
-        $limit = 20; // Number of items per page
-        $offset = ($page - 1) * $limit;
-
-        $query = Product::find()
-            ->alias('p')
-            ->select([
-                'p.id',
-                'p.code',
-                'p.name',
-                'p.sale_price',
-                'p.unit_id',
-                'p.photo',
-                // ถ้ามี stock table แยกตาม warehouse
-                // 'COALESCE(s.qty, 0) as stock_qty'
-            ])
-            ->where(['p.status' => 1]); // Only active products
-
-        // Join กับ stock table ถ้ามี
-        /*
-        if ($warehouse_id) {
-            $query->leftJoin(['s' => 'product_stock'],
-                'p.id = s.product_id AND s.warehouse_id = :warehouse_id',
-                [':warehouse_id' => $warehouse_id]
-            );
-        }
-        */
-
-        if (!empty($q)) {
-            $query->andWhere(['or',
-                ['like', 'p.code', $q],
-                ['like', 'p.name', $q],
-                ['like', 'p.description', $q],
-            ]);
-        }
-
-        $countQuery = clone $query;
-        $count = $countQuery->count();
-
-        $products = $query
-            ->orderBy(['p.name' => SORT_ASC])
-            ->limit($limit)
-            ->offset($offset)
-            ->asArray()
-            ->all();
-
-        $results = [];
-        foreach ($products as $product) {
-            // Get stock quantity for specific warehouse
-            $stockQty = $this->getProductStock($product['id'], $warehouse_id);
-
-            // Get unit name
-            $unit = \backend\models\Unit::findOne($product['unit_id']);
-            $unitName = $unit ? $unit->name : 'ชิ้น';
-
-            $results[] = [
-                'id' => $product['id'],
-                'text' => '[' . $product['code'] . '] ' . $product['name'],
-                'code' => $product['code'],
-                'name' => $product['name'],
-                'price' => $product['sale_price'],
-                'stock_qty' => $stockQty,
-                'unit' => $unitName,
-                'photo' => $product['photo'],
-            ];
-        }
-
-        return [
-            'results' => $results,
-            'pagination' => [
-                'more' => ($offset + $limit) < $count,
-            ],
-        ];
-    }
-
-    /**
-     * Get product details with stock information
-     */
-    public function actionGetProductDetail($id, $warehouse_id = null)
-    {
-        \Yii::$app->response->format = Response::FORMAT_JSON;
-
-        $product = Product::find()
-            ->where(['id' => $id])
-            ->one();
-
-        if ($product) {
-            $stockQty = $this->getProductStock($id, $warehouse_id);
-            $unit = \backend\models\Unit::findOne($product->unit_id);
-
-            return [
-                'id' => $product->id,
-                'code' => $product->code,
-                'name' => $product->name,
-                'unit_price' => $product->cost_price,
-                'cost_price' => $product->cost_price,
-                'sale_price' => $product->sale_price,
-                'stock_qty' => $stockQty,
-                'unit' => $unit ? $unit->name : 'ชิ้น',
-                'description' => $product->description,
-                'photo' => $product->photo,
-            ];
-        }
-
-        return null;
-    }
-
-    /**
-     * Get product stock for specific warehouse
-     */
-    private function getProductStock($product_id, $warehouse_id = null)
-    {
-        // ถ้ามี table product_stock แยกตาม warehouse
-        /*
-        if ($warehouse_id) {
-            $stock = ProductStock::find()
-                ->where(['product_id' => $product_id, 'warehouse_id' => $warehouse_id])
-                ->one();
-            return $stock ? $stock->qty : 0;
-        }
-        */
-
-        // ถ้าเก็บ stock ใน product table
-        $product = Product::findOne($product_id);
-        return $product ? $product->stock_qty : 0;
-
-        // หรือคำนวณจาก journal_trans
-        /*
-        $inQty = (new Query())
-            ->from('journal_trans_line jtl')
-            ->innerJoin('journal_trans jt', 'jtl.journal_trans_id = jt.id')
-            ->where(['jtl.product_id' => $product_id])
-            ->andWhere(['jt.trans_type_id' => 1]) // สมมติ 1 = รับเข้า
-            ->andWhere(['jt.status' => 1]);
-
-        if ($warehouse_id) {
-            $inQty->andWhere(['jt.warehouse_id' => $warehouse_id]);
-        }
-
-        $totalIn = $inQty->sum('jtl.qty') ?: 0;
-
-        // คำนวณจำนวนที่ออกไป
-        $outQty = (new Query())
-            ->from('journal_trans_line jtl')
-            ->innerJoin('journal_trans jt', 'jtl.journal_trans_id = jt.id')
-            ->where(['jtl.product_id' => $product_id])
-            ->andWhere(['jt.trans_type_id' => 2]) // สมมติ 2 = จ่ายออก
-            ->andWhere(['jt.status' => 1]);
-
-        if ($warehouse_id) {
-            $outQty->andWhere(['jt.warehouse_id' => $warehouse_id]);
-        }
-
-        $totalOut = $outQty->sum('jtl.qty') ?: 0;
-
-        return $totalIn - $totalOut;
-        */
-    }
-
-    /**
-     * Check product availability before save
-     */
-    public function actionCheckStock()
-    {
-        \Yii::$app->response->format = Response::FORMAT_JSON;
-
-        $product_id = \Yii::$app->request->post('product_id');
-        $warehouse_id = \Yii::$app->request->post('warehouse_id');
-        $qty = \Yii::$app->request->post('qty', 0);
-
-        $stockQty = $this->getProductStock($product_id, $warehouse_id);
-
-        return [
-            'available' => $stockQty >= $qty,
-            'stock_qty' => $stockQty,
-            'requested_qty' => $qty,
-            'message' => $stockQty >= $qty ?
-                'สินค้ามีเพียงพอ' :
-                'สินค้าไม่เพียงพอ (คงเหลือ: ' . $stockQty . ')'
-        ];
-    }
-
-    /**
-     * Batch check stock for multiple products
-     */
-    public function actionBatchCheckStock()
-    {
-        \Yii::$app->response->format = Response::FORMAT_JSON;
-
-        $items = \Yii::$app->request->post('items', []);
-        $warehouse_id = \Yii::$app->request->post('warehouse_id');
-
-        $results = [];
-        $hasError = false;
-
-        foreach ($items as $item) {
-            $product_id = $item['product_id'] ?? null;
-            $qty = $item['qty'] ?? 0;
-
-            if ($product_id) {
-                $stockQty = $this->getProductStock($product_id, $warehouse_id);
-                $product = Product::findOne($product_id);
-
-                $available = $stockQty >= $qty;
-                if (!$available) {
-                    $hasError = true;
-                }
-
-                $results[] = [
-                    'product_id' => $product_id,
-                    'product_name' => $product ? $product->name : '',
-                    'available' => $available,
-                    'stock_qty' => $stockQty,
-                    'requested_qty' => $qty,
-                ];
-            }
-        }
-
-        return [
-            'success' => !$hasError,
-            'items' => $results,
-            'message' => $hasError ? 'มีสินค้าบางรายการไม่เพียงพอ' : 'สินค้าทุกรายการมีเพียงพอ'
-        ];
     }
 }

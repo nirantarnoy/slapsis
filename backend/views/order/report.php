@@ -1,0 +1,284 @@
+<?php
+
+use yii\helpers\Html;
+use yii\bootstrap4\ActiveForm;
+use kartik\select2\Select2;
+use kartik\daterange\DateRangePicker;
+use backend\models\OnlineChannel;
+use yii\helpers\ArrayHelper;
+use miloschuman\highcharts\Highcharts;
+
+/* @var $this yii\web\View */
+/* @var $searchModel backend\models\OrderSearch */
+/* @var $reportData array */
+/* @var $chartData array */
+
+$this->title = 'รายงานยอดขาย';
+$this->params['breadcrumbs'][] = ['label' => 'คำสั่งซื้อ', 'url' => ['index']];
+$this->params['breadcrumbs'][] = $this->title;
+
+// คำนวณสรุปยอดรวม
+$totalOrders = 0;
+$totalQuantity = 0;
+$totalSales = 0;
+$avgOrderValue = 0;
+
+foreach ($reportData as $data) {
+    $totalOrders += $data['order_count'];
+    $totalQuantity += $data['total_quantity'];
+    $totalSales += $data['total_sales'];
+}
+
+if ($totalOrders > 0) {
+    $avgOrderValue = $totalSales / $totalOrders;
+}
+?>
+
+<div class="order-report">
+    <!-- Filter Form -->
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="card-title mb-0">ตัวกรองข้อมูล</h5>
+        </div>
+        <div class="card-body">
+            <?php $form = ActiveForm::begin([
+                'method' => 'get',
+                'action' => ['report'],
+            ]); ?>
+            <div class="row">
+                <div class="col-md-4">
+                    <?= $form->field($searchModel, 'channel_id')->widget(Select2::class, [
+                        'data' => ArrayHelper::map(OnlineChannel::find()->all(), 'id', 'name'),
+                        'theme' => Select2::THEME_BOOTSTRAP,
+                        'options' => ['placeholder' => 'ทุกช่องทาง'],
+                        'pluginOptions' => [
+                            'allowClear' => true,
+                        ],
+                    ])->label('ช่องทางการขาย') ?>
+                </div>
+                <div class="col-md-4">
+                    <?= $form->field($searchModel, 'dateRange')->widget(DateRangePicker::class, [
+                        'convertFormat' => true,
+                        'pluginOptions' => [
+                            'locale' => [
+                                'format' => 'd/m/Y',
+                                'separator' => ' - ',
+                            ],
+                            'opens' => 'left',
+                        ],
+                    ])->label('ช่วงเวลา') ?>
+                </div>
+                <div class="col-md-4">
+                    <div class="form-group" style="margin-top: 30px;">
+                        <?= Html::submitButton('<i class="fas fa-search"></i> ค้นหา', ['class' => 'btn btn-primary']) ?>
+                        <?= Html::a('<i class="fas fa-file-excel"></i> Export Excel', ['export-excel-report', 'OrderSearch' => $searchModel->attributes], ['class' => 'btn btn-success']) ?>
+                        <?= Html::a('<i class="fas fa-file-pdf"></i> Export PDF', ['export-pdf-report', 'OrderSearch' => $searchModel->attributes], ['class' => 'btn btn-danger']) ?>
+                        <?= Html::a('<i class="fas fa-print"></i> พิมพ์', '#', ['class' => 'btn btn-info', 'onclick' => 'window.print(); return false;']) ?>
+                    </div>
+                </div>
+            </div>
+            <?php ActiveForm::end(); ?>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="row mb-4">
+        <div class="col-lg-3 col-6">
+            <div class="info-box">
+                <span class="info-box-icon bg-info"><i class="fas fa-shopping-cart"></i></span>
+                <div class="info-box-content">
+                    <span class="info-box-text">จำนวนคำสั่งซื้อ</span>
+                    <span class="info-box-number"><?= number_format($totalOrders) ?></span>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-6">
+            <div class="info-box">
+                <span class="info-box-icon bg-success"><i class="fas fa-boxes"></i></span>
+                <div class="info-box-content">
+                    <span class="info-box-text">จำนวนสินค้าที่ขาย</span>
+                    <span class="info-box-number"><?= number_format($totalQuantity) ?></span>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-6">
+            <div class="info-box">
+                <span class="info-box-icon bg-warning"><i class="fas fa-dollar-sign"></i></span>
+                <div class="info-box-content">
+                    <span class="info-box-text">ยอดขายเฉลี่ย/คำสั่งซื้อ</span>
+                    <span class="info-box-number">฿<?= number_format($avgOrderValue, 2) ?></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Charts -->
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">ยอดขายรายวัน</h5>
+                </div>
+                <div class="card-body">
+                    <div id="salesChart" style="height: 350px;"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title">ยอดขายตามช่องทาง</h5>
+                </div>
+                <div class="card-body">
+                    <div id="channelChart" style="height: 350px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Detail Table -->
+    <div class="card mt-4">
+        <div class="card-header">
+            <h5 class="card-title">รายละเอียดยอดขาย</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-bordered">
+                    <thead>
+                    <tr>
+                        <th>วันที่</th>
+                        <th>ช่องทาง</th>
+                        <th class="text-center">จำนวนคำสั่งซื้อ</th>
+                        <th class="text-center">จำนวนสินค้า</th>
+                        <th class="text-right">ยอดขายรวม</th>
+                        <th class="text-right">ยอดขายเฉลี่ย</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <?php foreach ($reportData as $data): ?>
+                        <tr>
+                            <td><?= Yii::$app->formatter->asDate($data['order_date'], 'php:d/m/Y') ?></td>
+                            <td><?= Html::encode($data['channel']['name']) ?></td>
+                            <td class="text-center"><?= number_format($data['order_count']) ?></td>
+                            <td class="text-center"><?= number_format($data['total_quantity']) ?></td>
+                            <td class="text-right">฿<?= number_format($data['total_sales'], 2) ?></td>
+                            <td class="text-right">฿<?= number_format($data['avg_order_value'], 2) ?></td>
+                        </tr>
+                    <?php endforeach; ?>
+                    </tbody>
+                    <tfoot>
+                    <tr class="font-weight-bold">
+                        <td colspan="2">รวมทั้งหมด</td>
+                        <td class="text-center"><?= number_format($totalOrders) ?></td>
+                        <td class="text-center"><?= number_format($totalQuantity) ?></td>
+                        <td class="text-right">฿<?= number_format($totalSales, 2) ?></td>
+                        <td class="text-right">฿<?= number_format($avgOrderValue, 2) ?></td>
+                    </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- Include Highcharts -->
+<?php
+$this->registerJsFile('https://code.highcharts.com/highcharts.js', ['depends' => [\yii\web\JqueryAsset::class]]);
+$this->registerJsFile('https://code.highcharts.com/modules/exporting.js', ['depends' => [\yii\web\JqueryAsset::class]]);
+
+// Prepare data for line chart
+$dates = [];
+$salesData = [];
+foreach ($chartData['salesByDate'] as $date => $amount) {
+    $dates[] = date('d/m', strtotime($date));
+    $salesData[] = round($amount, 2);
+}
+
+// Prepare data for pie chart
+$channelData = [];
+foreach ($chartData['salesByChannel'] as $channel => $amount) {
+    $channelData[] = [
+        'name' => $channel,
+        'y' => round($amount, 2)
+    ];
+}
+
+//$js = <<<JS
+//// Line Chart
+//Highcharts.chart('salesChart', {
+//    chart: {
+//        type: 'line'
+//    },
+//    title: {
+//        text: ''
+//    },
+//    xAxis: {
+//        categories: " . json_encode($dates) . "
+//    },
+//    yAxis: {
+//        title: {
+//            text: 'ยอดขาย (บาท)'
+//        }
+//    },
+//    plotOptions: {
+//        line: {
+//            dataLabels: {
+//                enabled: true
+//            },
+//            enableMouseTracking: true
+//        }
+//    },
+//    series: [{
+//        name: 'ยอดขาย',
+//        data: " . json_encode($salesData) . "
+//    }]
+//});
+//
+//// Pie Chart
+//Highcharts.chart('channelChart', {
+//    chart: {
+//        type: 'pie'
+//    },
+//    title: {
+//        text: ''
+//    },
+//    tooltip: {
+//        pointFormat: '{series.name}: <b>{point.percentage:.1f}%</b><br/>ยอดขาย: <b>฿{point.y:,.2f}</b>'
+//    },
+//    accessibility: {
+//        point: {
+//            valueSuffix: '%'
+//        }
+//    },
+//    plotOptions: {
+//        pie: {
+//            allowPointSelect: true,
+//            cursor: 'pointer',
+//            dataLabels: {
+//                enabled: true,
+//                format: '<b>{point.name}</b>: {point.percentage:.1f} %'
+//            }
+//        }
+//    },
+//    series: [{
+//        name: 'สัดส่วน',
+//        colorByPoint: true,
+//        data: " . json_encode($channelData) . "
+//    }]
+//});
+//JS;
+//$this->registerJs($js);
+?>
+
+<!-- Print CSS -->
+<style>
+    @media print {
+        .btn, .form-group, .card-header h5 {
+            display: none !important;
+        }
+        .card {
+            border: none !important;
+        }
+    }
+</style>

@@ -1,160 +1,220 @@
 <?php
 
-use backend\models\Order;
 use yii\helpers\Html;
-use yii\helpers\Url;
-use yii\grid\ActionColumn;
-use yii\grid\GridView;
+use kartik\grid\GridView;
+use kartik\select2\Select2;
+use kartik\daterange\DateRangePicker;
+use backend\models\OnlineChannel;
+use yii\helpers\ArrayHelper;
 use yii\widgets\Pjax;
-use yii\widgets\LinkPager;
 
-/** @var yii\web\View $this */
-/** @var backend\models\OrderSearch $searchModel */
-/** @var yii\data\ActiveDataProvider $dataProvider */
+/* @var $this yii\web\View */
+/* @var $searchModel backend\models\OrderSearch */
+/* @var $dataProvider yii\data\ActiveDataProvider */
 
-$this->title = 'คำสั่งซื้อ';
+$this->title = 'จัดการคำสั่งซื้อ';
 $this->params['breadcrumbs'][] = $this->title;
 ?>
 <div class="order-index">
-    <?php Pjax::begin(); ?>
-    <div class="row">
-        <div class="col-lg-10">
-            <!--            <p>-->
-            <!--                --><?php //echo Html::a(Yii::t('app', '<i class="fa fa-plus"></i> สร้างใหม่'), ['create'], ['class' => 'btn btn-success']) ?>
-            <!--            </p>-->
-        </div>
-        <div class="col-lg-2" style="text-align: right">
-            <form id="form-perpage" class="form-inline" action="<?= Url::to(['position/index'], true) ?>"
-                  method="post">
-                <div class="form-group">
-                    <label>แสดง </label>
-                    <select class="form-control" name="perpage" id="perpage">
-                        <option value="20" <?= $perpage == '20' ? 'selected' : '' ?>>20</option>
-                        <option value="50" <?= $perpage == '50' ? 'selected' : '' ?> >50</option>
-                        <option value="100" <?= $perpage == '100' ? 'selected' : '' ?>>100</option>
-                    </select>
-                    <label> รายการ</label>
+
+    <div class="card">
+        <div class="card-header">
+            <h3 class="card-title"><?= Html::encode($this->title) ?></h3>
+            <div class="card-tools">
+                <?= Html::a('<i class="fas fa-plus"></i> เพิ่มคำสั่งซื้อ', ['create'], ['class' => 'btn btn-success btn-sm']) ?>
+                <?= Html::a('<i class="fas fa-chart-line"></i> ดูรายงาน', ['report'], ['class' => 'btn btn-info btn-sm']) ?>
+                <div class="btn-group">
+                    <button type="button" class="btn btn-primary btn-sm dropdown-toggle" data-toggle="dropdown">
+                        <i class="fas fa-sync"></i> ดึงข้อมูล
+                    </button>
+                    <div class="dropdown-menu">
+                        <?php foreach (OnlineChannel::find()->where(['status' => OnlineChannel::STATUS_ACTIVE])->all() as $channel): ?>
+                            <?= Html::a($channel->name, '#', [
+                                'class' => 'dropdown-item sync-channel',
+                                'data-channel-id' => $channel->id,
+                            ]) ?>
+                        <?php endforeach; ?>
+                    </div>
                 </div>
-            </form>
+            </div>
+        </div>
+        <div class="card-body">
+            <?php Pjax::begin(); ?>
+            <?= GridView::widget([
+                'dataProvider' => $dataProvider,
+                'filterModel' => $searchModel,
+                'responsive' => true,
+                'hover' => true,
+                'panel' => [
+                    'type' => GridView::TYPE_DEFAULT,
+                    'heading' => false,
+                ],
+                'toolbar' => [
+                    '{export}',
+                    '{toggleData}',
+                ],
+                'export' => [
+                    'fontAwesome' => true,
+                    'showConfirmAlert' => false,
+                    'target' => GridView::TARGET_BLANK,
+                ],
+                'exportConfig' => [
+                    GridView::EXCEL => [
+                        'label' => 'Excel',
+                        'icon' => 'file-excel-o',
+                        'iconOptions' => ['class' => 'text-success'],
+                        'showHeader' => true,
+                        'showPageSummary' => true,
+                        'showFooter' => true,
+                        'showCaption' => true,
+                        'filename' => 'orders_' . date('YmdHis'),
+                        'alertMsg' => 'The EXCEL export file will be generated for download.',
+                        'config' => [
+                            'onRender' => new \yii\web\JsExpression("
+                                function() {
+                                    window.location.href = '" . \yii\helpers\Url::to(['export-excel']) . "?' + $.param($('#w0').yiiGridView('getFilterUrl'));
+                                    return false;
+                                }
+                            "),
+                        ],
+                    ],
+                    GridView::PDF => [
+                        'label' => 'PDF',
+                        'icon' => 'file-pdf-o',
+                        'iconOptions' => ['class' => 'text-danger'],
+                        'showHeader' => true,
+                        'showPageSummary' => true,
+                        'showFooter' => true,
+                        'showCaption' => true,
+                        'filename' => 'orders_' . date('YmdHis'),
+                        'alertMsg' => 'The PDF export file will be generated for download.',
+                        'config' => [
+                            'onRender' => new \yii\web\JsExpression("
+                                function() {
+                                    window.location.href = '" . \yii\helpers\Url::to(['export-pdf']) . "?' + $.param($('#w0').yiiGridView('getFilterUrl'));
+                                    return false;
+                                }
+                            "),
+                        ],
+                    ],
+                ],
+                'columns' => [
+                    ['class' => 'kartik\grid\SerialColumn'],
+                    [
+                        'attribute' => 'order_id',
+                        'headerOptions' => ['style' => 'width: 150px'],
+                    ],
+                    [
+                        'attribute' => 'channel_id',
+                        'value' => 'channel.name',
+                        'filter' => Select2::widget([
+                            'model' => $searchModel,
+                            'attribute' => 'channel_id',
+                            'data' => ArrayHelper::map(OnlineChannel::find()->all(), 'id', 'name'),
+                            'theme' => Select2::THEME_BOOTSTRAP,
+                            'options' => [
+                                'placeholder' => 'ทุกช่องทาง',
+                            ],
+                            'pluginOptions' => [
+                                'allowClear' => true,
+                            ],
+                        ]),
+                        'headerOptions' => ['style' => 'width: 150px'],
+                    ],
+                    'sku',
+                    'product_name',
+                    [
+                        'attribute' => 'quantity',
+                        'format' => 'integer',
+                        'headerOptions' => ['class' => 'text-center'],
+                        'contentOptions' => ['class' => 'text-center'],
+                    ],
+                    [
+                        'attribute' => 'price',
+                        'format' => ['decimal', 2],
+                        'headerOptions' => ['class' => 'text-right'],
+                        'contentOptions' => ['class' => 'text-right'],
+                    ],
+                    [
+                        'attribute' => 'total_amount',
+                        'format' => ['decimal', 2],
+                        'headerOptions' => ['class' => 'text-right'],
+                        'contentOptions' => ['class' => 'text-right'],
+                    ],
+                    [
+                        'attribute' => 'order_date',
+                        'value' => function($model) {
+                            return Yii::$app->formatter->asDatetime($model->order_date, 'php:d/m/Y H:i');
+                        },
+                        'filter' => DateRangePicker::widget([
+                            'model' => $searchModel,
+                            'attribute' => 'dateRange',
+                            'convertFormat' => true,
+                            'pluginOptions' => [
+                                'locale' => [
+                                    'format' => 'd/m/Y',
+                                    'separator' => ' - ',
+                                ],
+                                'opens' => 'left',
+                            ],
+                        ]),
+                        'headerOptions' => ['style' => 'width: 200px'],
+                    ],
+                    [
+                        'attribute' => 'created_at',
+                        'label' => 'วันที่ดึงข้อมูล',
+                        'value' => function($model) {
+                            return Yii::$app->formatter->asDatetime($model->created_at, 'php:d/m/Y H:i:s');
+                        },
+                        'filter' => false,
+                        'headerOptions' => ['style' => 'width: 150px'],
+                    ],
+                    [
+                        'class' => 'kartik\grid\ActionColumn',
+                        'dropdown' => false,
+                        'vAlign' => 'middle',
+                        'urlCreator' => function($action, $model, $key, $index) {
+                            return [$action, 'id' => $key];
+                        },
+                        'viewOptions' => ['title' => 'ดูรายละเอียด', 'data-toggle' => 'tooltip'],
+                        'updateOptions' => ['title' => 'แก้ไข', 'data-toggle' => 'tooltip'],
+                        'deleteOptions' => ['title' => 'ลบ', 'data-toggle' => 'tooltip'],
+                    ],
+                ],
+                'showPageSummary' => false,
+//                'pageSummary' => [
+//                    'order_id' => 'รวม',
+//                    'quantity' => function ($summary, $data, $widget) {
+//                        return array_sum(array_column($data, 'quantity'));
+//                    },
+//                    'total_amount' => function ($summary, $data, $widget) {
+//                        return array_sum(array_column($data, 'total_amount'));
+//                    },
+//                ],
+            ]); ?>
+            <?php Pjax::end(); ?>
         </div>
     </div>
-    <?php echo $this->render('_search', ['model' => $searchModel, 'viewstatus' => $viewstatus]); ?>
-    <?= GridView::widget([
-        'dataProvider' => $dataProvider,
-        // 'filterModel' => $searchModel,
-        'emptyCell' => '-',
-        'layout' => "{items}\n{summary}\n<div class='text-center'>{pager}</div>",
-        'summary' => "แสดง {begin} - {end} ของทั้งหมด {totalCount} รายการ",
-        'showOnEmpty' => false,
-        //    'bordered' => true,
-        //     'striped' => false,
-        //    'hover' => true,
-        'id' => 'product-grid',
-        //'tableOptions' => ['class' => 'table table-hover'],
-        'emptyText' => '<div style="color: red;text-align: center;"> <b>ยังไม่มีคำสั่งซื้อ</b></div>',
-        'columns' => [
-            [
-                'class' => 'yii\grid\SerialColumn',
-                'headerOptions' => ['style' => 'text-align: center'],
-                'contentOptions' => ['style' => 'text-align: center'],
-            ],
-            'order_no',
-            ['attribute' => 'order_date', 'value' => function ($model) {
-                return date('d/m/Y', strtotime($model->order_date));
-            }],
-//            'customer_id',
-//            'customer_name',
-            //'customer_type',
-            [
-                'attribute' => 'total_amount',
-                'value' => function ($model) {
-                    return number_format($model->total_amount, 2);
-                }
-            ],
-
-//            'status',
-            //'order_tracking_no',
-            [
-                'attribute' => 'status',
-                'format' => 'raw',
-                'value' => function ($data) {
-                    $color_status = '';
-                    if ($data->status == 3) {
-                        $color_status = 'color: orange;';
-                    } elseif ($data->status == 4) {
-                        $color_status = 'color: green;';
-                    } elseif ($data->status == 5) {
-                        $color_status = 'color: red';
-                    }
-                    return '<div style="' . $color_status . '">' . \backend\helpers\OrderStatus::getTypeById($data->status) . '</div>';
-                    // return $data->status;
-                },
-            ],
-            //'created_at',
-            //'created_by',
-            //'updated_at',
-            //'updated_by',
-            [
-
-                'header' => 'ตัวเลือก',
-                'headerOptions' => ['style' => 'text-align:center;', 'class' => 'activity-view-link',],
-                'class' => 'yii\grid\ActionColumn',
-                'contentOptions' => ['style' => 'text-align: center'],
-                'template' => '{view} {update}{delete}',
-                'buttons' => [
-                    'view' => function ($url, $data, $index) {
-                        $options = [
-                            'title' => Yii::t('yii', 'View'),
-                            'aria-label' => Yii::t('yii', 'View'),
-                            'data-pjax' => '0',
-                        ];
-                        if (\Yii::$app->user->can('order/view')) {
-                            return Html::a(
-                                '<span class="fas fa-eye btn btn-xs btn-default"></span>', $url, $options);
-                        }
-
-                    },
-                    'update' => function ($url, $data, $index) {
-                        $options = array_merge([
-                            'title' => Yii::t('yii', 'Update'),
-                            'aria-label' => Yii::t('yii', 'Update'),
-                            'data-pjax' => '0',
-                            'id' => 'modaledit',
-                        ]);
-                        if (\Yii::$app->user->can('order/update')) {
-                            return Html::a(
-                                '<span class="fas fa-edit btn btn-xs btn-default"></span>', $url, [
-                                'id' => 'activity-view-link',
-                                //'data-toggle' => 'modal',
-                                // 'data-target' => '#modal',
-                                'data-id' => $index,
-                                'data-pjax' => '0',
-                                // 'style'=>['float'=>'rigth'],
-                            ]);
-                        }
-                    },
-                    'delete' => function ($url, $data, $index) {
-                        $options = array_merge([
-                            'title' => Yii::t('yii', 'Delete'),
-                            'aria-label' => Yii::t('yii', 'Delete'),
-                            //'data-confirm' => Yii::t('yii', 'Are you sure you want to delete this item?'),
-                            //'data-method' => 'post',
-                            //'data-pjax' => '0',
-                            'data-url' => $url,
-                            'data-var' => $data->id,
-                            'onclick' => 'recDelete($(this));'
-                        ]);
-                        if (\Yii::$app->user->can('order/delete')) {
-                            return Html::a('<span class="fas fa-trash-alt btn btn-xs btn-default"></span>', 'javascript:void(0)', $options);
-                        }
-                    }
-                ]
-            ],
-        ],
-        'pager' => ['class' => LinkPager::className()],
-    ]); ?>
-
-    <?php Pjax::end(); ?>
-
 </div>
 
+<?php
+$syncUrl = \yii\helpers\Url::to(['sync-orders']);
+$csrf = Yii::$app->request->getCsrfToken();
+$js = <<<JS
+$('.sync-channel').on('click', function(e) {
+    e.preventDefault();
+    var channelId = $(this).data('channel-id');
+    var channelName = $(this).text();
+    
+    if (confirm('ต้องการดึงข้อมูลจาก ' + channelName + ' หรือไม่?')) {
+        $.post('$syncUrl', {
+            channel_id: channelId,
+            _csrf: '$csrf'
+        }).done(function(data) {
+            $.pjax.reload({container: '#p0'});
+        });
+    }
+});
+JS;
+$this->registerJs($js);
+?>

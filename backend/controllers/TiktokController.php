@@ -1,8 +1,8 @@
 <?php
-namespace backend\controllers;
+namespace console\controllers;
 
 use yii\console\Controller;
-use common\models\TiktokToken;
+use backend\models\TiktokToken;
 use Yii;
 
 class TiktokController extends Controller
@@ -43,6 +43,7 @@ class TiktokController extends Controller
         $res = $client->post($url, ['form_params' => $params]);
         return json_decode($res->getBody(), true);
     }
+
     public function actionFetchOrders()
     {
         $shopId = 'YOUR_SHOP_ID';

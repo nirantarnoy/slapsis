@@ -31,11 +31,11 @@
         "kartik-v/yii2-widget-timepicker": "dev-master",
         "miloschuman/yii2-highcharts-widget": "^8.0",
         "chillerlan/php-qrcode": "^1.0",
-        "kartik-v/yii2-bootstrap4-dropdown": "dev-master",
         "kartik-v/yii2-bootstrap4-dropdown": "@dev",
-        "miloschuman/yii2-highcharts-widget": "^8.0",
         "wbraganca/yii2-dynamicform": "dev-master",
-        "ext-json": "*"
+        "ext-json": "*",
+        "ext-intl": "*",
+        "phpoffice/phpspreadsheet": "^1.24"
     },
     "require-dev": {
         "yiisoft/yii2-debug": "~2.1.0",

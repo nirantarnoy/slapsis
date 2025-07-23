@@ -2,8 +2,8 @@
     <!-- Brand Logo -->
     <a href="index.php?r=site/index" class="brand-link" style="text-align: center;">
 <!--        <img src="--><?php //echo Yii::$app->request->baseUrl; ?><!--/uploads/logo/ab_logo.jpg" alt="mmc" class="brand-image">-->
-<!--        <img src="--><?php //echo Yii::$app->request->baseUrl; ?><!--/uploads/logo/mhee_logo.jpeg" alt="mhee" width="30%">-->
-                <span style="margin-left: 20px; " class="brand-text font-weight-light">SLAPSIS</span>
+        <img src="<?php echo Yii::$app->request->baseUrl; ?>/uploads/logo/slapsis_logo.jpg" alt="mhee" width="45%">
+<!--                <span style="margin-left: 20px; " class="brand-text font-weight-light">SLAPSIS</span>-->
     </a>
 
     <!-- Sidebar -->
@@ -76,7 +76,7 @@
                     <ul class="nav nav-treeview">
                         <?php //if (\Yii::$app->user->can('department/index')): ?>
                         <li class="nav-item">
-                            <a href="index.php?r=product/index" class="nav-link product">
+                            <a href="index.php?r=order/index" class="nav-link order">
                                 <i class="far fa-circlez nav-icon"></i>
                                 <p>คำสั่งซื้อล่าสุด</p>
                             </a>
