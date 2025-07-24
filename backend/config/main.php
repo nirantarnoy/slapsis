@@ -25,10 +25,8 @@ return [
 //    'aliases'=>[
 //        '@adminlte3' => '@backend/theme/AdminLTE-3.0.1',
 //    ],
-    'aliases' => [
-        '@frontendWeb' => '@frontend/web',
-        '@web' => '/slapsis/backend/web',
-        '@webroot' => dirname(__DIR__) . '/web',
+    'aliases'=>[
+        '@frontendWeb'=>'@frontend/web',
     ],
     'components' => [
         'view' => [
@@ -46,37 +44,30 @@ return [
 //            ],
 //        ],
         'assetManager' => [
-            'baseUrl' => '/slapsis/backend/web/assets',
-            'basePath' => '@webroot/assets',
-            'forceCopy' => true,
             'bundles' => [
                 'kartik\form\ActiveFormAsset' => [
-                    'bsDependencyEnabled' => true
+                    'bsDependencyEnabled' => true // do not load bootstrap assets for a specific asset bundle
                 ],
+                'baseUrl' => '/slapsis/backend/web/assets',
+                'basePath' => '@webroot/assets',
             ],
         ],
+//        'request' => [
+//            'csrfParam' => '_csrf-backend',
+//            'enableCsrfValidation' => false,
+//        ],
         'request' => [
             'csrfParam' => '_csrf-backend',
             'class' => 'yii\web\Request',
             'parsers' => [
                 'application/json' => 'yii\web\JsonParser',
             ],
+            //'baseUrl' => '/backend/web', // ชี้ path ที่แท้จริงของเว็บ
             'baseUrl' => '/slapsis/backend/web',
-        ],
-        'urlManager' => [
-            'enablePrettyUrl' => true,
-            'showScriptName' => false,
-            'enableStrictParsing' => false,
-            'suffix' => '',
-            'rules' => [
-                '' => 'site/index',
-                'order/export-excel' => 'order/export-excel',
-                'order/export-pdf' => 'order/export-pdf',
-                'order/sync-orders' => 'order/sync-orders',
-                '<controller:\w+>/<id:\d+>' => '<controller>/view',
-                '<controller:\w+>/<action:\w+>/<id:\d+>' => '<controller>/<action>',
-                '<controller:\w+>/<action:\w+>' => '<controller>/<action>',
-            ],
+
+//            'parsers' => [
+//                'application/json'=> \yii\web\JsonParser::class,
+//            ]
         ],
 //        [
 //            'session' =>[
@@ -125,22 +116,19 @@ return [
 //            'enablePrettyUrl' => false,
 //            'showScriptName' => true,
 //        ],
-//        'urlManager' => [
-//            'enablePrettyUrl' => true,
-//            'showScriptName' => false,
-//            'enableStrictParsing' => false,
-//            'suffix' => '',
-//            'rules' => [
-//                '' => 'site/index',
-//                'order/export-excel' => 'order/export-excel',
-//                'order/export-pdf' => 'order/export-pdf',
-//                'order/sync-orders' => 'order/sync-orders',
-//                // ตัวอย่างการตั้ง rules เพิ่มเติม
-//                '<controller:\w+>/<id:\d+>' => '<controller>/view',
-//                '<controller:\w+>/<action:\w+>/<id:\d+>' => '<controller>/<action>',
-//                '<controller:\w+>/<action:\w+>' => '<controller>/<action>',
-//            ],
-//        ],
+        'urlManager' => [
+            'enablePrettyUrl' => true,
+            'showScriptName' => false,
+            'enableStrictParsing' => false,
+            'rules' => [
+                '' => 'site/index',
+                'order/export-excel' => 'order/export-excel',
+                'order/export-pdf' => 'order/export-pdf',
+                'order/sync-orders' => 'order/sync-orders',
+                // ตัวอย่างการตั้ง rules เพิ่มเติม
+                '<controller:\w+>/<action:\w+>' => '<controller>/<action>',
+            ],
+        ],
         'formatter' => [
             'class' => 'yii\i18n\Formatter',
             'defaultTimeZone' => 'Asia/Bangkok',
