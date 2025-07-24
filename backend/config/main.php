@@ -60,6 +60,7 @@ return [
             'parsers' => [
                 'application/json' => 'yii\web\JsonParser',
             ],
+            'baseUrl' => '/backend/web', // ชี้ path ที่แท้จริงของเว็บ
 //            'parsers' => [
 //                'application/json'=> \yii\web\JsonParser::class,
 //            ]
