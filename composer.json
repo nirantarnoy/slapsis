@@ -35,7 +35,9 @@
         "wbraganca/yii2-dynamicform": "dev-master",
         "ext-json": "*",
         "ext-intl": "*",
-        "phpoffice/phpspreadsheet": "^1.24"
+        "phpoffice/phpspreadsheet": "^1.24",
+        "guzzlehttp/guzzle": "^7.0"
+
     },
     "require-dev": {
         "yiisoft/yii2-debug": "~2.1.0",

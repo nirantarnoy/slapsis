@@ -1,0 +1,8 @@
+RewriteEngine on
+
+# ถ้ามีไฟล์หรือโฟลเดอร์ ให้ข้าม
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# rewrite ทั้งหมดไปที่ index.php
+RewriteRule . index.php

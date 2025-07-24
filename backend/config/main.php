@@ -100,24 +100,27 @@ return [
         'errorHandler' => [
             'errorAction' => 'site/error',
         ],
-        'urlManagerFrontend' => [
-            'class' => 'yii\web\urlManager',
-            'baseUrl' => '/icesystem/frontend/web',
-            'scriptUrl'=>'/icesystem/frontend/web/index.php',
-//            'baseUrl' => 'http://app.sst.ac.th',
-//            'scriptUrl' => 'http://app.sst.ac.th/index.php',
-//            'baseUrl' => 'http://app.sst.ac.th',
-//            'scriptUrl' => 'http://app.sst.ac.th/index.php',
-            'enablePrettyUrl' => false,
-            'showScriptName' => true,
-        ],
+//        'urlManagerFrontend' => [
+//            'class' => 'yii\web\urlManager',
+//            'baseUrl' => '/icesystem/frontend/web',
+//            'scriptUrl'=>'/icesystem/frontend/web/index.php',
+////            'baseUrl' => 'http://app.sst.ac.th',
+////            'scriptUrl' => 'http://app.sst.ac.th/index.php',
+////            'baseUrl' => 'http://app.sst.ac.th',
+////            'scriptUrl' => 'http://app.sst.ac.th/index.php',
+//            'enablePrettyUrl' => false,
+//            'showScriptName' => true,
+//        ],
         'urlManager' => [
-            'enablePrettyUrl' => false,
+            'enablePrettyUrl' => true,
             'showScriptName' => false,
+            'enableStrictParsing' => false,
             'rules' => [
                 'order/export-excel' => 'order/export-excel',
                 'order/export-pdf' => 'order/export-pdf',
                 'order/sync-orders' => 'order/sync-orders',
+                // ตัวอย่างการตั้ง rules เพิ่มเติม
+                '<controller:\w+>/<action:\w+>' => '<controller>/<action>',
             ],
         ],
         'formatter' => [
