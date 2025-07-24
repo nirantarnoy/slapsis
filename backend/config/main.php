@@ -48,8 +48,6 @@ return [
                 'kartik\form\ActiveFormAsset' => [
                     'bsDependencyEnabled' => true // do not load bootstrap assets for a specific asset bundle
                 ],
-                'baseUrl' => '/slapsis/backend/web/assets',
-                'basePath' => '@webroot/assets',
             ],
         ],
 //        'request' => [
@@ -117,7 +115,7 @@ return [
 //            'showScriptName' => true,
 //        ],
         'urlManager' => [
-            'enablePrettyUrl' => true,
+            'enablePrettyUrl' => false,
             'showScriptName' => false,
             'enableStrictParsing' => false,
             'rules' => [
