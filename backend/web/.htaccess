@@ -1,8 +1,6 @@
 RewriteEngine on
 
-# ถ้ามีไฟล์หรือโฟลเดอร์ ให้ข้าม
+# ถ้าไฟล์หรือโฟลเดอร์ไม่มีอยู่จริง ให้ส่งไปที่ index.php
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-
-# rewrite ทั้งหมดไปที่ index.php
-RewriteRule . index.php
+RewriteRule . index.php [L]
