@@ -1,6 +1,8 @@
-RewriteEngine on
+RewriteEngine On
 
-# ถ้าไฟล์หรือโฟลเดอร์ไม่มีอยู่จริง ให้ส่งไปที่ index.php
+# ถ้าเรียกไฟล์หรือโฟลเดอร์จริงอยู่แล้ว ไม่ต้อง rewrite
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule . index.php [L]
+
+# ส่งทุกคำขอไปยัง backend/web
+RewriteRule ^(.*)$ backend/web/$1 [L]
