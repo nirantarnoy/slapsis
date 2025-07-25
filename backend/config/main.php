@@ -116,7 +116,7 @@ return [
 //            'showScriptName' => true,
 //        ],
         'urlManager' => [
-            'enablePrettyUrl' => true,
+            'enablePrettyUrl' => false,
             'showScriptName' => false,
             'enableStrictParsing' => false,
             'rules' => [
