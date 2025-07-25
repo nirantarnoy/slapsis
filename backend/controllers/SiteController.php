@@ -4,6 +4,7 @@ namespace backend\controllers;
 
 use common\models\LoginForm;
 use common\models\TiktokToken;
+use GuzzleHttp\Client;
 use yii\helpers\Url;
 use Yii;
 use yii\filters\VerbFilter;
@@ -526,7 +527,7 @@ class SiteController extends Controller
         // ข้อมูลแอปของคุณ (กรอกตามที่ Shopee ให้มา)
         $partner_id = 123456; // เปลี่ยนเป็นของคุณ
         $partner_key = 'xxxxxxxxxxxxxxxx'; // เปลี่ยนเป็นของคุณ
-        $redirect_url = 'https://pjrichth.com/site/shopee-callback'; // ต้องตรงกับที่ลงทะเบียนใน Shopee
+        $redirect_url = 'https://pjrichth.co/slapsis/backend/web/index.php?r=site/shopee-callback'; // ต้องตรงกับที่ลงทะเบียนใน Shopee
 
         $timestamp = time();
 
