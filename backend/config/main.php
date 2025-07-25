@@ -60,9 +60,9 @@ return [
             'parsers' => [
                 'application/json' => 'yii\web\JsonParser',
             ],
-            'baseUrl' => '/backend/web',
+            //'baseUrl' => '/backend/web',
             //'baseUrl' => '/backend/web', // ชี้ path ที่แท้จริงของเว็บ
-            //'baseUrl' => '/slapsis/backend/web',
+            'baseUrl' => '/slapsis/backend/web',
 
 //            'parsers' => [
 //                'application/json'=> \yii\web\JsonParser::class,
