@@ -1,0 +1,13 @@
+RewriteEngine On
+
+# Redirect to HTTPS (optional)
+RewriteCond %{HTTPS} off
+RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
+# Point to Yii2 backend web directory
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ /slapsis/backend/web/index.php?r=$1 [QSA,L]
+
+# Alternative approach - redirect everything to specific controller/action
+# RewriteRule ^/?$ /slapsis/backend/web/index.php?r=site/login [L,R=301]

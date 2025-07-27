@@ -25,8 +25,8 @@ return [
 //    'aliases'=>[
 //        '@adminlte3' => '@backend/theme/AdminLTE-3.0.1',
 //    ],
-    'aliases'=>[
-        '@frontendWeb'=>'@frontend/web',
+    'aliases' => [
+        '@frontendWeb' => '@frontend/web',
     ],
     'components' => [
         'view' => [
@@ -62,7 +62,8 @@ return [
             ],
             //'baseUrl' => '/backend/web',
             //'baseUrl' => '/backend/web', // ชี้ path ที่แท้จริงของเว็บ
-            'baseUrl' => '/slapsis/backend/web',
+          //  'baseUrl' => '/slapsis/backend/web',
+            'baseUrl' => '',
 
 //            'parsers' => [
 //                'application/json'=> \yii\web\JsonParser::class,
@@ -85,11 +86,11 @@ return [
 //            'name' => 'advanced-backend',
 //            'timeout' => 60*60*24*30,
 
-            'class'=> 'yii\web\Session',
+            'class' => 'yii\web\Session',
             'name' => 'advanced-backend',
-            'cookieParams' => ['lifetime' => 7 * 24 *60 * 60],
+            'cookieParams' => ['lifetime' => 7 * 24 * 60 * 60],
             // 'cookieParams' => ['httpOnly'=>true],
-            'timeout' => 60*60*24*30,
+            'timeout' => 60 * 60 * 24 * 30,
             'useCookies' => true,
         ],
         'log' => [
@@ -115,21 +116,37 @@ return [
 //            'enablePrettyUrl' => false,
 //            'showScriptName' => true,
 //        ],
+//        'urlManager' => [
+//            'enablePrettyUrl' => false,
+//            'showScriptName' => false,
+//            'enableStrictParsing' => false,
+//            'rules' => [
+//                '' => 'site/index',
+//                'order/export-excel' => 'order/export-excel',
+//                'order/export-pdf' => 'order/export-pdf',
+//                'order/sync-orders' => 'order/sync-orders',
+//                // ตัวอย่างการตั้ง rules เพิ่มเติม
+//                '<controller:\w+>/<id:\d+>' => '<controller>/view',
+//                '<controller:\w+>/<action:\w+>/<id:\d+>' => '<controller>/<action>',
+//                '<controller:\w+>/<action:\w+>' => '<controller>/<action>',
+//            ],
+//        ],
         'urlManager' => [
-            'enablePrettyUrl' => false,
+            'enablePrettyUrl' => true,
             'showScriptName' => false,
             'enableStrictParsing' => false,
             'rules' => [
-                '' => 'site/index',
-                'order/export-excel' => 'order/export-excel',
-                'order/export-pdf' => 'order/export-pdf',
-                'order/sync-orders' => 'order/sync-orders',
-                // ตัวอย่างการตั้ง rules เพิ่มเติม
+                // กำหนด rule สำหรับ root URL
+                '' => 'site/login',
+                '/' => 'site/login',
+
+                // URL rules อื่นๆ
                 '<controller:\w+>/<id:\d+>' => '<controller>/view',
                 '<controller:\w+>/<action:\w+>/<id:\d+>' => '<controller>/<action>',
                 '<controller:\w+>/<action:\w+>' => '<controller>/<action>',
             ],
         ],
+
         'formatter' => [
             'class' => 'yii\i18n\Formatter',
             'defaultTimeZone' => 'Asia/Bangkok',
