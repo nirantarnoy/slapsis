@@ -18,7 +18,7 @@
                      with font-awesome or any other icon font library -->
                 <?php //if(\Yii::$app->user->can('site/index')):?>
                 <li class="nav-item">
-                    <a href="index.php?r=site/index" class="nav-link site">
+                    <a href="<?=\Yii\helpers\Url::to(['site/index',true])?>" class="nav-link site">
                         <i class="nav-icon fas fa-tachometer-alt"></i>
                         <p>
                             ภาพรวมระบบ
@@ -38,7 +38,7 @@
                     <ul class="nav nav-treeview">
                         <?php //if (\Yii::$app->user->can('department/index')): ?>
                         <li class="nav-item">
-                            <a href="<?=\Yii\helpers\Url::to(['site/index'])?>" class="nav-link site">
+                            <a href="<?=\Yii\helpers\Url::to(['site/index',true])?>" class="nav-link site">
                                 <i class="far fa-circlez nav-icon"></i>
                                 <p>เชื่อมต่อร้านค้า</p>
                             </a>
@@ -57,7 +57,7 @@
                     <ul class="nav nav-treeview">
                         <?php //if (\Yii::$app->user->can('department/index')): ?>
                         <li class="nav-item">
-                            <a href="index.php?r=product/index" class="nav-link product">
+                            <a href="<?=\Yii\helpers\Url::to(['product/index',true])?>" class="nav-link product">
                                 <i class="far fa-circlez nav-icon"></i>
                                 <p>ข้อมูลสินค้า</p>
                             </a>
@@ -77,7 +77,7 @@
                     <ul class="nav nav-treeview">
                         <?php //if (\Yii::$app->user->can('department/index')): ?>
                         <li class="nav-item">
-                            <a href="index.php?r=order/index" class="nav-link order">
+                            <a href="<?=\Yii\helpers\Url::to(['order/index',true])?>" class="nav-link order">
                                 <i class="far fa-circlez nav-icon"></i>
                                 <p>คำสั่งซื้อล่าสุด</p>
                             </a>
