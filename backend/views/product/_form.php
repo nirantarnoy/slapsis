@@ -13,16 +13,6 @@ $yesno = [['id' => 1, 'YES'], ['id' => 0, 'NO']];
 
 $model_warehouse_product = null;
 
-if (!$model->isNewRecord) {
-    $sql = "SELECT w.name as warehouse_name,st.qty 
-            FROM product as p 
-                left join stock_sum as st on p.id = st.product_id 
-                inner join warehouse as w on st.warehouse_id = w.id 
-            where st.qty > 0 and p.id = " . $model->id;
-
-    $model_warehouse_product = Yii::$app->db->createCommand($sql)->queryAll();
-
-}
 
 ?>
 
