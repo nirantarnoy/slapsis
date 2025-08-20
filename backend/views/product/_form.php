@@ -7,7 +7,7 @@ use yii\widgets\ActiveForm;
 /** @var yii\web\View $this */
 /** @var backend\models\Product $model */
 /** @var yii\widgets\ActiveForm $form */
-$data_warehouse = \backend\models\Warehouse::find()->all();
+$data_warehouse = null;
 
 $yesno = [['id' => 1, 'YES'], ['id' => 0, 'NO']];
 
