@@ -36,64 +36,13 @@ $model_warehouse_product = null;
                     ]
                 ]) ?>
             </div>
-            <div class="col-lg-3">
-                <?= $form->field($model, 'product_type_id')->widget(\kartik\select2\Select2::className(), [
-                    'data' => \yii\helpers\ArrayHelper::map(\backend\helpers\ProductType::asArrayObject(), 'id', 'name'),
-                    'options' => [
-                        'placeholder' => '-- เลือกประเภทสินค้า --',
-                    ],
-                    'pluginOptions' => [
-                        'allowClear' => true,
-                    ]
-                ]) ?>
-            </div>
-            <div class="col-lg-3">
-                <?= $form->field($model, 'brand_id')->widget(\kartik\select2\Select2::className(), [
-                    'data' => ArrayHelper::map(\backend\models\Productbrand::find()->all(), 'id', 'name'),
-                    'options' => [
-                        'placeholder' => '-- เลือกยี่ห้อ --',
-                    ]
-                ]) ?>
-            </div>
         </div>
         <div class="row">
             <div class="col-lg-6">
                 <?= $form->field($model, 'description')->textarea(['maxlength' => true]) ?>
             </div>
             <div class="col-lg-3">
-                <?= $form->field($model, 'type_id')->widget(\kartik\select2\Select2::className(), [
-                    'data' => \yii\helpers\ArrayHelper::map(\backend\helpers\CatType::asArrayObject(), 'id', 'name'),
-                    'options' => [
-                        'placeholder' => '-- เลือกสภาพสินค้า --',
-                    ],
-                    'pluginOptions' => [
-                        'allowClear' => true,
-                    ]
-                ]) ?>
-            </div>
-            <div class="col-lg-3">
                 <?php echo $form->field($model, 'status')->widget(\toxor88\switchery\Switchery::className(), ['options' => ['label' => '', 'class' => 'form-control']])->label() ?>
-            </div>
-        </div>
-        <div class="row">
-            <?php if (\Yii::$app->user->can('ViewCostPrice')): ?>
-                <div class="col-lg-3">
-                    <?= $form->field($model, 'cost_price')->textInput() ?>
-
-                </div>
-            <?php endif; ?>
-            <?php if (\Yii::$app->user->can('ViewSalePrice')): ?>
-                <div class="col-lg-3">
-                    <?= $form->field($model, 'sale_price')->textInput() ?>
-                </div>
-            <?php endif; ?>
-            <div class="col-lg-3">
-                <?= $form->field($model, 'stock_qty')->textInput(['readonly' => 'readonly']) ?>
-            </div>
-        </div>
-        <div class="row">
-            <div class="col-lg-6">
-                <?= $form->field($model, 'remark')->textInput(['maxlength' => true])->label('หมายเหตุ') ?>
             </div>
         </div>
         <div class="row">
