@@ -176,14 +176,7 @@
                             </a>
                         </li>
                         <?php endif; ?>
-                        <?php if (\Yii::$app->user->can('watchmaker/index')): ?>
-                            <li class="nav-item">
-                                <a href="index.php?r=watchmaker" class="nav-link watchmaker">
-                                    <i class="far fa-circlez nav-icon"></i>
-                                    <p>ช่างนาฬิกา</p>
-                                </a>
-                            </li>
-                        <?php endif; ?>
+
                         <?php if (\Yii::$app->user->can('stocksum/index')): ?>
                         <li class="nav-item">
                             <a href="index.php?r=stocksum" class="nav-link stocksum">
@@ -197,59 +190,6 @@
                         <?php endif;?>
                     </ul>
                 </li>
-                <?php endif;?>
-                <?php if(\Yii::$app->user->can('journaltrans/index')):?>
-                    <li class="nav-item has-treeview has-sub">
-                        <a href="#" class="nav-link">
-                            <i class="nav-icon fas fa-tags"></i>
-                            <p>
-                                ทำรายการ
-                                <i class="fas fa-angle-left right"></i>
-                            </p>
-                        </a>
-                        <ul class="nav nav-treeview">
-                            <?php if (\Yii::$app->user->can('journaltrans/index')): ?>
-                                <li class="nav-item">
-                                    <a href="index.php?r=journaltrans/index" class="nav-link journaltrans">
-                                        <i class="far fa-circlez nav-icon"></i>
-                                        <p>บันทึกรายการต่างๆ</p>
-                                    </a>
-                                </li>
-                            <?php endif; ?>
-                            <?php if (\Yii::$app->user->can('stocktrans/index')): ?>
-                                <li class="nav-item">
-                                    <a href="index.php?r=stocktrans" class="nav-link stocktrans">
-                                        <i class="far fa-circlez nav-icon"></i>
-                                        <p>
-                                            ประวัติทำรายการ
-                                            <!--                                <span class="right badge badge-danger">New</span>-->
-                                        </p>
-                                    </a>
-                                </li>
-                            <?php endif;?>
-                        </ul>
-                    </li>
-                <?php endif;?>
-                <?php if(\Yii::$app->user->can('salereport/crosstab')):?>
-                    <li class="nav-item has-treeview has-sub">
-                        <a href="#" class="nav-link">
-                            <i class="nav-icon fas fa-chart-line"></i>
-                            <p>
-                                รายงาน
-                                <i class="fas fa-angle-left right"></i>
-                            </p>
-                        </a>
-                        <ul class="nav nav-treeview">
-                            <?php if (\Yii::$app->user->can('salereport/crosstab')): ?>
-                                <li class="nav-item">
-                                    <a href="index.php?r=salereport/crosstab" class="nav-link salereport">
-                                        <i class="far fa-circlez nav-icon"></i>
-                                        <p>รายงานยอดขาย</p>
-                                    </a>
-                                </li>
-                            <?php endif; ?>
-                        </ul>
-                    </li>
                 <?php endif;?>
                 <?php // if (isset($_SESSION['user_group_id'])): ?>
                 <?php //if ($_SESSION['user_group_id'] == 1): ?>
@@ -266,7 +206,7 @@
                         <ul class="nav nav-treeview">
                             <?php //if (\Yii::$app->user->can('usergroup/index')): ?>
                                 <li class="nav-item">
-                                    <a href="index.php?r=usergroup" class="nav-link usergroup">
+                                    <a href="<?=\Yii\helpers\Url::to(['usergroup/index',true])?>" class="nav-link usergroup">
                                         <i class="far fa-circlez nav-icon"></i>
                                         <p>กลุ่มผู้ใช้งาน</p>
                                     </a>
@@ -274,7 +214,7 @@
                             <?php //endif; ?>
                             <?php //if (\Yii::$app->user->can('user/index')): ?>
                                 <li class="nav-item">
-                                    <a href="index.php?r=user" class="nav-link user">
+                                    <a href="i<?=\Yii\helpers\Url::to(['user/index',true])?>" class="nav-link user">
                                         <i class="far fa-circlez nav-icon"></i>
                                         <p>ผู้ใช้งาน</p>
                                     </a>
@@ -283,7 +223,7 @@
 
                             <?php //if (\Yii::$app->user->can('authitem/index')): ?>
                                 <li class="nav-item">
-                                    <a href="index.php?r=authitem" class="nav-link authitem">
+                                    <a href="<?=\Yii\helpers\Url::to(['authitem/index',true])?>" class="nav-link authitem">
                                         <i class="far fa-circlez nav-icon"></i>
                                         <p>สิทธิ์การใช้งาน</p>
                                     </a>
