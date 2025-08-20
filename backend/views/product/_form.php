@@ -36,14 +36,15 @@ $model_warehouse_product = null;
                     ]
                 ]) ?>
             </div>
+            <div class="col-lg-3">
+                <?php echo $form->field($model, 'status')->widget(\toxor88\switchery\Switchery::className(), ['options' => ['label' => '', 'class' => 'form-control']])->label() ?>
+            </div>
         </div>
         <div class="row">
             <div class="col-lg-6">
                 <?= $form->field($model, 'description')->textarea(['maxlength' => true]) ?>
             </div>
-            <div class="col-lg-3">
-                <?php echo $form->field($model, 'status')->widget(\toxor88\switchery\Switchery::className(), ['options' => ['label' => '', 'class' => 'form-control']])->label() ?>
-            </div>
+
         </div>
         <div class="row">
             <div class="col-lg-3">
