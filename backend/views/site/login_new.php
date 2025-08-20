@@ -45,7 +45,7 @@ use yii\helpers\Html;
 
                 <div class="login-logo">
                     <a href="#">
-                        <img src="../../backend/web/uploads/logo/slapsis_logo.jpg" width="60%" alt="">
+                        <img src="<?= Yii::getAlias('@web') ?>/uploads/logo/slapsis_logo.jpg" width="60%" alt="">
                     </a>
 <!--                    <h1 style="color: palevioletred">SlapSis</h1>-->
 <!--                    <h1 style="color: dodgerblue">Sis</h1>-->
