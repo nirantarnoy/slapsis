@@ -90,28 +90,7 @@ $this->params['breadcrumbs'][] = $this->title;
                         return \backend\models\Productgroup::findName($data->product_group_id);
                     }
                 ],
-                [
-                    'attribute' => 'brand_id',
-                    'value' => function ($data) {
-                        return \backend\models\Productbrand::findName($data->brand_id);
-                    }
-                ],
-                [
-                    'attribute' => 'product_type_id',
-                    'headerOptions' => ['style' => 'text-align: center'],
-                    'contentOptions' => ['style' => 'text-align: center'],
-                    'value' => function ($data) {
-                        return \backend\helpers\ProductType::getTypeById($data->product_type_id);
-                    }
-                ],
-                [
-                    'attribute' => 'type_id',
-                    'headerOptions' => ['style' => 'text-align: center'],
-                    'contentOptions' => ['style' => 'text-align: center'],
-                    'value' => function ($data) {
-                        return \backend\helpers\CatType::getTypeById($data->type_id);
-                    }
-                ],
+
                 //'status',
                 //'last_price',
                 //'std_price',
