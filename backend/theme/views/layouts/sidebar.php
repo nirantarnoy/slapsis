@@ -214,7 +214,7 @@
                             <?php //endif; ?>
                             <?php //if (\Yii::$app->user->can('user/index')): ?>
                                 <li class="nav-item">
-                                    <a href="i<?=\Yii\helpers\Url::to(['user/index',true])?>" class="nav-link user">
+                                    <a href="<?=\Yii\helpers\Url::to(['user/index',true])?>" class="nav-link user">
                                         <i class="far fa-circlez nav-icon"></i>
                                         <p>ผู้ใช้งาน</p>
                                     </a>
