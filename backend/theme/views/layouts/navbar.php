@@ -31,10 +31,10 @@ use yii\web\Session;
                 <!--                    <span class="badge badge-danger navbar-badge">3</span>-->
             </a>
             <div class="dropdown-menu dropdown-menu-lg dropdown-menu-right">
-                <a href="index.php?r=site/changepassword" class="dropdown-item">
+                <a href="<?=\yii\helpers\Url::to('site/changepassword')?>" class="dropdown-item">
                     <!-- Message Start -->
                     <div class="media">
-                        <img src="uploads/images/change_password.png" alt="User Avatar"
+                        <img src="<?php echo Yii::$app->request->baseUrl; ?>/uploads/images/change_password.png" alt="User Avatar"
                              class="img-size-50 mr-3 img-circle">
                         <div class="media-body">
                             <h3 class="dropdown-item-title">
@@ -46,10 +46,10 @@ use yii\web\Session;
                     <!-- Message End -->
                 </a>
                 <div class="dropdown-divider"></div>
-                <a href="index.php?r=site/logout" class="dropdown-item">
+                <a href="<?=\yii\helpers\Url::to('site/logout')?>" class="dropdown-item">
                     <!-- Message Start -->
                     <div class="media">
-                        <img src="uploads/images/logout.png" alt="User Avatar"
+                        <img src="<?php echo Yii::$app->request->baseUrl; ?>/uploads/images/logout.png" alt="User Avatar"
                              class="img-size-50 mr-3 img-circle">
                         <div class="media-body">
                             <h3 class="dropdown-item-title">

@@ -1,13 +1,43 @@
-RewriteEngine On
+#RewriteEngine On
+#
+## Redirect to HTTPS (optional)
+#RewriteCond %{HTTPS} off
+#RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+#
+## Point to Yii2 backend web directory
+#RewriteCond %{REQUEST_FILENAME} !-f
+#RewriteCond %{REQUEST_FILENAME} !-d
+#RewriteRule ^(.*)$ /slapsis/backend/web/index.php?r=$1 [QSA,L]
+#
+## Alternative approach - redirect everything to specific controller/action
+## RewriteRule ^/?$ /slapsis/backend/web/index.php?r=site/login [L,R=301]
 
-# Redirect to HTTPS (optional)
-RewriteCond %{HTTPS} off
-RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+Options +FollowSymLinks
+IndexIgnore */*
+RewriteEngine on
 
-# Point to Yii2 backend web directory
+# ถ้าไม่เจอไฟล์หรือโฟลเดอร์ ให้ส่งเข้า index.php
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^(.*)$ /slapsis/backend/web/index.php?r=$1 [QSA,L]
+RewriteRule . index.php
 
-# Alternative approach - redirect everything to specific controller/action
-# RewriteRule ^/?$ /slapsis/backend/web/index.php?r=site/login [L,R=301]
+
+#Options +FollowSymLinks
+#IndexIgnore */*
+#RewriteEngine on
+#
+## ถ้าเป็น directory ให้เติม trailing slash
+#RewriteCond %{REQUEST_FILENAME} -d
+#RewriteRule ^(.*[^/])$ $1/ [R=301,L]
+#
+## ป้องกันการเข้าถึงไฟล์ .htaccess
+#<Files ".htaccess">
+#Order allow,deny
+#Deny from all
+#</Files>
+#
+## Rewrite rules สำหรับ Yii2
+#RewriteCond %{REQUEST_FILENAME} !-f
+#RewriteCond %{REQUEST_FILENAME} !-d
+#RewriteRule ^.*$ index.php [L,QSA]
+

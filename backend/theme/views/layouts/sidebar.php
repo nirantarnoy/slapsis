@@ -1,7 +1,8 @@
 <aside class="main-sidebar sidebar-light-green elevation-4">
     <!-- Brand Logo -->
     <a href="index.php?r=site/index" class="brand-link" style="text-align: center;">
-<!--        <img src="--><?php //echo Yii::$app->request->baseUrl; ?><!--/uploads/logo/ab_logo.jpg" alt="mmc" class="brand-image">-->
+<!--        <img src="-->
+        <?php //echo Yii::$app->request->baseUrl; ?><!--/uploads/logo/ab_logo.jpg" alt="mmc" class="brand-image">-->
         <img src="<?php echo Yii::$app->request->baseUrl; ?>/uploads/logo/slapsis_logo.jpg" alt="mhee" width="45%">
 <!--                <span style="margin-left: 20px; " class="brand-text font-weight-light">SLAPSIS</span>-->
     </a>
@@ -37,7 +38,7 @@
                     <ul class="nav nav-treeview">
                         <?php //if (\Yii::$app->user->can('department/index')): ?>
                         <li class="nav-item">
-                            <a href="index.php?r=department/index" class="nav-link department">
+                            <a href="<?=\Yii\helpers\Url::to(['site/index'])?>" class="nav-link site">
                                 <i class="far fa-circlez nav-icon"></i>
                                 <p>เชื่อมต่อร้านค้า</p>
                             </a>

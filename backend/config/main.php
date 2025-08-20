@@ -29,11 +29,22 @@ return [
         '@frontendWeb' => '@frontend/web',
     ],
     'components' => [
+        'assetManager' => [
+            'basePath' => '@webroot/assets',
+            'baseUrl'  => '@web/assets',
+            'bundles' => [
+                'kartik\form\ActiveFormAsset' => [
+                    'bsDependencyEnabled' => true // do not load bootstrap assets for a specific asset bundle
+                ],
+            ],
+        ],
         'view' => [
             'theme' => [
                 'pathMap' => [
                     '@app/views' => '@backend/theme/views'
                 ],
+                'basePath' => '@backend/theme/web',
+                'baseUrl'  => '@web/theme',
             ],
         ],
 //        'view' => [
@@ -43,13 +54,7 @@ return [
 //                ],
 //            ],
 //        ],
-        'assetManager' => [
-            'bundles' => [
-                'kartik\form\ActiveFormAsset' => [
-                    'bsDependencyEnabled' => true // do not load bootstrap assets for a specific asset bundle
-                ],
-            ],
-        ],
+
 //        'request' => [
 //            'csrfParam' => '_csrf-backend',
 //            'enableCsrfValidation' => false,
@@ -63,7 +68,7 @@ return [
             //'baseUrl' => '/backend/web',
             //'baseUrl' => '/backend/web', // ชี้ path ที่แท้จริงของเว็บ
           //  'baseUrl' => '/slapsis/backend/web',
-            'baseUrl' => '',
+            'baseUrl' => '/slapsis/backend/web',
 
 //            'parsers' => [
 //                'application/json'=> \yii\web\JsonParser::class,
@@ -131,19 +136,43 @@ return [
 //                '<controller:\w+>/<action:\w+>' => '<controller>/<action>',
 //            ],
 //        ],
+//        'urlManager' => [
+//            'enablePrettyUrl' => true,
+//            'showScriptName' => false,
+//            'enableStrictParsing' => false,
+//            'rules' => [
+//                // กำหนด rule สำหรับ root URL
+//                '' => 'site/login',
+//                '/' => 'site/login',
+//
+//                // URL rules อื่นๆ
+//                '<controller:\w+>/<id:\d+>' => '<controller>/view',
+//                '<controller:\w+>/<action:\w+>/<id:\d+>' => '<controller>/<action>',
+//                '<controller:\w+>/<action:\w+>' => '<controller>/<action>',
+//            ],
+//        ],
+
         'urlManager' => [
-            'enablePrettyUrl' => false,
+            'enablePrettyUrl' => true,
             'showScriptName' => false,
             'enableStrictParsing' => false,
+            'suffix' => '',
             'rules' => [
                 // กำหนด rule สำหรับ root URL
                 '' => 'site/login',
-                '/' => 'site/login',
 
-                // URL rules อื่นๆ
-                '<controller:\w+>/<id:\d+>' => '<controller>/view',
+                // URL rules เฉพาะเจาะจง (ต้องมาก่อน generic rules)
+                'login' => 'site/login',
+                'logout' => 'site/logout',
+
+                // Generic rules (เรียงจากเฉพาะเจาะจงไปทั่วไป)
                 '<controller:\w+>/<action:\w+>/<id:\d+>' => '<controller>/<action>',
+                '<controller:\w+>/<id:\d+>' => '<controller>/view',
                 '<controller:\w+>/<action:\w+>' => '<controller>/<action>',
+                '<controller:\w+>' => '<controller>/index',
+
+                // Catch-all rule สำหรับ patterns ที่ไม่ตรงกับ rules ข้างต้น
+//                '<module:\w+>/<controller:\w+>/<action:\w+>' => '<module>/<controller>/<action>',
             ],
         ],
 
