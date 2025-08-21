@@ -485,7 +485,8 @@ class SiteController extends Controller
     public function actionConnectTiktok()
     {
         $appKey = '6gtr1ukn2k2hj'; // Make sure this matches your actual app key
-        $redirectUri = Url::to(['site/tiktok-callback'], true);
+        //$redirectUri = Url::to(['site/tiktok-callback'], true);https://www.pjrichth.co/site/shopee-callback
+        $redirectUri = 'https://www.pjrichth.co/site/shopee-callback';
         $state = Yii::$app->security->generateRandomString(12);
 
         // Store state in session for validation later (optional but recommended for security)
@@ -659,7 +660,7 @@ class SiteController extends Controller
     {
         $partner_id = 1178090;
         $partner_key = 'shpk6573466d784257526c476e4e796e7950694d4c6c516946744e6a4e556854';
-        $redirect_url = Url::to(['https://www.pjrichth.co/site/shopee-callback'], true);
+        $redirect_url = 'https://www.pjrichth.co/site/shopee-callback'; // Url::to(['https://www.pjrichth.co/site/shopee-callback'], true);
 
         $timestamp = time();
         $state = Yii::$app->security->generateRandomString(12);
