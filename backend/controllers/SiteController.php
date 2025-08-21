@@ -671,7 +671,7 @@ class SiteController extends Controller
         $sign = hash_hmac('sha256', $base_string, $partner_key);
 
         // ✅ redirect_url ต้อง urlencode ตอนส่ง query string
-        $auth_url = "https://partner.test-stable.shopeemobile.com/api/v2/shop/auth_partner?" . http_build_query([
+        $auth_url = "https://partner.shopeemobile.com/api/v2/shop/auth_partner?" . http_build_query([
                 'partner_id' => $partner_id,
                 'redirect'   => $redirect_url,
                 'timestamp'  => $timestamp,
