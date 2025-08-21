@@ -32,7 +32,7 @@ echo Html::a('🔗 เชื่อมต่อ TikTok Shop', Url::to(['site/conn
     'class' => 'btn btn-secondary',
 ]);
 echo '<br /><br />';
-echo Html::a('🔗 เชื่อมต่อ Shopee Shop', Url::to(['site/connect-tiktok']), [
+echo Html::a('🔗 เชื่อมต่อ Shopee Shop', Url::to(['site/connect-shopee']), [
     'class' => 'btn btn-danger',
 ]);
 ?>

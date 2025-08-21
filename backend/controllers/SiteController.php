@@ -32,7 +32,7 @@ class SiteController extends Controller
                         'allow' => true,
                     ],
                     [
-                        'actions' => ['logout', 'index', 'changepassword','grab','logoutdriver','connect-tiktok','tiktok-callback','shopee-callback'],
+                        'actions' => ['logout', 'index', 'changepassword','grab','logoutdriver','connect-tiktok','tiktok-callback','shopee-callback','connect-shopee'],
                         'allow' => true,
                         'roles' => ['@'],
                     ],
@@ -621,57 +621,267 @@ class SiteController extends Controller
 //        return $this->redirect(['site/index']);
 //    }
 
+    /**
+     * เริ่มต้นการเชื่อมต่อ Shopee OAuth
+     */
+    public function actionConnectShopeex()
+    {
+        // ข้อมูลแอปของคุณ (ควรเก็บใน config หรือ environment variables)
+        $partner_id = 1178090; // เปลี่ยนเป็นของคุณ
+        $partner_key = 'shpk6573466d784257526c476e4e796e7950694d4c6c516946744e6a4e556854'; // เปลี่ยนเป็นของคุณ
+        $redirect_url = Url::to(['site/shopee-callback'], true); // สร้าง URL อัตโนมัติ
+
+        $timestamp = time();
+        $state = Yii::$app->security->generateRandomString(12);
+
+        // เก็บ state ใน session เพื่อตรวจสอบความปลอดภัย
+        Yii::$app->session->set('shopee_oauth_state', $state);
+
+        // สร้าง signature สำหรับ authorization
+        $base_string = "$partner_id$redirect_url$timestamp";
+        $sign = hash_hmac('sha256', $base_string, $partner_key);
+
+        // สร้าง authorization URL
+      //  $auth_url = "https://partner.shopeemobile.com/api/v2/shop/auth_partner?" .
+            $auth_url = "https://partner.test-stable.shopeemobile.com/api/v2/shop/auth_partner?" .
+                http_build_query([
+                'partner_id' => $partner_id,
+                'redirect' => $redirect_url,
+                'timestamp' => $timestamp,
+                'sign' => $sign,
+                'state' => $state
+            ]);
+
+        return $this->redirect($auth_url);
+    }
+
+    public function actionConnectShopee()
+    {
+        $partner_id = 1178090;
+        $partner_key = 'shpk6573466d784257526c476e4e796e7950694d4c6c516946744e6a4e556854';
+        $redirect_url = Url::to(['https://www.pjrichth.co/site/shopee-callback'], true);
+
+        $timestamp = time();
+        $state = Yii::$app->security->generateRandomString(12);
+
+        Yii::$app->session->set('shopee_oauth_state', $state);
+
+        // ✅ base_string ต้องใช้ raw redirect_url (ยังไม่ urlencode)
+        $base_string = $partner_id . $redirect_url . $timestamp;
+        $sign = hash_hmac('sha256', $base_string, $partner_key);
+
+        // ✅ redirect_url ต้อง urlencode ตอนส่ง query string
+        $auth_url = "https://partner.test-stable.shopeemobile.com/api/v2/shop/auth_partner?" . http_build_query([
+                'partner_id' => $partner_id,
+                'redirect'   => $redirect_url,
+                'timestamp'  => $timestamp,
+                'sign'       => $sign,
+                'state'      => $state
+            ]);
+
+        return $this->redirect($auth_url);
+    }
+
+
+    /**
+     * รับ callback จาก Shopee หลังจากผู้ใช้อนุญาต
+     */
     public function actionShopeeCallback()
     {
         $code = Yii::$app->request->get('code');
+        $shop_id = Yii::$app->request->get('shop_id');
+        $state = Yii::$app->request->get('state');
+        $error = Yii::$app->request->get('error');
 
-        if (!$code) {
-            return 'Missing code from Shopee.';
+        // ตรวจสอบข้อผิดพลาด
+        if ($error) {
+            Yii::$app->session->setFlash('error', 'Shopee authorization error: ' . $error);
+            return $this->redirect(['site/index']);
         }
 
-        // ข้อมูลแอปของคุณ (กรอกตามที่ Shopee ให้มา)
-        $partner_id = 123456; // เปลี่ยนเป็นของคุณ
-        $partner_key = 'xxxxxxxxxxxxxxxx'; // เปลี่ยนเป็นของคุณ
-        $redirect_url = 'https://pjrichth.co/slapsis/backend/web/index.php?r=site/shopee-callback'; // ต้องตรงกับที่ลงทะเบียนใน Shopee
+        if (!$code) {
+            Yii::$app->session->setFlash('error', 'Missing authorization code from Shopee');
+            return $this->redirect(['site/index']);
+        }
+
+        if (!$shop_id) {
+            Yii::$app->session->setFlash('error', 'Missing shop_id from Shopee');
+            return $this->redirect(['site/index']);
+        }
+
+        // ตรวจสอบ state parameter เพื่อความปลอดภัย
+        $sessionState = Yii::$app->session->get('shopee_oauth_state');
+        if ($sessionState && $sessionState !== $state) {
+            Yii::$app->session->setFlash('error', 'Invalid state parameter');
+            return $this->redirect(['site/index']);
+        }
+
+        // ลบ state จาก session
+        Yii::$app->session->remove('shopee_oauth_state');
+
+        // ข้อมูลแอปของคุณ (ควรเก็บใน config)
+        $partner_id = 1178090; // เปลี่ยนเป็นของคุณ
+        $partner_key = 'shpk6573466d784257526c476e4e796e7950694d4c6c516946744e6a4e556854'; // เปลี่ยนเป็นของคุณ
+        $redirect_url = Url::to(['site/shopee-callback'], true);
 
         $timestamp = time();
 
-        // สร้าง signature
+        // สร้าง signature สำหรับ token exchange
         $base_string = "$partner_id$redirect_url$timestamp$code";
         $sign = hash_hmac('sha256', $base_string, $partner_key);
 
-        // ส่ง request ไปแลก access_token
-        $client = new Client();
-        $response = $client->createRequest()
-            ->setMethod('POST')
-            ->setUrl('https://partner.shopeemobile.com/api/v2/auth/token/get')
-            ->setData([
-                'code' => $code,
-                'partner_id' => $partner_id,
-                'sign' => $sign,
-                'timestamp' => $timestamp,
-                'redirect_uri' => $redirect_url,
-            ])
-            ->send();
+        try {
+            // ส่ง request ไปแลก access_token
+            $client = new \GuzzleHttp\Client();
+            $response = $client->post('https://partner.shopeemobile.com/api/v2/auth/token/get', [
+                'form_params' => [
+                    'code' => $code,
+                    'partner_id' => $partner_id,
+                    'sign' => $sign,
+                    'timestamp' => $timestamp,
+                    'redirect_uri' => $redirect_url,
+                ],
+                'timeout' => 30
+            ]);
 
-        if ($response->isOk) {
-            $data = $response->data;
+            $statusCode = $response->getStatusCode();
+            $body = $response->getBody()->getContents();
 
-            // ตัวอย่าง: บันทึกลงฐานข้อมูล
-            /*
-            Yii::$app->db->createCommand()->insert('shopee_token', [
-                'access_token' => $data['access_token'],
-                'refresh_token' => $data['refresh_token'],
-                'expire_in' => $data['expire_in'],
-                'shop_id' => $data['shop_id'],
-                'created_at' => date('Y-m-d H:i:s')
-            ])->execute();
-            */
+            if ($statusCode !== 200) {
+                throw new \Exception("HTTP Error: $statusCode - $body");
+            }
 
-            return 'Access Token: ' . $data['access_token'];
-        } else {
-            return 'Failed to get access token: ' . $response->content;
+            $data = json_decode($body, true);
+
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                throw new \Exception("JSON decode error: " . json_last_error_msg());
+            }
+
+            if (isset($data['access_token'])) {
+                // บันทึกลงฐานข้อมูล
+                $this->saveShopeeToken($shop_id, $data);
+
+                Yii::$app->session->setFlash('success', 'เชื่อมต่อ Shopee สำเร็จ! Shop ID: ' . $shop_id);
+            } else {
+                $errorMsg = isset($data['message']) ? $data['message'] : 'Unknown error';
+                $errorCode = isset($data['error']) ? $data['error'] : 'unknown';
+                Yii::$app->session->setFlash('error', "ไม่สามารถเชื่อมต่อ Shopee ได้: [$errorCode] $errorMsg");
+            }
+
+        } catch (\Exception $e) {
+            Yii::error('Shopee callback error: ' . $e->getMessage(), __METHOD__);
+            Yii::$app->session->setFlash('error', 'เกิดข้อผิดพลาด: ' . $e->getMessage());
         }
+
+        return $this->redirect(['site/index']);
+    }
+
+    /**
+     * บันทึก Shopee token ลงฐานข้อมูล
+     */
+    private function saveShopeeToken($shop_id, $tokenData)
+    {
+        try {
+            // ตรวจสอบว่ามี token เก่าอยู่หรือไม่
+            $existingToken = (new \yii\db\Query())
+                ->from('shopee_token')
+                ->where(['shop_id' => $shop_id])
+                ->one();
+
+            if ($existingToken) {
+                // อัพเดท token เก่า
+                Yii::$app->db->createCommand()->update('shopee_token', [
+                    'access_token' => $tokenData['access_token'],
+                    'refresh_token' => $tokenData['refresh_token'],
+                    'expire_in' => $tokenData['expire_in'],
+                    'updated_at' => date('Y-m-d H:i:s'),
+                    'expires_at' => date('Y-m-d H:i:s', time() + $tokenData['expire_in'])
+                ], ['shop_id' => $shop_id])->execute();
+            } else {
+                // สร้าง token ใหม่
+                Yii::$app->db->createCommand()->insert('shopee_token', [
+                    'access_token' => $tokenData['access_token'],
+                    'refresh_token' => $tokenData['refresh_token'],
+                    'expire_in' => $tokenData['expire_in'],
+                    'shop_id' => $shop_id,
+                    'created_at' => date('Y-m-d H:i:s'),
+                    'updated_at' => date('Y-m-d H:i:s'),
+                    'expires_at' => date('Y-m-d H:i:s', time() + $tokenData['expire_in'])
+                ])->execute();
+            }
+
+            return true;
+        } catch (\Exception $e) {
+            Yii::error('Error saving Shopee token: ' . $e->getMessage(), __METHOD__);
+            return false;
+        }
+    }
+
+    /**
+     * ดึง Shopee token ที่ใช้งานได้
+     */
+    private function getValidShopeeToken($shop_id)
+    {
+        $token = (new \yii\db\Query())
+            ->from('shopee_token')
+            ->where(['shop_id' => $shop_id])
+            ->andWhere(['>', 'expires_at', date('Y-m-d H:i:s')])
+            ->one();
+
+        if (!$token) {
+            // พยายาม refresh token ถ้า token หมดอายุ
+            return $this->refreshShopeeToken($shop_id);
+        }
+
+        return $token;
+    }
+
+    /**
+     * Refresh Shopee token
+     */
+    private function refreshShopeeToken($shop_id)
+    {
+        $tokenRecord = (new \yii\db\Query())
+            ->from('shopee_token')
+            ->where(['shop_id' => $shop_id])
+            ->one();
+
+        if (!$tokenRecord || !$tokenRecord['refresh_token']) {
+            return null;
+        }
+
+        $partner_id = 1178090; // เปลี่ยนเป็นของคุณ
+        $partner_key = 'shpk6573466d784257526c476e4e796e7950694d4c6c516946744e6a4e556854'; // เปลี่ยนเป็นของคุณ
+        $timestamp = time();
+
+        $base_string = "$partner_id$timestamp";
+        $sign = hash_hmac('sha256', $base_string, $partner_key);
+
+        try {
+            $client = new \GuzzleHttp\Client();
+            $response = $client->post('https://partner.shopeemobile.com/api/v2/auth/access_token/get', [
+                'form_params' => [
+                    'refresh_token' => $tokenRecord['refresh_token'],
+                    'partner_id' => $partner_id,
+                    'sign' => $sign,
+                    'timestamp' => $timestamp,
+                    'shop_id' => $shop_id
+                ],
+                'timeout' => 30
+            ]);
+
+            $data = json_decode($response->getBody()->getContents(), true);
+
+            if (isset($data['access_token'])) {
+                $this->saveShopeeToken($shop_id, $data);
+                return $data;
+            }
+
+        } catch (\Exception $e) {
+            Yii::error('Error refreshing Shopee token: ' . $e->getMessage(), __METHOD__);
+        }
+
+        return null;
     }
 
 
