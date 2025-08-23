@@ -633,9 +633,13 @@ class SiteController extends Controller
         $redirect_url = 'https://www.pjrichth.co/site/shopee-callback'; // Url::to(['https://www.pjrichth.co/site/shopee-callback'], true);
 
         $timestamp = time();
-        $state = Yii::$app->security->generateRandomString(12);
+        $state = Yii::$app->security->generateRandomString(32);
 
+        Yii::$app->session->open(); // เปิด session ก่อน
         Yii::$app->session->set('shopee_oauth_state', $state);
+
+        // ✅ Debug: ตรวจสอบว่า state ถูกบันทึกหรือไม่
+        Yii::info('Stored state: ' . $state, __METHOD__);
 
         // ✅ base_string ต้องใช้ partner_id + path + timestamp
         $path = "/api/v2/shop/auth_partner";
@@ -660,10 +664,16 @@ class SiteController extends Controller
      */
     public function actionShopeeCallback()
     {
+        Yii::$app->session->open();
         $code = Yii::$app->request->get('code');
         $shop_id = Yii::$app->request->get('shop_id');
         $state = Yii::$app->request->get('state');
         $error = Yii::$app->request->get('error');
+
+        // ✅ Debug: ตรวจสอบค่าที่ได้รับ
+        Yii::info('Received state: ' . $state, __METHOD__);
+        $sessionState = Yii::$app->session->get('shopee_oauth_state');
+        Yii::info('Session state: ' . $sessionState, __METHOD__);
 
         // ตรวจสอบข้อผิดพลาด
         if ($error) {
@@ -681,10 +691,24 @@ class SiteController extends Controller
             return $this->redirect(['site/index']);
         }
 
-        // ตรวจสอบ state parameter เพื่อความปลอดภัย
-        $sessionState = Yii::$app->session->get('shopee_oauth_state');
-        if ($sessionState && $sessionState !== $state) {
-            Yii::$app->session->setFlash('error', 'Invalid state parameter');
+//        // ตรวจสอบ state parameter เพื่อความปลอดภัย
+//        $sessionState = Yii::$app->session->get('shopee_oauth_state');
+//        if ($sessionState && $sessionState !== $state) {
+//            Yii::$app->session->setFlash('error', 'Invalid state parameter');
+//            return $this->redirect(['site/index']);
+//        }
+//
+//        // ลบ state จาก session
+//        Yii::$app->session->remove('shopee_oauth_state');
+
+        // ✅ ปรับปรุงการตรวจสอบ state
+        if (!$sessionState) {
+            Yii::$app->session->setFlash('error', 'Session state not found. Please try again.');
+            return $this->redirect(['site/index']);
+        }
+
+        if ($sessionState !== $state) {
+            Yii::$app->session->setFlash('error', 'Invalid state parameter. Expected: ' . $sessionState . ', Got: ' . $state);
             return $this->redirect(['site/index']);
         }
 
