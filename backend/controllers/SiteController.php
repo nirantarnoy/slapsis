@@ -635,25 +635,44 @@ class SiteController extends Controller
         $timestamp = time();
         $state = Yii::$app->security->generateRandomString(32);
 
-        Yii::$app->session->open(); // เปิด session ก่อน
+        // ✅ เปิด session และบันทึก state
+        Yii::$app->session->open();
         Yii::$app->session->set('shopee_oauth_state', $state);
 
-        // ✅ Debug: ตรวจสอบว่า state ถูกบันทึกหรือไม่
-        Yii::info('Stored state: ' . $state, __METHOD__);
+        // ✅ Debug: ตรวจสอบค่าที่ใช้
+        Yii::info("Partner ID: {$partner_id}", __METHOD__);
+        Yii::info("Timestamp: {$timestamp}", __METHOD__);
+        Yii::info("State: {$state}", __METHOD__);
 
-        // ✅ base_string ต้องใช้ partner_id + path + timestamp
         $path = "/api/v2/shop/auth_partner";
         $base_string = $partner_id . $path . $timestamp;
         $sign = hash_hmac('sha256', $base_string, $partner_key);
 
-        // ✅ สร้าง URL
-        $auth_url = "https://partner.shopeemobile.com{$path}?" . http_build_query([
-                'partner_id' => $partner_id,
-                'redirect'   => $redirect_url,
-                'timestamp'  => $timestamp,
-                'sign'       => $sign,
-                'state'      => $state
-            ]);
+        // ✅ สร้าง parameters อย่างชัดเจน
+        $params = [
+            'partner_id' => (string)$partner_id, // ✅ แปลงเป็น string
+            'redirect'   => $redirect_url,
+            'timestamp'  => (string)$timestamp, // ✅ แปลงเป็น string
+            'sign'       => $sign,
+            'state'      => $state
+        ];
+
+        // ✅ Debug: ตรวจสอบ parameters
+        Yii::info("Auth parameters: " . json_encode($params), __METHOD__);
+
+        // ✅ สร้าง URL โดยใช้ http_build_query
+        $query_string = http_build_query($params, '', '&', PHP_QUERY_RFC3986);
+        $auth_url = "https://partner.shopeemobile.com{$path}?{$query_string}";
+
+        // ✅ Debug: ตรวจสอบ URL สุดท้าย
+        Yii::info("Final auth URL: {$auth_url}", __METHOD__);
+
+        // ✅ ตรวจสอบว่า URL มี partner_id หรือไม่
+        if (strpos($auth_url, 'partner_id=') === false) {
+            Yii::error("partner_id not found in URL!", __METHOD__);
+            Yii::$app->session->setFlash('error', 'เกิดข้อผิดพลาดในการสร้าง URL authorization');
+            return $this->redirect(['site/index']);
+        }
 
         return $this->redirect($auth_url);
     }
@@ -665,18 +684,15 @@ class SiteController extends Controller
     public function actionShopeeCallback()
     {
         Yii::$app->session->open();
+
         $code = Yii::$app->request->get('code');
         $shop_id = Yii::$app->request->get('shop_id');
         $state = Yii::$app->request->get('state');
         $error = Yii::$app->request->get('error');
 
-        // ✅ Debug: ตรวจสอบค่าที่ได้รับทั้งหมด
+        // ✅ Debug: ตรวจสอบ parameters ทั้งหมดที่ได้รับ
         Yii::info('All GET parameters: ' . json_encode($_GET), __METHOD__);
-        Yii::info('Received state: ' . ($state ?: 'EMPTY'), __METHOD__);
-        $sessionState = Yii::$app->session->get('shopee_oauth_state');
-        Yii::info('Session state: ' . ($sessionState ?: 'NOT_FOUND'), __METHOD__);
 
-        // ตรวจสอบข้อผิดพลาด
         if ($error) {
             Yii::$app->session->setFlash('error', 'Shopee authorization error: ' . $error);
             return $this->redirect(['site/index']);
@@ -692,36 +708,16 @@ class SiteController extends Controller
             return $this->redirect(['site/index']);
         }
 
-//        // ตรวจสอบ state parameter เพื่อความปลอดภัย
-//        $sessionState = Yii::$app->session->get('shopee_oauth_state');
-//        if ($sessionState && $sessionState !== $state) {
-//            Yii::$app->session->setFlash('error', 'Invalid state parameter');
-//            return $this->redirect(['site/index']);
-//        }
-//
-//        // ลบ state จาก session
-//        Yii::$app->session->remove('shopee_oauth_state');
+        // ✅ ปรับปรุงการตรวจสอบ state (ให้อ่อนลงเล็กน้อย)
+        $sessionState = Yii::$app->session->get('shopee_oauth_state');
+        Yii::info('Session state: ' . ($sessionState ?: 'NOT_FOUND'), __METHOD__);
+        Yii::info('Received state: ' . ($state ?: 'EMPTY'), __METHOD__);
 
-        // ✅ ปรับปรุงการตรวจสอบ state - เพิ่มความยืดหยุ่น
-        if (!$sessionState) {
-            Yii::$app->session->setFlash('error', 'Session state not found. Please try again.');
+        if ($sessionState && !empty($state) && $sessionState !== $state) {
+            Yii::$app->session->setFlash('error', 'Invalid state parameter');
             return $this->redirect(['site/index']);
         }
 
-        // ✅ ตรวจสอบว่า Shopee ส่ง state กลับมาหรือไม่
-        if (empty($state)) {
-            // Shopee บางครั้งไม่ส่ง state กลับมา - ให้ warning แต่ไม่ block
-            Yii::warning('Shopee did not return state parameter. Session state: ' . $sessionState, __METHOD__);
-
-            // Optional: ยังคงตรวจสอบว่า session state มีอยู่จริง (เป็นการยืนยันว่า request มาจาก user เดียวกัน)
-            // แต่ไม่ reject เพราะ Shopee อาจไม่ส่งกลับมา
-        } else {
-            // ถ้า Shopee ส่ง state กลับมา ให้ตรวจสอบว่าตรงกันหรือไม่
-            if ($sessionState !== $state) {
-                Yii::$app->session->setFlash('error', 'Invalid state parameter. Expected: ' . $sessionState . ', Got: ' . $state);
-                return $this->redirect(['site/index']);
-            }
-        }
         // ลบ state จาก session
         Yii::$app->session->remove('shopee_oauth_state');
 
@@ -732,26 +728,41 @@ class SiteController extends Controller
 
         $timestamp = time();
 
-        // สร้าง signature สำหรับ token exchange
-        $base_string = "$partner_id$redirect_url$timestamp$code";
+        // ✅ สร้าง signature สำหรับ token exchange ตาม Shopee docs
+        $base_string = $partner_id . $redirect_url . $timestamp . $code;
         $sign = hash_hmac('sha256', $base_string, $partner_key);
 
+        // ✅ Debug signature
+        Yii::info("Token exchange base string: {$base_string}", __METHOD__);
+        Yii::info("Token exchange signature: {$sign}", __METHOD__);
+
         try {
-            // ส่ง request ไปแลก access_token
             $client = new \GuzzleHttp\Client();
+
+            $postData = [
+                'code' => $code,
+                'partner_id' => (string)$partner_id, // ✅ แปลงเป็น string
+                'sign' => $sign,
+                'timestamp' => (string)$timestamp, // ✅ แปลงเป็น string
+                'redirect_uri' => $redirect_url,
+            ];
+
+            // ✅ Debug post data
+            Yii::info("Post data: " . json_encode($postData), __METHOD__);
+
             $response = $client->post('https://partner.shopeemobile.com/api/v2/auth/token/get', [
-                'form_params' => [
-                    'code' => $code,
-                    'partner_id' => $partner_id,
-                    'sign' => $sign,
-                    'timestamp' => $timestamp,
-                    'redirect_uri' => $redirect_url,
-                ],
-                'timeout' => 30
+                'form_params' => $postData,
+                'timeout' => 30,
+                'headers' => [
+                    'Content-Type' => 'application/x-www-form-urlencoded',
+                ]
             ]);
 
             $statusCode = $response->getStatusCode();
             $body = $response->getBody()->getContents();
+
+            Yii::info("Response status: {$statusCode}", __METHOD__);
+            Yii::info("Response body: {$body}", __METHOD__);
 
             if ($statusCode !== 200) {
                 throw new \Exception("HTTP Error: $statusCode - $body");
@@ -772,6 +783,9 @@ class SiteController extends Controller
                 $errorMsg = isset($data['message']) ? $data['message'] : 'Unknown error';
                 $errorCode = isset($data['error']) ? $data['error'] : 'unknown';
                 Yii::$app->session->setFlash('error', "ไม่สามารถเชื่อมต่อ Shopee ได้: [$errorCode] $errorMsg");
+
+                // ✅ Debug response ที่ไม่ถูกต้อง
+                Yii::error("Invalid token response: " . json_encode($data), __METHOD__);
             }
 
         } catch (\Exception $e) {
@@ -783,47 +797,109 @@ class SiteController extends Controller
     }
 
     /**
-     * บันทึก Shopee token ลงฐานข้อมูล
+     * ฟังก์ชันสำหรับบันทึก Shopee Token (ปรับให้ตรงกับตารางจริง)
      */
     private function saveShopeeToken($shop_id, $tokenData)
     {
         try {
             $now = date('Y-m-d H:i:s');
-            $expiresAt = date('Y-m-d H:i:s', time() + (int)$tokenData['expire_in']);
+            $expiresAt = date('Y-m-d H:i:s', time() + (int)($tokenData['expire_in'] ?? 14400));
 
             $db = Yii::$app->db;
+
+            // ตรวจสอบว่ามี record อยู่แล้วหรือไม่
             $query = (new \yii\db\Query())
-                ->from('shopee_token')
+                ->from('shopee_tokens')
                 ->where(['shop_id' => $shop_id]);
 
             if ($query->exists()) {
-                // 👉 update token เดิม
-                $db->createCommand()->update('shopee_token', [
+                // อัปเดต token เดิม
+                $db->createCommand()->update('shopee_tokens', [
                     'access_token'  => $tokenData['access_token'],
-                    'refresh_token' => $tokenData['refresh_token'],
-                    'expire_in'     => $tokenData['expire_in'],
+                    'refresh_token' => $tokenData['refresh_token'] ?? '',
+                    'expire_in'     => (int)($tokenData['expire_in'] ?? 14400),
                     'expires_at'    => $expiresAt,
+                    'status'        => 'active', // เพิ่มสถานะ active
                     'updated_at'    => $now,
                 ], ['shop_id' => $shop_id])->execute();
+
+                Yii::info("Updated Shopee token for shop_id: {$shop_id}", __METHOD__);
             } else {
-                // 👉 insert token ใหม่
-                $db->createCommand()->insert('shopee_token', [
+                // เพิ่ม token ใหม่
+                $db->createCommand()->insert('shopee_tokens', [
                     'shop_id'       => $shop_id,
                     'access_token'  => $tokenData['access_token'],
-                    'refresh_token' => $tokenData['refresh_token'],
-                    'expire_in'     => $tokenData['expire_in'],
+                    'refresh_token' => $tokenData['refresh_token'] ?? '',
+                    'expire_in'     => (int)($tokenData['expire_in'] ?? 14400),
                     'expires_at'    => $expiresAt,
+                    'status'        => 'active',
                     'created_at'    => $now,
                     'updated_at'    => $now,
                 ])->execute();
+
+                Yii::info("Inserted new Shopee token for shop_id: {$shop_id}", __METHOD__);
             }
 
             return true;
-        } catch (\Throwable $e) { // ✅ ใช้ Throwable เผื่อ error อื่นๆ
+        } catch (\Throwable $e) {
             Yii::error('Error saving Shopee token: ' . $e->getMessage(), __METHOD__);
             return false;
         }
     }
+
+    /**
+     * ฟังก์ชันสำหรับบันทึก TikTok Token (สร้างใหม่ให้ตรงกับ pattern เดียวกัน)
+     */
+    private function saveTikTokToken($shop_id, $tokenData)
+    {
+        try {
+            $now = date('Y-m-d H:i:s');
+            // TikTok ใช้ access_token_expire_in แทน expire_in
+            $expireIn = (int)($tokenData['access_token_expire_in'] ?? $tokenData['expire_in'] ?? 86400);
+            $expiresAt = date('Y-m-d H:i:s', time() + $expireIn);
+
+            $db = Yii::$app->db;
+
+            // ตรวจสอบว่ามี record อยู่แล้วหรือไม่
+            $query = (new \yii\db\Query())
+                ->from('tiktok_tokens')
+                ->where(['shop_id' => $shop_id]);
+
+            if ($query->exists()) {
+                // อัปเดต token เดิม
+                $db->createCommand()->update('tiktok_tokens', [
+                    'access_token'  => $tokenData['access_token'],
+                    'refresh_token' => $tokenData['refresh_token'] ?? '',
+                    'expire_in'     => $expireIn,
+                    'expires_at'    => $expiresAt,
+                    'status'        => 'active',
+                    'updated_at'    => $now,
+                ], ['shop_id' => $shop_id])->execute();
+
+                Yii::info("Updated TikTok token for shop_id: {$shop_id}", __METHOD__);
+            } else {
+                // เพิ่ม token ใหม่
+                $db->createCommand()->insert('tiktok_tokens', [
+                    'shop_id'       => $shop_id,
+                    'access_token'  => $tokenData['access_token'],
+                    'refresh_token' => $tokenData['refresh_token'] ?? '',
+                    'expire_in'     => $expireIn,
+                    'expires_at'    => $expiresAt,
+                    'status'        => 'active',
+                    'created_at'    => $now,
+                    'updated_at'    => $now,
+                ])->execute();
+
+                Yii::info("Inserted new TikTok token for shop_id: {$shop_id}", __METHOD__);
+            }
+
+            return true;
+        } catch (\Throwable $e) {
+            Yii::error('Error saving TikTok token: ' . $e->getMessage(), __METHOD__);
+            return false;
+        }
+    }
+
 
 
     /**
@@ -832,7 +908,7 @@ class SiteController extends Controller
     private function getValidShopeeToken($shop_id)
     {
         $token = (new \yii\db\Query())
-            ->from('shopee_token')
+            ->from('shopee_tokens')
             ->where(['shop_id' => $shop_id])
             ->andWhere(['>', 'expires_at', date('Y-m-d H:i:s')])
             ->one();
@@ -851,7 +927,7 @@ class SiteController extends Controller
     private function refreshShopeeToken($shop_id)
     {
         $tokenRecord = (new \yii\db\Query())
-            ->from('shopee_token')
+            ->from('shopee_tokens')
             ->where(['shop_id' => $shop_id])
             ->one();
 

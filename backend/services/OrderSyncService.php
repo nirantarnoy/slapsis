@@ -5,20 +5,22 @@ namespace backend\services;
 use Yii;
 use backend\models\Order;
 use backend\models\OnlineChannel;
-use backend\components\TikTokShopApi;
-use backend\components\ShopeeApi;
+use backend\models\ShopeeToken; // สมมติว่ามีตาราง shopee_tokens
+use backend\models\TiktokToken; // สมมติว่ามีตาราง tiktok_tokens
 use yii\base\Exception;
+use GuzzleHttp\Client;
+use yii\helpers\Json;
 
 class OrderSyncService
 {
-    private $tiktokApi;
-    private $shopeeApi;
+    private $httpClient;
 
     public function __construct()
     {
-        // Initialize APIs from config
-        $this->tiktokApi = Yii::$app->get('tiktokApi', false);
-        $this->shopeeApi = Yii::$app->get('shopeeApi', false);
+        $this->httpClient = new Client([
+            'timeout' => 30,
+            'connect_timeout' => 10,
+        ]);
     }
 
     /**
@@ -56,6 +58,7 @@ class OrderSyncService
                 }
             } catch (\Exception $e) {
                 $errors[] = $channel->name . ': ' . $e->getMessage();
+                Yii::error('Order sync error for ' . $channel->name . ': ' . $e->getMessage(), __METHOD__);
             }
         }
 
@@ -66,110 +69,408 @@ class OrderSyncService
     }
 
     /**
-     * Sync orders from TikTok Shop
-     * @param OnlineChannel $channel
-     * @return int
-     */
-    private function syncTikTokOrders($channel)
-    {
-        if (!$this->tiktokApi) {
-            // Use sample data if API not configured
-            return $this->syncTikTokSampleOrders($channel);
-        }
-
-        $count = 0;
-        $page = 1;
-
-        do {
-            $orders = $this->tiktokApi->getOrders([
-                'page' => $page,
-                'create_time_from' => strtotime('-7 days'),
-                'create_time_to' => time(),
-            ]);
-
-            foreach ($orders as $orderData) {
-                $order = Order::findOne(['order_id' => $orderData['order_id']]);
-
-                if (!$order) {
-                    $order = new Order();
-                    $order->order_id = $orderData['order_id'];
-                    $order->channel_id = $channel->id;
-
-                    // Map TikTok order data
-                    foreach ($orderData['item_list'] as $item) {
-                        $order->sku = $item['sku_id'] ?? '';
-                        $order->product_name = $item['product_name'];
-                        $order->quantity = $item['quantity'];
-                        $order->price = $item['sale_price'];
-                        $order->total_amount = $item['quantity'] * $item['sale_price'];
-                        $order->order_date = date('Y-m-d H:i:s', $orderData['create_time']);
-
-                        if ($order->save()) {
-                            $count++;
-                        }
-                    }
-                }
-            }
-
-            $page++;
-        } while (!empty($orders));
-
-        return $count;
-    }
-
-    /**
-     * Sync orders from Shopee
+     * Sync orders from Shopee using real API
      * @param OnlineChannel $channel
      * @return int
      */
     private function syncShopeeOrders($channel)
     {
-        if (!$this->shopeeApi) {
-            // Use sample data if API not configured
+        // ดึงข้อมูล token จากตาราง shopee_tokens
+        $tokenModel = ShopeeToken::find()
+            ->where(['channel_id' => $channel->id, 'status' => 'active'])
+            ->orderBy(['created_at' => SORT_DESC])
+            ->one();
+
+        if (!$tokenModel) {
+            Yii::warning('No active Shopee token found for channel: ' . $channel->id, __METHOD__);
             return $this->shopeeSampleOrders($channel);
         }
 
+        // ตรวจสอบว่า token หมดอายุหรือไม่
+        if ($tokenModel->expires_at && $tokenModel->expires_at < time()) {
+            // ลองต่ออายุ token
+            if (!$this->refreshShopeeToken($tokenModel)) {
+                Yii::warning('Failed to refresh Shopee token for channel: ' . $channel->id, __METHOD__);
+                return $this->shopeeSampleOrders($channel);
+            }
+        }
+
+        $partner_id = 2012399; // ใส่ partner_id จริง
+        $partner_key = 'shpk72476151525864414e4b6e475449626679624f695a696162696570417043'; // ใส่ partner_key จริง
+        $shop_id = $tokenModel->shop_id;
+        $access_token = $tokenModel->access_token;
+
         $count = 0;
-        $offset = 0;
+        $page_size = 100;
+        $cursor = '';
 
-        do {
-            $orders = $this->shopeeApi->getOrders([
-                'offset' => $offset,
-            ]);
+        try {
+            do {
+                $timestamp = time();
+                $path = "/api/v2/order/get_order_list";
 
-            foreach ($orders as $orderData) {
-                // Get detailed order info
-                $orderDetail = $this->shopeeApi->getOrderDetail($orderData['order_sn']);
+                // สร้าง base string สำหรับ signature
+                $base_string = $partner_id . $path . $timestamp . $access_token . $shop_id;
+                $sign = hash_hmac('sha256', $base_string, $partner_key);
 
-                if (empty($orderDetail)) {
-                    continue;
+                // Parameters สำหรับ API call
+                $params = [
+                    'partner_id' => $partner_id,
+                    'timestamp' => $timestamp,
+                    'access_token' => $access_token,
+                    'shop_id' => $shop_id,
+                    'sign' => $sign,
+                    'page_size' => $page_size,
+                    'time_range_field' => 'create_time',
+                    'time_from' => strtotime('-7 days'), // ดึงข้อมูล 7 วันที่ผ่านมา
+                    'time_to' => time(),
+                    'order_status' => 'READY_TO_SHIP,SHIPPED,COMPLETED', // เฉพาะ order ที่จ่ายแล้ว
+                ];
+
+                if (!empty($cursor)) {
+                    $params['cursor'] = $cursor;
                 }
 
-                foreach ($orderDetail['item_list'] as $item) {
-                    $order = Order::findOne(['order_id' => $orderDetail['order_sn'] . '_' . $item['item_id']]);
+                $response = $this->httpClient->get('https://partner.shopeemobile.com' . $path, [
+                    'query' => $params
+                ]);
 
-                    if (!$order) {
-                        $order = new Order();
-                        $order->order_id = $orderDetail['order_sn'] . '_' . $item['item_id'];
-                        $order->channel_id = $channel->id;
-                        $order->sku = $item['model_sku'] ?? $item['item_sku'];
-                        $order->product_name = $item['item_name'];
-                        $order->quantity = $item['model_quantity_purchased'];
-                        $order->price = $item['model_discounted_price'];
-                        $order->total_amount = $item['model_quantity_purchased'] * $item['model_discounted_price'];
-                        $order->order_date = date('Y-m-d H:i:s', $orderDetail['create_time']);
+                $body = $response->getBody()->getContents();
+                $data = Json::decode($body);
 
-                        if ($order->save()) {
-                            $count++;
-                        }
-                    }
+                if (!isset($data['response']['order_list'])) {
+                    break;
+                }
+
+                foreach ($data['response']['order_list'] as $orderData) {
+                    $count += $this->processShopeeOrder($channel, $orderData, $partner_id, $partner_key, $access_token, $shop_id);
+                }
+
+                $cursor = $data['response']['next_cursor'] ?? '';
+
+            } while (!empty($cursor));
+
+        } catch (\Exception $e) {
+            Yii::error('Shopee API error: ' . $e->getMessage(), __METHOD__);
+            throw $e;
+        }
+
+        return $count;
+    }
+
+    /**
+     * Process individual Shopee order
+     * @param OnlineChannel $channel
+     * @param array $orderData
+     * @param string $partner_id
+     * @param string $partner_key
+     * @param string $access_token
+     * @param string $shop_id
+     * @return int
+     */
+    private function processShopeeOrder($channel, $orderData, $partner_id, $partner_key, $access_token, $shop_id)
+    {
+        $order_sn = $orderData['order_sn'];
+        $count = 0;
+
+        try {
+            // ดึงรายละเอียด order
+            $timestamp = time();
+            $path = "/api/v2/order/get_order_detail";
+            $base_string = $partner_id . $path . $timestamp . $access_token . $shop_id;
+            $sign = hash_hmac('sha256', $base_string, $partner_key);
+
+            $response = $this->httpClient->get('https://partner.shopeemobile.com' . $path, [
+                'query' => [
+                    'partner_id' => $partner_id,
+                    'timestamp' => $timestamp,
+                    'access_token' => $access_token,
+                    'shop_id' => $shop_id,
+                    'sign' => $sign,
+                    'order_sn_list' => $order_sn,
+                    'response_optional_fields' => 'item_list',
+                ]
+            ]);
+
+            $body = $response->getBody()->getContents();
+            $data = Json::decode($body);
+
+            if (!isset($data['response']['order_list'][0])) {
+                return 0;
+            }
+
+            $orderDetail = $data['response']['order_list'][0];
+
+            // สร้าง Order records สำหรับแต่ละ item
+            foreach ($orderDetail['item_list'] as $item) {
+                $unique_order_id = $order_sn . '_' . $item['item_id'];
+
+                $existingOrder = Order::findOne(['order_id' => $unique_order_id]);
+                if ($existingOrder) {
+                    continue; // ข้าม order ที่มีอยู่แล้ว
+                }
+
+                $order = new Order();
+                $order->order_id = $unique_order_id;
+                $order->channel_id = $channel->id;
+//                $order->shop_id = $shop_id;
+//                $order->order_sn = $order_sn;
+                $order->sku = $item['model_sku'] ?? $item['item_sku'] ?? '';
+                $order->product_name = $item['item_name'];
+                $order->quantity = $item['model_quantity_purchased'];
+                $order->price = $item['model_discounted_price'] / 100000; // Shopee ส่งมาเป็น micro units
+                $order->total_amount = $order->quantity * $order->price;
+                $order->order_date = date('Y-m-d H:i:s', $orderDetail['create_time']);
+              //  $order->order_status = $orderDetail['order_status'];
+
+                if ($order->save()) {
+                    $count++;
+                } else {
+                    Yii::error('Failed to save Shopee order: ' . Json::encode($order->errors), __METHOD__);
                 }
             }
 
-            $offset += 50;
-        } while (!empty($orders));
+        } catch (\Exception $e) {
+            Yii::error('Error processing Shopee order ' . $order_sn . ': ' . $e->getMessage(), __METHOD__);
+        }
 
         return $count;
+    }
+
+    /**
+     * Sync orders from TikTok Shop using real API
+     * @param OnlineChannel $channel
+     * @return int
+     */
+    private function syncTikTokOrders($channel)
+    {
+        // ดึงข้อมูล token จากตาราง tiktok_tokens
+        $tokenModel = TiktokToken::find()
+            ->where(['channel_id' => $channel->id, 'status' => 'active'])
+            ->orderBy(['created_at' => SORT_DESC])
+            ->one();
+
+        if (!$tokenModel) {
+            Yii::warning('No active TikTok token found for channel: ' . $channel->id, __METHOD__);
+            return $this->syncTikTokSampleOrders($channel);
+        }
+
+        // ตรวจสอบว่า token หมดอายุหรือไม่
+        if ($tokenModel->expires_at && $tokenModel->expires_at < time()) {
+            if (!$this->refreshTikTokToken($tokenModel)) {
+                Yii::warning('Failed to refresh TikTok token for channel: ' . $channel->id, __METHOD__);
+                return $this->syncTikTokSampleOrders($channel);
+            }
+        }
+
+        $app_key = 'your-tiktok-app-key'; // ใส่ app_key จริง
+        $app_secret = 'your-tiktok-app-secret'; // ใส่ app_secret จริง
+        $access_token = $tokenModel->access_token;
+        $shop_id = $tokenModel->shop_id;
+
+        $count = 0;
+        $page_size = 50;
+        $page_token = '';
+
+        try {
+            do {
+                $timestamp = time();
+                $path = "/order/202309/orders/search";
+
+                // สร้าง signature สำหรับ TikTok
+                $params = [
+                    'app_key' => $app_key,
+                    'timestamp' => $timestamp,
+                    'shop_id' => $shop_id,
+                    'page_size' => $page_size,
+                    'create_time_from' => strtotime('-7 days'),
+                    'create_time_to' => time(),
+                ];
+
+                if (!empty($page_token)) {
+                    $params['page_token'] = $page_token;
+                }
+
+                ksort($params);
+                $query_string = http_build_query($params);
+                $sign_string = $path . '?' . $query_string . $app_secret;
+                $sign = hash_hmac('sha256', $sign_string, $app_secret);
+
+                $params['sign'] = $sign;
+
+                $response = $this->httpClient->get('https://open-api.tiktokglobalshop.com' . $path, [
+                    'query' => $params,
+                    'headers' => [
+                        'x-tts-access-token' => $access_token,
+                    ]
+                ]);
+
+                $body = $response->getBody()->getContents();
+                $data = Json::decode($body);
+
+                if (!isset($data['data']['orders'])) {
+                    break;
+                }
+
+                foreach ($data['data']['orders'] as $orderData) {
+                    $count += $this->processTikTokOrder($channel, $orderData);
+                }
+
+                $page_token = $data['data']['next_page_token'] ?? '';
+
+            } while (!empty($page_token));
+
+        } catch (\Exception $e) {
+            Yii::error('TikTok API error: ' . $e->getMessage(), __METHOD__);
+            throw $e;
+        }
+
+        return $count;
+    }
+
+    /**
+     * Process individual TikTok order
+     * @param OnlineChannel $channel
+     * @param array $orderData
+     * @return int
+     */
+    private function processTikTokOrder($channel, $orderData)
+    {
+        $order_id = $orderData['id'];
+        $count = 0;
+
+        try {
+            foreach ($orderData['line_items'] as $item) {
+                $unique_order_id = $order_id . '_' . $item['id'];
+
+                $existingOrder = Order::findOne(['order_id' => $unique_order_id]);
+                if ($existingOrder) {
+                    continue;
+                }
+
+                $order = new Order();
+                $order->order_id = $unique_order_id;
+                $order->channel_id = $channel->id;
+//                $order->shop_id = $orderData['shop_id'] ?? '';
+//                $order->order_sn = $order_id;
+                $order->sku = $item['seller_sku'] ?? $item['sku_id'] ?? '';
+                $order->product_name = $item['product_name'];
+                $order->quantity = $item['quantity'];
+                $order->price = $item['sale_price'] / 1000000; // TikTok ส่งมาเป็น micro units
+                $order->total_amount = $order->quantity * $order->price;
+                $order->order_date = date('Y-m-d H:i:s', $orderData['create_time']);
+              //  $order->order_status = $orderData['status'];
+
+                if ($order->save()) {
+                    $count++;
+                } else {
+                    Yii::error('Failed to save TikTok order: ' . Json::encode($order->errors), __METHOD__);
+                }
+            }
+
+        } catch (\Exception $e) {
+            Yii::error('Error processing TikTok order ' . $order_id . ': ' . $e->getMessage(), __METHOD__);
+        }
+
+        return $count;
+    }
+
+    /**
+     * Refresh Shopee access token
+     * @param ShopeeToken $tokenModel
+     * @return bool
+     */
+    private function refreshShopeeToken($tokenModel)
+    {
+        try {
+            $partner_id = 2012399; // ใส่ partner_id จริง
+            $partner_key = 'shpk72476151525864414e4b6e475449626679624f695a696162696570417043'; // ใส่ partner_key จริง
+            $refresh_token = $tokenModel->refresh_token;
+            $shop_id = $tokenModel->shop_id;
+
+            $timestamp = time();
+            $path = "/api/v2/auth/access_token/get";
+            $base_string = $partner_id . $path . $timestamp . $shop_id . $refresh_token;
+            $sign = hash_hmac('sha256', $base_string, $partner_key);
+
+            $response = $this->httpClient->post('https://partner.shopeemobile.com' . $path, [
+                'form_params' => [
+                    'partner_id' => $partner_id,
+                    'timestamp' => $timestamp,
+                    'shop_id' => $shop_id,
+                    'refresh_token' => $refresh_token,
+                    'sign' => $sign,
+                ]
+            ]);
+
+            $body = $response->getBody()->getContents();
+            $data = Json::decode($body);
+
+            if (isset($data['access_token'])) {
+                $tokenModel->access_token = $data['access_token'];
+                $tokenModel->refresh_token = $data['refresh_token'];
+                $tokenModel->expires_at = time() + $data['expires_in'];
+                $tokenModel->updated_at = time();
+
+                return $tokenModel->save();
+            }
+
+        } catch (\Exception $e) {
+            Yii::error('Failed to refresh Shopee token: ' . $e->getMessage(), __METHOD__);
+        }
+
+        return false;
+    }
+
+    /**
+     * Refresh TikTok access token
+     * @param TiktokToken $tokenModel
+     * @return bool
+     */
+    private function refreshTikTokToken($tokenModel)
+    {
+        try {
+            $app_key = 'your-tiktok-app-key';
+            $app_secret = 'your-tiktok-app-secret';
+            $refresh_token = $tokenModel->refresh_token;
+
+            $timestamp = time();
+            $path = "/authorization/202309/refresh_token";
+
+            $params = [
+                'app_key' => $app_key,
+                'timestamp' => $timestamp,
+                'refresh_token' => $refresh_token,
+            ];
+
+            ksort($params);
+            $query_string = http_build_query($params);
+            $sign_string = $path . '?' . $query_string . $app_secret;
+            $sign = hash_hmac('sha256', $sign_string, $app_secret);
+
+            $params['sign'] = $sign;
+
+            $response = $this->httpClient->post('https://open-api.tiktokglobalshop.com' . $path, [
+                'form_params' => $params
+            ]);
+
+            $body = $response->getBody()->getContents();
+            $data = Json::decode($body);
+
+            if (isset($data['data']['access_token'])) {
+                $tokenModel->access_token = $data['data']['access_token'];
+                $tokenModel->refresh_token = $data['data']['refresh_token'];
+                $tokenModel->expires_at = time() + $data['data']['access_token_expire_in'];
+                $tokenModel->updated_at = time();
+
+                return $tokenModel->save();
+            }
+
+        } catch (\Exception $e) {
+            Yii::error('Failed to refresh TikTok token: ' . $e->getMessage(), __METHOD__);
+        }
+
+        return false;
     }
 
     /**
@@ -202,6 +503,7 @@ class OrderSyncService
                 $order->price = $product['price'];
                 $order->total_amount = $order->quantity * $order->price;
                 $order->order_date = date('Y-m-d H:i:s', strtotime('-' . rand(0, 7) . ' days -' . rand(0, 23) . ' hours'));
+                $order->order_status = 'SHIPPED';
 
                 if ($order->save()) {
                     $count++;
@@ -242,6 +544,7 @@ class OrderSyncService
                 $order->price = $product['price'];
                 $order->total_amount = $order->quantity * $order->price;
                 $order->order_date = date('Y-m-d H:i:s', strtotime('-' . rand(0, 7) . ' days -' . rand(0, 23) . ' hours'));
+                $order->order_status = 'COMPLETED';
 
                 if ($order->save()) {
                     $count++;
