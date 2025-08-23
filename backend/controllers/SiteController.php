@@ -796,14 +796,27 @@ class SiteController extends Controller
 
         $timestamp = time();
 
-        // ✅ สร้าง signature สำหรับ token exchange ตาม Shopee docs (รวม path)
-        $path = "/api/v2/auth/token/get";
-        $base_string = $partner_id . $path . $timestamp . $code;
-        $sign = hash_hmac('sha256', $base_string, $partner_key);
+        // ✅ ลองใช้ signature format หลายแบบเพื่อทดสอบ
+        // Format 1: partner_id + redirect_uri + timestamp + code (ตามเอกสารบางแหล่ง)
+        $base_string1 = $partner_id . $redirect_url . $timestamp . $code;
+        $sign1 = hash_hmac('sha256', $base_string1, $partner_key);
 
-        // ✅ Debug signature
-        Yii::info("Token exchange base string: {$base_string}", __METHOD__);
-        Yii::info("Token exchange signature: {$sign}", __METHOD__);
+        // Format 2: partner_id + timestamp + code (แบบง่าย)
+        $base_string2 = $partner_id . $timestamp . $code;
+        $sign2 = hash_hmac('sha256', $base_string2, $partner_key);
+
+        // Format 3: partner_id + path + timestamp + code (ที่เราลองมา)
+        $path = "/api/v2/auth/token/get";
+        $base_string3 = $partner_id . $path . $timestamp . $code;
+        $sign3 = hash_hmac('sha256', $base_string3, $partner_key);
+
+        // ✅ Debug ทุก signature
+        Yii::info("Format 1 - base string: {$base_string1}", __METHOD__);
+        Yii::info("Format 1 - signature: {$sign1}", __METHOD__);
+        Yii::info("Format 2 - base string: {$base_string2}", __METHOD__);
+        Yii::info("Format 2 - signature: {$sign2}", __METHOD__);
+        Yii::info("Format 3 - base string: {$base_string3}", __METHOD__);
+        Yii::info("Format 3 - signature: {$sign3}", __METHOD__);
 
         try {
             $client = new \GuzzleHttp\Client();
@@ -874,7 +887,10 @@ class SiteController extends Controller
                 Yii::error("Complete API response: " . json_encode($data), __METHOD__);
                 Yii::error("Query params sent: " . json_encode($queryParams), __METHOD__);
                 Yii::error("Post data sent: " . json_encode($postData), __METHOD__);
-                Yii::error("Base string used: {$base_string}", __METHOD__);
+                Yii::error("All signature attempts:", __METHOD__);
+                Yii::error("  Format 1: {$base_string1} -> {$sign1}", __METHOD__);
+                Yii::error("  Format 2: {$base_string2} -> {$sign2}", __METHOD__);
+                Yii::error("  Format 3: {$base_string3} -> {$sign3}", __METHOD__);
 
                 Yii::$app->session->setFlash('error', "ไม่สามารถเชื่อมต่อ Shopee ได้: [$errorCode] $errorMsg");
             }
