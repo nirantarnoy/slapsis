@@ -486,8 +486,8 @@ class SiteController extends Controller
     {
         $appKey = '6gtr1ukn2k2hj'; // Make sure this matches your actual app key
         //$redirectUri = Url::to(['site/tiktok-callback'], true);https://www.pjrichth.co/site/shopee-callback
-        $redirectUri = 'https://www.pjrichth.co/site/shopee-callback';
-        $state = Yii::$app->security->generateRandomString(12);
+        $redirectUri = 'https://www.pjrichth.co/site/tiktok-callback';
+        $state = Yii::$app->security->generateRandomString(32);
 
         // Store state in session for validation later (optional but recommended for security)
         Yii::$app->session->set('tiktok_oauth_state', $state);
