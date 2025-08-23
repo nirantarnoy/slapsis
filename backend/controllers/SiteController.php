@@ -809,9 +809,9 @@ class SiteController extends Controller
 
             $postData = [
                 'code' => $code,
-                'partner_id' => (string)$partner_id, // ✅ แปลงเป็น string
+                'partner_id' => $partner_id, // ✅ แปลงเป็น string
                 'sign' => $sign,
-                'timestamp' => (string)$timestamp, // ✅ แปลงเป็น string
+                'timestamp' => $timestamp, // ✅ แปลงเป็น string
                 'redirect_uri' => $redirect_url,
             ];
 
