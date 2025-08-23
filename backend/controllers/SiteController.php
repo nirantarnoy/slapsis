@@ -1060,8 +1060,9 @@ class SiteController extends Controller
         $code = 'test-code'; // ใส่ code จริงจากการทดสอบ
         $timestamp = time();
 
-        // สร้าง signature
-        $base_string = $partner_id . $timestamp . $code;
+        // ✅ สร้าง signature แบบถูกต้อง (รวม path)
+        $path = "/api/v2/auth/token/get";
+        $base_string = $partner_id . $path . $timestamp . $code;
         $sign = hash_hmac('sha256', $base_string, $partner_key);
 
         // ✅ แยก parameters ตาม Shopee API format
