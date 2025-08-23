@@ -792,7 +792,7 @@ class SiteController extends Controller
         // ข้อมูลแอปของคุณ (ควรเก็บใน config)
         $partner_id = 2012399; // เปลี่ยนเป็นของคุณ
         $partner_key = 'shpk72476151525864414e4b6e475449626679624f695a696162696570417043'; // เปลี่ยนเป็นของคุณ
-        $redirect_url = Url::to(['site/shopee-callback'], true);
+        $redirect_url = 'https://www.pjrichth.co/site/shopee-callback';
 
         $timestamp = time();
 
@@ -817,13 +817,18 @@ class SiteController extends Controller
 
             // ✅ Debug post data
             Yii::info("Post data: " . json_encode($postData), __METHOD__);
+            Yii::info("Partner ID type: " . gettype($partner_id), __METHOD__);
+            Yii::info("Timestamp type: " . gettype($timestamp), __METHOD__);
 
             $response = $client->post('https://partner.shopeemobile.com/api/v2/auth/token/get', [
                 'form_params' => $postData,
                 'timeout' => 30,
                 'headers' => [
                     'Content-Type' => 'application/x-www-form-urlencoded',
-                ]
+                ],
+                // ✅ เพิ่ม debug options
+                'debug' => false, // เปลี่ยนเป็น true เพื่อดู HTTP request/response
+                'verify' => true, // ตรวจสอบ SSL certificate
             ]);
 
             $statusCode = $response->getStatusCode();
@@ -841,6 +846,11 @@ class SiteController extends Controller
             if (json_last_error() !== JSON_ERROR_NONE) {
                 throw new \Exception("JSON decode error: " . json_last_error_msg());
             }
+            // ✅ ตรวจสอบว่า response มี error หรือไม่
+            if (isset($data['error'])) {
+                $errorDetail = isset($data['message']) ? $data['message'] : 'No error message';
+                throw new \Exception("API Error: {$data['error']} - {$errorDetail}");
+            }
 
             if (isset($data['access_token'])) {
                 // บันทึกลงฐานข้อมูล
@@ -850,6 +860,12 @@ class SiteController extends Controller
             } else {
                 $errorMsg = isset($data['message']) ? $data['message'] : 'Unknown error';
                 $errorCode = isset($data['error']) ? $data['error'] : 'unknown';
+
+                // ✅ Debug ข้อมูลที่ได้รับทั้งหมด
+                Yii::error("Complete API response: " . json_encode($data), __METHOD__);
+                Yii::error("Post data sent: " . json_encode($postData), __METHOD__);
+                Yii::error("Base string used: {$base_string}", __METHOD__);
+
                 Yii::$app->session->setFlash('error', "ไม่สามารถเชื่อมต่อ Shopee ได้: [$errorCode] $errorMsg");
 
                 // ✅ Debug response ที่ไม่ถูกต้อง
