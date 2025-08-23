@@ -667,12 +667,13 @@ class SiteController extends Controller
 
         Yii::$app->session->set('shopee_oauth_state', $state);
 
-        // ✅ base_string ต้องใช้ raw redirect_url (ยังไม่ urlencode)
-        $base_string = $partner_id . $redirect_url . $timestamp;
+        // ✅ base_string ต้องใช้ partner_id + path + timestamp
+        $path = "/api/v2/shop/auth_partner";
+        $base_string = $partner_id . $path . $timestamp;
         $sign = hash_hmac('sha256', $base_string, $partner_key);
 
-        // ✅ redirect_url ต้อง urlencode ตอนส่ง query string
-        $auth_url = "https://partner.shopeemobile.com/api/v2/shop/auth_partner?" . http_build_query([
+        // ✅ สร้าง URL
+        $auth_url = "https://partner.shopeemobile.com{$path}?" . http_build_query([
                 'partner_id' => $partner_id,
                 'redirect'   => $redirect_url,
                 'timestamp'  => $timestamp,
