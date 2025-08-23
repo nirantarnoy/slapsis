@@ -796,27 +796,15 @@ class SiteController extends Controller
 
         $timestamp = time();
 
-        // ✅ ลองใช้ signature format หลายแบบเพื่อทดสอบ
-        // Format 1: partner_id + redirect_uri + timestamp + code (ตามเอกสารบางแหล่ง)
-        $base_string1 = $partner_id . $redirect_url . $timestamp . $code;
-        $sign1 = hash_hmac('sha256', $base_string1, $partner_key);
-
-        // Format 2: partner_id + timestamp + code (แบบง่าย)
-        $base_string2 = $partner_id . $timestamp . $code;
-        $sign2 = hash_hmac('sha256', $base_string2, $partner_key);
-
-        // Format 3: partner_id + path + timestamp + code (ที่เราลองมา)
+        // ✅ สร้าง signature สำหรับ token exchange ตาม Shopee docs ที่ถูกต้อง
+        // Format: partner_id + path + timestamp (ไม่รวม code)
         $path = "/api/v2/auth/token/get";
-        $base_string3 = $partner_id . $path . $timestamp . $code;
-        $sign3 = hash_hmac('sha256', $base_string3, $partner_key);
+        $base_string = $partner_id . $path . $timestamp;
+        $sign = hash_hmac('sha256', $base_string, $partner_key);
 
-        // ✅ Debug ทุก signature
-        Yii::info("Format 1 - base string: {$base_string1}", __METHOD__);
-        Yii::info("Format 1 - signature: {$sign1}", __METHOD__);
-        Yii::info("Format 2 - base string: {$base_string2}", __METHOD__);
-        Yii::info("Format 2 - signature: {$sign2}", __METHOD__);
-        Yii::info("Format 3 - base string: {$base_string3}", __METHOD__);
-        Yii::info("Format 3 - signature: {$sign3}", __METHOD__);
+        // ✅ Debug signature
+        Yii::info("Token exchange base string: {$base_string}", __METHOD__);
+        Yii::info("Token exchange signature: {$sign}", __METHOD__);
 
         try {
             $client = new \GuzzleHttp\Client();
@@ -835,14 +823,14 @@ class SiteController extends Controller
 
             // ✅ Debug
             Yii::info("Query params: " . json_encode($queryParams), __METHOD__);
-            Yii::info("Post data: " . json_encode($postData), __METHOD__);
+            Yii::info("JSON payload: " . json_encode($jsonPayload), __METHOD__);
 
             $response = $client->post('https://partner.shopeemobile.com/api/v2/auth/token/get', [
                 'query' => $queryParams, // ✅ ส่งเป็น query parameters
-                'form_params' => $postData, // ✅ ส่งเป็น POST body
+                'json' => $jsonPayload,   // ✅ ส่งเป็น JSON body (ไม่ใช่ form_params)
                 'timeout' => 30,
                 'headers' => [
-                    'Content-Type' => 'application/x-www-form-urlencoded',
+                    'Content-Type' => 'application/json',
                     'Accept' => 'application/json',
                     'User-Agent' => 'YourApp/1.0',
                 ],
@@ -886,11 +874,9 @@ class SiteController extends Controller
                 // ✅ Debug ข้อมูลที่ได้รับทั้งหมด
                 Yii::error("Complete API response: " . json_encode($data), __METHOD__);
                 Yii::error("Query params sent: " . json_encode($queryParams), __METHOD__);
-                Yii::error("Post data sent: " . json_encode($postData), __METHOD__);
-                Yii::error("All signature attempts:", __METHOD__);
-                Yii::error("  Format 1: {$base_string1} -> {$sign1}", __METHOD__);
-                Yii::error("  Format 2: {$base_string2} -> {$sign2}", __METHOD__);
-                Yii::error("  Format 3: {$base_string3} -> {$sign3}", __METHOD__);
+                Yii::error("JSON payload sent: " . json_encode($jsonPayload), __METHOD__);
+                Yii::error("Base string used: {$base_string}", __METHOD__);
+                Yii::error("Signature used: {$sign}", __METHOD__);
 
                 Yii::$app->session->setFlash('error', "ไม่สามารถเชื่อมต่อ Shopee ได้: [$errorCode] $errorMsg");
             }
@@ -1077,10 +1063,10 @@ class SiteController extends Controller
     public function actionTestShopeeTokenExchange()
     {
 //        // ใช้ข้อมูลจริง
-//        $partner_id = 2012399; // ✅ ใช้ partner_id จริง
-//        $partner_key = 'shpk72476151525864414e4b6e475449626679624f695a696162696570417043'; // ✅ ใส่ partner_key เต็ม
-//        $redirect_url = 'https://www.pjrichth.co/site/shopee-callback';
-//        $code = 'test-code'; // ใส่ code จริงจากการทดสอบ
+        $partner_id = 2012399; // ✅ ใช้ partner_id จริง
+        $partner_key = 'shpk72476151525864414e4b6e475449626679624f695a696162696570417043'; // ✅ ใส่ partner_key เต็ม
+        $redirect_url = 'https://www.pjrichth.co/site/shopee-callback';
+  //      $code = 'test-code'; // ใส่ code จริงจากการทดสอบ
 //        $timestamp = time();
 //
 //        // ✅ สร้าง signature แบบถูกต้อง (รวม path)
@@ -1154,46 +1140,35 @@ class SiteController extends Controller
 //                'signature' => $sign,
 //            ]);
 //        }
-        $partner_id = 2012399;
-        $partner_key = 'shpk72476151525864414e4b6e475449626679624f695a696162696570417043'; // ✅ ใส่ key จริงที่นี่
-        $redirect_url = 'https://www.pjrichth.co/site/shopee-callback';
+        $code = 'sample-code';
+        $timestamp = 1672531200; // ใช้ timestamp คงที่เพื่อทดสอบ
 
-        // ตรวจสอบ partner_key
-        $keyInfo = [
-            'partner_key_length' => strlen($partner_key),
-            'partner_key_preview' => substr($partner_key, 0, 15) . '...',
-            'has_placeholder' => strpos($partner_key, 'xxx') !== false,
-            'is_valid_length' => strlen($partner_key) === 64, // Shopee partner key ควรยาว 64 ตัวอักษร
-        ];
+        // ทดสอบ signature สำหรับ authorization
+        $auth_path = "/api/v2/shop/auth_partner";
+        $auth_base_string = $partner_id . $auth_path . $timestamp;
+        $auth_sign = hash_hmac('sha256', $auth_base_string, $partner_key);
 
-        // ทดสอบสร้าง authorization URL (ที่ควรจะใช้งานได้)
-        $timestamp = time();
-        $path = "/api/v2/shop/auth_partner";
-        $base_string = $partner_id . $path . $timestamp;
-        $sign = hash_hmac('sha256', $base_string, $partner_key);
-
-        $auth_url_test = [
-            'base_string' => $base_string,
-            'signature' => $sign,
-            'url' => "https://partner.shopeemobile.com{$path}?" . http_build_query([
-                    'partner_id' => $partner_id,
-                    'redirect' => $redirect_url,
-                    'timestamp' => $timestamp,
-                    'sign' => $sign,
-                    'state' => 'test-state'
-                ])
-        ];
+        // ทดสอบ signature สำหรับ token exchange (รวม path)
+        $token_path = "/api/v2/auth/token/get";
+        $token_base_string = $partner_id . $token_path . $timestamp . $code;
+        $token_sign = hash_hmac('sha256', $token_base_string, $partner_key);
 
         return $this->asJson([
             'partner_id' => $partner_id,
-            'key_info' => $keyInfo,
-            'auth_url_test' => $auth_url_test,
-            'recommendations' => [
-                'step1' => 'เข้าไปที่ Shopee Open Platform Console',
-                'step2' => 'ไปที่ Apps > [Your App] > App Info',
-                'step3' => 'Copy Partner Key ที่แสดงเต็มๆ (64 ตัวอักษร)',
-                'step4' => 'แทนที่ในโค้ดที่มี xxx อยู่',
-                'shopee_console' => 'https://open.shopee.com/developer/console'
+            'partner_key_length' => strlen($partner_key),
+            'partner_key_preview' => substr($partner_key, 0, 10) . '...',
+            'redirect_url' => $redirect_url,
+            'code' => $code,
+            'timestamp' => $timestamp,
+            'auth' => [
+                'path' => $auth_path,
+                'base_string' => $auth_base_string,
+                'signature' => $auth_sign,
+            ],
+            'token_exchange' => [
+                'path' => $token_path,
+                'base_string' => $token_base_string,
+                'signature' => $token_sign,
             ]
         ]);
     }
