@@ -1012,6 +1012,42 @@ class SiteController extends Controller
         return null;
     }
 
+    public function actionTestShopeeSignature()
+    {
+        $partner_id = 2012399;
+        $partner_key = 'shpk72476151525864414e4b6e475449626679624f695a696162696570417043';
+        $redirect_url = 'https://www.pjrichth.co/site/shopee-callback';
+        $code = 'sample-code';
+        $timestamp = 1672531200; // ใช้ timestamp คงที่เพื่อทดสอบ
+
+        // ทดสอบ signature สำหรับ authorization
+        $auth_path = "/api/v2/shop/auth_partner";
+        $auth_base_string = $partner_id . $auth_path . $timestamp;
+        $auth_sign = hash_hmac('sha256', $auth_base_string, $partner_key);
+
+        // ทดสอบ signature สำหรับ token exchange
+        $token_base_string = $partner_id . $redirect_url . $timestamp . $code;
+        $token_sign = hash_hmac('sha256', $token_base_string, $partner_key);
+
+        return $this->asJson([
+            'partner_id' => $partner_id,
+            'partner_key_length' => strlen($partner_key),
+            'partner_key_preview' => substr($partner_key, 0, 10) . '...',
+            'redirect_url' => $redirect_url,
+            'code' => $code,
+            'timestamp' => $timestamp,
+            'auth' => [
+                'path' => $auth_path,
+                'base_string' => $auth_base_string,
+                'signature' => $auth_sign,
+            ],
+            'token_exchange' => [
+                'base_string' => $token_base_string,
+                'signature' => $token_sign,
+            ]
+        ]);
+    }
+
 
 
 }
