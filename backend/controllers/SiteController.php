@@ -796,8 +796,9 @@ class SiteController extends Controller
 
         $timestamp = time();
 
-        // ✅ สร้าง signature สำหรับ token exchange ตาม Shopee docs
-        $base_string = $partner_id . $redirect_url . $timestamp . $code;
+        // ✅ สร้าง signature สำหรับ token exchange ตาม Shopee docs (รวม path)
+        $path = "/api/v2/auth/token/get";
+        $base_string = $partner_id . $path . $timestamp . $code;
         $sign = hash_hmac('sha256', $base_string, $partner_key);
 
         // ✅ Debug signature
@@ -807,28 +808,31 @@ class SiteController extends Controller
         try {
             $client = new \GuzzleHttp\Client();
 
+            // ✅ แยก partner_id และ timestamp ไปเป็น query parameters
+            $queryParams = [
+                'partner_id' => $partner_id,
+                'timestamp' => $timestamp,
+                'sign' => $sign,
+            ];
+
             $postData = [
                 'code' => $code,
-                'partner_id' => $partner_id, // ✅ แปลงเป็น string
-                'sign' => $sign,
-                'timestamp' => $timestamp, // ✅ แปลงเป็น string
                 'redirect_uri' => $redirect_url,
             ];
 
-            // ✅ Debug post data
+            // ✅ Debug
+            Yii::info("Query params: " . json_encode($queryParams), __METHOD__);
             Yii::info("Post data: " . json_encode($postData), __METHOD__);
-            Yii::info("Partner ID type: " . gettype($partner_id), __METHOD__);
-            Yii::info("Timestamp type: " . gettype($timestamp), __METHOD__);
 
             $response = $client->post('https://partner.shopeemobile.com/api/v2/auth/token/get', [
-                'form_params' => $postData,
+                'query' => $queryParams, // ✅ ส่งเป็น query parameters
+                'form_params' => $postData, // ✅ ส่งเป็น POST body
                 'timeout' => 30,
                 'headers' => [
                     'Content-Type' => 'application/x-www-form-urlencoded',
+                    'Accept' => 'application/json',
+                    'User-Agent' => 'YourApp/1.0',
                 ],
-                // ✅ เพิ่ม debug options
-                'debug' => false, // เปลี่ยนเป็น true เพื่อดู HTTP request/response
-                'verify' => true, // ตรวจสอบ SSL certificate
             ]);
 
             $statusCode = $response->getStatusCode();
@@ -836,6 +840,10 @@ class SiteController extends Controller
 
             Yii::info("Response status: {$statusCode}", __METHOD__);
             Yii::info("Response body: {$body}", __METHOD__);
+
+            // ✅ ตรวจสอบ response headers
+            $headers = $response->getHeaders();
+            Yii::info("Response headers: " . json_encode($headers), __METHOD__);
 
             if ($statusCode !== 200) {
                 throw new \Exception("HTTP Error: $statusCode - $body");
@@ -846,6 +854,7 @@ class SiteController extends Controller
             if (json_last_error() !== JSON_ERROR_NONE) {
                 throw new \Exception("JSON decode error: " . json_last_error_msg());
             }
+
             // ✅ ตรวจสอบว่า response มี error หรือไม่
             if (isset($data['error'])) {
                 $errorDetail = isset($data['message']) ? $data['message'] : 'No error message';
@@ -863,13 +872,11 @@ class SiteController extends Controller
 
                 // ✅ Debug ข้อมูลที่ได้รับทั้งหมด
                 Yii::error("Complete API response: " . json_encode($data), __METHOD__);
+                Yii::error("Query params sent: " . json_encode($queryParams), __METHOD__);
                 Yii::error("Post data sent: " . json_encode($postData), __METHOD__);
                 Yii::error("Base string used: {$base_string}", __METHOD__);
 
                 Yii::$app->session->setFlash('error', "ไม่สามารถเชื่อมต่อ Shopee ได้: [$errorCode] $errorMsg");
-
-                // ✅ Debug response ที่ไม่ถูกต้อง
-                Yii::error("Invalid token response: " . json_encode($data), __METHOD__);
             }
 
         } catch (\Exception $e) {
@@ -1080,12 +1087,12 @@ class SiteController extends Controller
         try {
             $client = new \GuzzleHttp\Client();
 
-            // ✅ ทดสอบส่ง request
+            // ✅ ทดสอบส่ง request แบบใหม่
             $response = $client->post('https://partner.shopeemobile.com/api/v2/auth/token/get', [
-                'query'=> $queryParams,
-                'form_params' => $postData,
+                'query' => $queryParams, // ✅ ส่งเป็น query parameters
+                'form_params' => $postData, // ✅ ส่งเป็น POST body
                 'timeout' => 30,
-                'debug' => true, // ✅ เปิด debug เพื่อดู request/response
+                'debug' => false, // เปลี่ยนเป็น true เพื่อดู detail
             ]);
 
             $statusCode = $response->getStatusCode();
@@ -1094,6 +1101,7 @@ class SiteController extends Controller
             return $this->asJson([
                 'success' => true,
                 'status_code' => $statusCode,
+                'query_params' => $queryParams,
                 'post_data' => $postData,
                 'base_string' => $base_string,
                 'signature' => $sign,
@@ -1111,6 +1119,7 @@ class SiteController extends Controller
                 'success' => false,
                 'error_type' => 'ClientException',
                 'status_code' => $statusCode,
+                'query_params' => $queryParams,
                 'post_data' => $postData,
                 'base_string' => $base_string,
                 'signature' => $sign,
@@ -1123,6 +1132,7 @@ class SiteController extends Controller
                 'success' => false,
                 'error_type' => 'Exception',
                 'error_message' => $e->getMessage(),
+                'query_params' => $queryParams,
                 'post_data' => $postData,
                 'base_string' => $base_string,
                 'signature' => $sign,
