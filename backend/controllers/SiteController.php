@@ -32,7 +32,7 @@ class SiteController extends Controller
                         'allow' => true,
                     ],
                     [
-                        'actions' => ['logout', 'index', 'changepassword','grab','logoutdriver','connect-tiktok','tiktok-callback','shopee-callback','connect-shopee','test-shopee-signature'],
+                        'actions' => ['logout', 'index', 'changepassword','grab','logoutdriver','connect-tiktok','tiktok-callback','shopee-callback','connect-shopee','test-shopee-signature','test-shopee-token-exchange'],
                         'allow' => true,
                         'roles' => ['@'],
                     ],
@@ -1046,6 +1046,82 @@ class SiteController extends Controller
                 'signature' => $token_sign,
             ]
         ]);
+    }
+
+    /**
+     * ✅ ฟังก์ชันทดสอบการส่ง token exchange request
+     */
+    public function actionTestShopeeTokenExchange()
+    {
+        // ใช้ข้อมูลจริง
+        $partner_id = 2012399; // ✅ ใช้ partner_id จริง
+        $partner_key = 'shpk72476151525864414e4b6e475449626679624f695a696162696570417043'; // ✅ ใส่ partner_key เต็ม
+        $redirect_url = 'https://www.pjrichth.co/site/shopee-callback';
+        $code = 'test-code'; // ใส่ code จริงจากการทดสอบ
+        $timestamp = time();
+
+        // สร้าง signature
+        $base_string = $partner_id . $redirect_url . $timestamp . $code;
+        $sign = hash_hmac('sha256', $base_string, $partner_key);
+
+        $postData = [
+            'code' => $code,
+            'partner_id' => $partner_id,
+            'sign' => $sign,
+            'timestamp' => $timestamp,
+            'redirect_uri' => $redirect_url,
+        ];
+
+        try {
+            $client = new \GuzzleHttp\Client();
+
+            // ✅ ทดสอบส่ง request
+            $response = $client->post('https://partner.shopeemobile.com/api/v2/auth/token/get', [
+                'form_params' => $postData,
+                'timeout' => 30,
+                'debug' => true, // ✅ เปิด debug เพื่อดู request/response
+            ]);
+
+            $statusCode = $response->getStatusCode();
+            $body = $response->getBody()->getContents();
+
+            return $this->asJson([
+                'success' => true,
+                'status_code' => $statusCode,
+                'post_data' => $postData,
+                'base_string' => $base_string,
+                'signature' => $sign,
+                'response_body' => json_decode($body, true),
+                'response_raw' => $body,
+            ]);
+
+        } catch (\GuzzleHttp\Exception\ClientException $e) {
+            // ✅ จับ error จาก HTTP client
+            $response = $e->getResponse();
+            $statusCode = $response->getStatusCode();
+            $body = $response->getBody()->getContents();
+
+            return $this->asJson([
+                'success' => false,
+                'error_type' => 'ClientException',
+                'status_code' => $statusCode,
+                'post_data' => $postData,
+                'base_string' => $base_string,
+                'signature' => $sign,
+                'error_body' => $body,
+                'error_decoded' => json_decode($body, true),
+            ]);
+
+        } catch (\Exception $e) {
+            return $this->asJson([
+                'success' => false,
+                'error_type' => 'Exception',
+                'error_message' => $e->getMessage(),
+                'post_data' => $postData,
+                'base_string' => $base_string,
+                'signature' => $sign,
+            ]);
+        }
     }
 
 
