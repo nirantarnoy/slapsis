@@ -658,8 +658,8 @@ class SiteController extends Controller
 
     public function actionConnectShopee()
     {
-        $partner_id = 1178090;
-        $partner_key = 'shpk6573466d784257526c476e4e796e7950694d4c6c516946744e6a4e556854';
+        $partner_id = 2012399;
+        $partner_key = 'shpk72476151525864414e4b6e475449626679624f695a696162696570417043';
         $redirect_url = 'https://www.pjrichth.co/site/shopee-callback'; // Url::to(['https://www.pjrichth.co/site/shopee-callback'], true);
 
         $timestamp = time();
