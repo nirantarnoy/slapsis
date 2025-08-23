@@ -1061,7 +1061,7 @@ class SiteController extends Controller
         $timestamp = time();
 
         // สร้าง signature
-        $base_string = $partner_id . $redirect_url . $timestamp . $code;
+        $base_string = $partner_id . $timestamp . $code;
         $sign = hash_hmac('sha256', $base_string, $partner_key);
 
         // ✅ แยก parameters ตาม Shopee API format
