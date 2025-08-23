@@ -1076,84 +1076,126 @@ class SiteController extends Controller
      */
     public function actionTestShopeeTokenExchange()
     {
-        // ใช้ข้อมูลจริง
-        $partner_id = 2012399; // ✅ ใช้ partner_id จริง
-        $partner_key = 'shpk72476151525864414e4b6e475449626679624f695a696162696570417043'; // ✅ ใส่ partner_key เต็ม
+//        // ใช้ข้อมูลจริง
+//        $partner_id = 2012399; // ✅ ใช้ partner_id จริง
+//        $partner_key = 'shpk72476151525864414e4b6e475449626679624f695a696162696570417043'; // ✅ ใส่ partner_key เต็ม
+//        $redirect_url = 'https://www.pjrichth.co/site/shopee-callback';
+//        $code = 'test-code'; // ใส่ code จริงจากการทดสอบ
+//        $timestamp = time();
+//
+//        // ✅ สร้าง signature แบบถูกต้อง (รวม path)
+//        $path = "/api/v2/auth/token/get";
+//        $base_string = $partner_id . $path . $timestamp . $code;
+//        $sign = hash_hmac('sha256', $base_string, $partner_key);
+//
+//        // ✅ แยก parameters ตาม Shopee API format
+//        $queryParams = [
+//            'partner_id' => $partner_id,
+//            'timestamp' => $timestamp,
+//            'sign' => $sign,
+//        ];
+//
+//        $postData = [
+//            'code' => $code,
+//            'redirect_uri' => $redirect_url,
+//        ];
+//
+//        try {
+//            $client = new \GuzzleHttp\Client();
+//
+//            // ✅ ทดสอบส่ง request แบบใหม่
+//            $response = $client->post('https://partner.shopeemobile.com/api/v2/auth/token/get', [
+//                'query' => $queryParams, // ✅ ส่งเป็น query parameters
+//                'form_params' => $postData, // ✅ ส่งเป็น POST body
+//                'timeout' => 30,
+//                'debug' => false, // เปลี่ยนเป็น true เพื่อดู detail
+//            ]);
+//
+//            $statusCode = $response->getStatusCode();
+//            $body = $response->getBody()->getContents();
+//
+//            return $this->asJson([
+//                'success' => true,
+//                'status_code' => $statusCode,
+//                'query_params' => $queryParams,
+//                'post_data' => $postData,
+//                'base_string' => $base_string,
+//                'signature' => $sign,
+//                'response_body' => json_decode($body, true),
+//                'response_raw' => $body,
+//            ]);
+//
+//        } catch (\GuzzleHttp\Exception\ClientException $e) {
+//            // ✅ จับ error จาก HTTP client
+//            $response = $e->getResponse();
+//            $statusCode = $response->getStatusCode();
+//            $body = $response->getBody()->getContents();
+//
+//            return $this->asJson([
+//                'success' => false,
+//                'error_type' => 'ClientException',
+//                'status_code' => $statusCode,
+//                'query_params' => $queryParams,
+//                'post_data' => $postData,
+//                'base_string' => $base_string,
+//                'signature' => $sign,
+//                'error_body' => $body,
+//                'error_decoded' => json_decode($body, true),
+//            ]);
+//
+//        } catch (\Exception $e) {
+//            return $this->asJson([
+//                'success' => false,
+//                'error_type' => 'Exception',
+//                'error_message' => $e->getMessage(),
+//                'query_params' => $queryParams,
+//                'post_data' => $postData,
+//                'base_string' => $base_string,
+//                'signature' => $sign,
+//            ]);
+//        }
+        $partner_id = 2012399;
+        $partner_key = 'shpk72476151525864414e4b6e475449626679624f695a696162696570417043'; // ✅ ใส่ key จริงที่นี่
         $redirect_url = 'https://www.pjrichth.co/site/shopee-callback';
-        $code = 'test-code'; // ใส่ code จริงจากการทดสอบ
-        $timestamp = time();
 
-        // ✅ สร้าง signature แบบถูกต้อง (รวม path)
-        $path = "/api/v2/auth/token/get";
-        $base_string = $partner_id . $path . $timestamp . $code;
+        // ตรวจสอบ partner_key
+        $keyInfo = [
+            'partner_key_length' => strlen($partner_key),
+            'partner_key_preview' => substr($partner_key, 0, 15) . '...',
+            'has_placeholder' => strpos($partner_key, 'xxx') !== false,
+            'is_valid_length' => strlen($partner_key) === 64, // Shopee partner key ควรยาว 64 ตัวอักษร
+        ];
+
+        // ทดสอบสร้าง authorization URL (ที่ควรจะใช้งานได้)
+        $timestamp = time();
+        $path = "/api/v2/shop/auth_partner";
+        $base_string = $partner_id . $path . $timestamp;
         $sign = hash_hmac('sha256', $base_string, $partner_key);
 
-        // ✅ แยก parameters ตาม Shopee API format
-        $queryParams = [
+        $auth_url_test = [
+            'base_string' => $base_string,
+            'signature' => $sign,
+            'url' => "https://partner.shopeemobile.com{$path}?" . http_build_query([
+                    'partner_id' => $partner_id,
+                    'redirect' => $redirect_url,
+                    'timestamp' => $timestamp,
+                    'sign' => $sign,
+                    'state' => 'test-state'
+                ])
+        ];
+
+        return $this->asJson([
             'partner_id' => $partner_id,
-            'timestamp' => $timestamp,
-            'sign' => $sign,
-        ];
-
-        $postData = [
-            'code' => $code,
-            'redirect_uri' => $redirect_url,
-        ];
-
-        try {
-            $client = new \GuzzleHttp\Client();
-
-            // ✅ ทดสอบส่ง request แบบใหม่
-            $response = $client->post('https://partner.shopeemobile.com/api/v2/auth/token/get', [
-                'query' => $queryParams, // ✅ ส่งเป็น query parameters
-                'form_params' => $postData, // ✅ ส่งเป็น POST body
-                'timeout' => 30,
-                'debug' => false, // เปลี่ยนเป็น true เพื่อดู detail
-            ]);
-
-            $statusCode = $response->getStatusCode();
-            $body = $response->getBody()->getContents();
-
-            return $this->asJson([
-                'success' => true,
-                'status_code' => $statusCode,
-                'query_params' => $queryParams,
-                'post_data' => $postData,
-                'base_string' => $base_string,
-                'signature' => $sign,
-                'response_body' => json_decode($body, true),
-                'response_raw' => $body,
-            ]);
-
-        } catch (\GuzzleHttp\Exception\ClientException $e) {
-            // ✅ จับ error จาก HTTP client
-            $response = $e->getResponse();
-            $statusCode = $response->getStatusCode();
-            $body = $response->getBody()->getContents();
-
-            return $this->asJson([
-                'success' => false,
-                'error_type' => 'ClientException',
-                'status_code' => $statusCode,
-                'query_params' => $queryParams,
-                'post_data' => $postData,
-                'base_string' => $base_string,
-                'signature' => $sign,
-                'error_body' => $body,
-                'error_decoded' => json_decode($body, true),
-            ]);
-
-        } catch (\Exception $e) {
-            return $this->asJson([
-                'success' => false,
-                'error_type' => 'Exception',
-                'error_message' => $e->getMessage(),
-                'query_params' => $queryParams,
-                'post_data' => $postData,
-                'base_string' => $base_string,
-                'signature' => $sign,
-            ]);
-        }
+            'key_info' => $keyInfo,
+            'auth_url_test' => $auth_url_test,
+            'recommendations' => [
+                'step1' => 'เข้าไปที่ Shopee Open Platform Console',
+                'step2' => 'ไปที่ Apps > [Your App] > App Info',
+                'step3' => 'Copy Partner Key ที่แสดงเต็มๆ (64 ตัวอักษร)',
+                'step4' => 'แทนที่ในโค้ดที่มี xxx อยู่',
+                'shopee_console' => 'https://open.shopee.com/developer/console'
+            ]
+        ]);
     }
 
 
