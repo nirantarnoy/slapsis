@@ -1064,11 +1064,15 @@ class SiteController extends Controller
         $base_string = $partner_id . $redirect_url . $timestamp . $code;
         $sign = hash_hmac('sha256', $base_string, $partner_key);
 
+        // ✅ แยก parameters ตาม Shopee API format
+        $queryParams = [
+            'partner_id' => $partner_id,
+            'timestamp' => $timestamp,
+            'sign' => $sign,
+        ];
+
         $postData = [
             'code' => $code,
-            'partner_id' => $partner_id,
-            'sign' => $sign,
-            'timestamp' => $timestamp,
             'redirect_uri' => $redirect_url,
         ];
 
@@ -1077,6 +1081,7 @@ class SiteController extends Controller
 
             // ✅ ทดสอบส่ง request
             $response = $client->post('https://partner.shopeemobile.com/api/v2/auth/token/get', [
+                'query'=> $queryParams,
                 'form_params' => $postData,
                 'timeout' => 30,
                 'debug' => true, // ✅ เปิด debug เพื่อดู request/response
