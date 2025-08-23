@@ -718,9 +718,9 @@ class SiteController extends Controller
 
         // ✅ สร้าง parameters อย่างชัดเจน
         $params = [
-            'partner_id' => (string)$partner_id, // ✅ แปลงเป็น string
+            'partner_id' => $partner_id, // ✅ ใช้ค่าจริง
             'redirect'   => $redirect_url,
-            'timestamp'  => (string)$timestamp, // ✅ แปลงเป็น string
+            'timestamp'  => $timestamp,
             'sign'       => $sign,
             'state'      => $state
         ];
@@ -789,10 +789,9 @@ class SiteController extends Controller
         // ลบ state จาก session
         Yii::$app->session->remove('shopee_oauth_state');
 
-        // ข้อมูลแอปของคุณ (ควรเก็บใน config)
-        $partner_id = 2012399; // เปลี่ยนเป็นของคุณ
-        $partner_key = 'shpk72476151525864414e4b6e475449626679624f695a696162696570417043'; // เปลี่ยนเป็นของคุณ
-        $redirect_url = 'https://www.pjrichth.co/site/shopee-callback';
+        $partner_id = 2012399; // ✅ ใช้ค่าเดียวกับใน actionConnectShopee
+        $partner_key = 'shpk72476151525864414e4b6e475449626679624f695a696162696570417043'; // ✅ ใส่ partner_key เต็ม
+        $redirect_url = 'https://www.pjrichth.co/site/shopee-callback'; // ✅ ใช้ URL เดียวกัน
 
         $timestamp = time();
 
@@ -816,9 +815,10 @@ class SiteController extends Controller
                 'sign' => $sign,
             ];
 
-            $postData = [
+            $jsonPayload = [
                 'code' => $code,
-                'redirect_uri' => $redirect_url,
+                'shop_id' => $shop_id,
+                'partner_id' => $partner_id,
             ];
 
             // ✅ Debug
