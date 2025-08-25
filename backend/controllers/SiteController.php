@@ -751,6 +751,10 @@ class SiteController extends Controller
      */
     public function actionShopeeCallback()
     {
+        // Debug URL ที่เข้ามา
+        Yii::error("Callback URL: " . $_SERVER['REQUEST_URI'], __METHOD__);
+        Yii::error("HTTP Referer: " . ($_SERVER['HTTP_REFERER'] ?? 'none'), __METHOD__);
+
         Yii::$app->session->open();
 
         $code = Yii::$app->request->get('code');
