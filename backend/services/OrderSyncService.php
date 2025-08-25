@@ -100,7 +100,7 @@ class OrderSyncService
         $shop_id = $tokenModel->shop_id;
         $access_token = $tokenModel->access_token;
 
-        $count = 0;
+        $count = 10;
         $page_size = 100;
         $cursor = '';
 
