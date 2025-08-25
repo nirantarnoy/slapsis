@@ -485,7 +485,7 @@ class OrderSyncService
                     'Content-Type' => 'application/json'
                 ],
                 'json' => [
-                    'partner_id' => (int)$partner_id,
+                    'partner_id' => $partner_id,
                     'timestamp' => $timestamp,
                     'shop_id' => (int)$shop_id,
                     'refresh_token' => $refresh_token,
@@ -493,6 +493,8 @@ class OrderSyncService
                 ],
                 'timeout' => 30
             ]);
+
+            Yii::info('Http token refresh is: '.$response->getStatusCode());
 
             // ✅ เช็ค HTTP status code
             if ($response->getStatusCode() !== 200) {
