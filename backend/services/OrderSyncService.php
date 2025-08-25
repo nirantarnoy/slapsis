@@ -124,7 +124,7 @@ class OrderSyncService
                     'time_range_field' => 'create_time',
                     'time_from' => strtotime('-7 days'),
                     'time_to' => time(),
-                    'order_status' => 'READY_TO_SHIP,SHIPPED,COMPLETED',
+                  //  'order_status' => 'READY_TO_SHIP,SHIPPED,COMPLETED',
                 ];
 
                 if (!empty($cursor)) {
