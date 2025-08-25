@@ -5,8 +5,12 @@ namespace backend\services;
 use Yii;
 use backend\models\Order;
 use backend\models\OnlineChannel;
-use backend\models\ShopeeToken; // สมมติว่ามีตาราง shopee_tokens
-use backend\models\TiktokToken; // สมมติว่ามีตาราง tiktok_tokens
+use backend\models\ShopeeToken;
+
+// สมมติว่ามีตาราง shopee_tokens
+use backend\models\TiktokToken;
+
+// สมมติว่ามีตาราง tiktok_tokens
 use yii\base\Exception;
 use GuzzleHttp\Client;
 use yii\helpers\Json;
@@ -87,49 +91,49 @@ class OrderSyncService
 
         // ตรวจสอบ token หมดอายุ
         if (strtotime($tokenModel->expires_at) < time()) {
-                Yii::error('Access Token is expired');
+            Yii::error('Access Token is expired');
             if (!$this->refreshShopeeToken($tokenModel)) {
                 Yii::warning('Failed to refresh Shopee token for channel: ' . $channel->id, __METHOD__);
                 return $this->shopeeSampleOrders($channel);
             }
         }
 
-        $partner_id   = 2012399;
-        $partner_key  = 'shpk72476151525864414e4b6e475449626679624f695a696162696570417043';
-        $shop_id      = $tokenModel->shop_id;
+        $partner_id = 2012399;
+        $partner_key = 'shpk72476151525864414e4b6e475449626679624f695a696162696570417043';
+        $shop_id = $tokenModel->shop_id;
         $access_token = $tokenModel->access_token;
 
-        $count     = 0;
+        $count = 0;
         $page_size = 100;
-        $cursor    = '';
+        $cursor = '';
 
         try {
             do {
-                $timestamp   = time();
-                $path        = "/api/v2/order/get_order_list";
+                $timestamp = time();
+                $path = "/api/v2/order/get_order_list";
                 $base_string = $partner_id . $path . $timestamp . $access_token . $shop_id;
-                $sign        = hash_hmac('sha256', $base_string, $partner_key);
+                $sign = hash_hmac('sha256', $base_string, $partner_key);
 
                 $params = [
-                    'partner_id'  => $partner_id,
-                    'shop_id'     => (int)$shop_id,
-                    'sign'        => $sign,
-                    'timestamp'   => $timestamp,
-                    'access_token'=> $access_token,
+                    'partner_id' => $partner_id,
+                    'shop_id' => (int)$shop_id,
+                    'sign' => $sign,
+                    'timestamp' => $timestamp,
+                    'access_token' => $access_token,
                     'time_range_field' => 'create_time',
-                    'time_from'   => strtotime('-1 day'),
-                    'time_to'     => time(),
-                    'page_size'   => $page_size,
+                    'time_from' => strtotime('-1 day'),
+                    'time_to' => time(),
+                    'page_size' => $page_size,
                     'response_optional_fields' => 'order_status',
-                    'order_status'=> 'SHIPPED', // optional
+                    'order_status' => 'SHIPPED', // optional
                 ];
 
                 if (!empty($cursor)) {
                     $params['cursor'] = $cursor;
                 }
 
-                $response  = $this->httpClient->get('https://partner.shopeemobile.com' . $path, [
-                    'query'   => $params,
+                $response = $this->httpClient->get('https://partner.shopeemobile.com' . $path, [
+                    'query' => $params,
                     'timeout' => 30
                 ]);
 
@@ -443,7 +447,7 @@ class OrderSyncService
                 $order->price = $item['sale_price'] / 1000000; // TikTok ส่งมาเป็น micro units
                 $order->total_amount = $order->quantity * $order->price;
                 $order->order_date = date('Y-m-d H:i:s', $orderData['create_time']);
-              //  $order->order_status = $orderData['status'];
+                //  $order->order_status = $orderData['status'];
 
                 if ($order->save()) {
                     $count++;
@@ -479,24 +483,26 @@ class OrderSyncService
             $base_string = $partner_id . $path . $timestamp;
             $sign = hash_hmac('sha256', $base_string, $partner_key);
 
-            $url = 'https://partner.shopeemobile.com' . $path . '?' . http_build_query([
-                    'partner_id' => $partner_id,
-                    'timestamp' => $timestamp,
-                    'sign' => $sign,
-                ]);
-            $response = $this->httpClient->post($url, [
-                'headers' => ['Content-Type' => 'application/json'],
-                'json' => [
-                    'shop_id' => (int)$shop_id,
-                    'refresh_token' => $refresh_token,
-                ],
-                'timeout' => 30
-            ]);
+            // ✅ แยก partner_id และ timestamp ไปเป็น query parameters
+            $queryParams = [
+                'partner_id' => $partner_id,
+                'timestamp' => $timestamp,
+                'sign' => $sign,
+            ];
+
+            $jsonPayload = [
+                'shop_id' => $shop_id,
+                'partner_id' => $partner_id,
+                'refresh_token' => $refresh_token,
+            ];
+
             // ✅ เปลี่ยนจาก form_params เป็น json
-//            $response = $this->httpClient->post('https://partner.shopeemobile.com' . $path, [
-//                'headers' => [
-//                    'Content-Type' => 'application/json'
-//                ],
+            $response = $this->httpClient->post('https://partner.shopeemobile.com' . $path, [
+                'headers' => [
+                    'Content-Type' => 'application/json'
+                ],
+                'query' => $queryParams,
+                'json' => $jsonPayload,
 //                'json' => [
 //                    'partner_id' => (int)$partner_id,
 //                    'timestamp' => $timestamp,
@@ -504,10 +510,10 @@ class OrderSyncService
 //                    'refresh_token' => $refresh_token,
 //                    'sign' => $sign,
 //                ],
-//                'timeout' => 30
-//            ]);
+                'timeout' => 30
+            ]);
 
-            Yii::info('Http token refresh is: '.$response->getStatusCode());
+            Yii::info('Http token refresh is: ' . $response->getStatusCode());
 
             // ✅ เช็ค HTTP status code
             if ($response->getStatusCode() !== 200) {
@@ -520,7 +526,7 @@ class OrderSyncService
 
             // ✅ เพิ่มการเช็ค error response
             if (isset($data['error'])) {
-                if(!empty($data['error'])){
+                if (!empty($data['error'])) {
                     Yii::error("Shopee API Error: {$data['error']} - " . ($data['message'] ?? 'Unknown error'), __METHOD__);
                     return false;
                 }
