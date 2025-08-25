@@ -536,7 +536,7 @@ class OrderSyncService
             if (isset($data['access_token'])) {
                 $tokenModel->access_token = $data['access_token'];
                 $tokenModel->refresh_token = $data['refresh_token'];
-                $tokenModel->expires_at = time() + $data['expires_in'];
+                $tokenModel->expires_at = date('Y-m-d H:i:s', time() + (int)($tokenData['expire_in'] ?? 14400));
                 $tokenModel->updated_at = date('Y-m-d H:i:s');
 
                 if ($tokenModel->save()) {
