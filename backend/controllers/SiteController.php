@@ -1060,97 +1060,135 @@ class SiteController extends Controller
     /**
      * ✅ ฟังก์ชันทดสอบการส่ง token exchange request
      */
+//    public function actionTestShopeeTokenExchange()
+//    {
+////        // ใช้ข้อมูลจริง
+//        $partner_id = 2012399; // ✅ ใช้ partner_id จริง
+//        $partner_key = 'shpk72476151525864414e4b6e475449626679624f695a696162696570417043'; // ✅ ใส่ partner_key เต็ม
+//        $redirect_url = 'https://www.pjrichth.co/site/shopee-callback';
+//  //      $code = 'test-code'; // ใส่ code จริงจากการทดสอบ
+////        $timestamp = time();
+////
+////        // ✅ สร้าง signature แบบถูกต้อง (รวม path)
+////        $path = "/api/v2/auth/token/get";
+////        $base_string = $partner_id . $path . $timestamp . $code;
+////        $sign = hash_hmac('sha256', $base_string, $partner_key);
+////
+////        // ✅ แยก parameters ตาม Shopee API format
+////        $queryParams = [
+////            'partner_id' => $partner_id,
+////            'timestamp' => $timestamp,
+////            'sign' => $sign,
+////        ];
+////
+////        $postData = [
+////            'code' => $code,
+////            'redirect_uri' => $redirect_url,
+////        ];
+////
+////        try {
+////            $client = new \GuzzleHttp\Client();
+////
+////            // ✅ ทดสอบส่ง request แบบใหม่
+////            $response = $client->post('https://partner.shopeemobile.com/api/v2/auth/token/get', [
+////                'query' => $queryParams, // ✅ ส่งเป็น query parameters
+////                'form_params' => $postData, // ✅ ส่งเป็น POST body
+////                'timeout' => 30,
+////                'debug' => false, // เปลี่ยนเป็น true เพื่อดู detail
+////            ]);
+////
+////            $statusCode = $response->getStatusCode();
+////            $body = $response->getBody()->getContents();
+////
+////            return $this->asJson([
+////                'success' => true,
+////                'status_code' => $statusCode,
+////                'query_params' => $queryParams,
+////                'post_data' => $postData,
+////                'base_string' => $base_string,
+////                'signature' => $sign,
+////                'response_body' => json_decode($body, true),
+////                'response_raw' => $body,
+////            ]);
+////
+////        } catch (\GuzzleHttp\Exception\ClientException $e) {
+////            // ✅ จับ error จาก HTTP client
+////            $response = $e->getResponse();
+////            $statusCode = $response->getStatusCode();
+////            $body = $response->getBody()->getContents();
+////
+////            return $this->asJson([
+////                'success' => false,
+////                'error_type' => 'ClientException',
+////                'status_code' => $statusCode,
+////                'query_params' => $queryParams,
+////                'post_data' => $postData,
+////                'base_string' => $base_string,
+////                'signature' => $sign,
+////                'error_body' => $body,
+////                'error_decoded' => json_decode($body, true),
+////            ]);
+////
+////        } catch (\Exception $e) {
+////            return $this->asJson([
+////                'success' => false,
+////                'error_type' => 'Exception',
+////                'error_message' => $e->getMessage(),
+////                'query_params' => $queryParams,
+////                'post_data' => $postData,
+////                'base_string' => $base_string,
+////                'signature' => $sign,
+////            ]);
+////        }
+//        $code = 'sample-code';
+//        $timestamp = 1672531200; // ใช้ timestamp คงที่เพื่อทดสอบ
+//
+//        // ทดสอบ signature สำหรับ authorization
+//        $auth_path = "/api/v2/shop/auth_partner";
+//        $auth_base_string = $partner_id . $auth_path . $timestamp;
+//        $auth_sign = hash_hmac('sha256', $auth_base_string, $partner_key);
+//
+//        // ทดสอบ signature สำหรับ token exchange (รวม path)
+//        $token_path = "/api/v2/auth/token/get";
+//        $token_base_string = $partner_id . $token_path . $timestamp . $code;
+//        $token_sign = hash_hmac('sha256', $token_base_string, $partner_key);
+//
+//        return $this->asJson([
+//            'partner_id' => $partner_id,
+//            'partner_key_length' => strlen($partner_key),
+//            'partner_key_preview' => substr($partner_key, 0, 10) . '...',
+//            'redirect_url' => $redirect_url,
+//            'code' => $code,
+//            'timestamp' => $timestamp,
+//            'auth' => [
+//                'path' => $auth_path,
+//                'base_string' => $auth_base_string,
+//                'signature' => $auth_sign,
+//            ],
+//            'token_exchange' => [
+//                'path' => $token_path,
+//                'base_string' => $token_base_string,
+//                'signature' => $token_sign,
+//            ]
+//        ]);
+//    }
+
     public function actionTestShopeeTokenExchange()
     {
-//        // ใช้ข้อมูลจริง
-        $partner_id = 2012399; // ✅ ใช้ partner_id จริง
-        $partner_key = 'shpk72476151525864414e4b6e475449626679624f695a696162696570417043'; // ✅ ใส่ partner_key เต็ม
+        $partner_id = 2012399;
+        $partner_key = 'shpk72476151525864414e4b6e475449626679624f695a696162696570417043';
         $redirect_url = 'https://www.pjrichth.co/site/shopee-callback';
-  //      $code = 'test-code'; // ใส่ code จริงจากการทดสอบ
-//        $timestamp = time();
-//
-//        // ✅ สร้าง signature แบบถูกต้อง (รวม path)
-//        $path = "/api/v2/auth/token/get";
-//        $base_string = $partner_id . $path . $timestamp . $code;
-//        $sign = hash_hmac('sha256', $base_string, $partner_key);
-//
-//        // ✅ แยก parameters ตาม Shopee API format
-//        $queryParams = [
-//            'partner_id' => $partner_id,
-//            'timestamp' => $timestamp,
-//            'sign' => $sign,
-//        ];
-//
-//        $postData = [
-//            'code' => $code,
-//            'redirect_uri' => $redirect_url,
-//        ];
-//
-//        try {
-//            $client = new \GuzzleHttp\Client();
-//
-//            // ✅ ทดสอบส่ง request แบบใหม่
-//            $response = $client->post('https://partner.shopeemobile.com/api/v2/auth/token/get', [
-//                'query' => $queryParams, // ✅ ส่งเป็น query parameters
-//                'form_params' => $postData, // ✅ ส่งเป็น POST body
-//                'timeout' => 30,
-//                'debug' => false, // เปลี่ยนเป็น true เพื่อดู detail
-//            ]);
-//
-//            $statusCode = $response->getStatusCode();
-//            $body = $response->getBody()->getContents();
-//
-//            return $this->asJson([
-//                'success' => true,
-//                'status_code' => $statusCode,
-//                'query_params' => $queryParams,
-//                'post_data' => $postData,
-//                'base_string' => $base_string,
-//                'signature' => $sign,
-//                'response_body' => json_decode($body, true),
-//                'response_raw' => $body,
-//            ]);
-//
-//        } catch (\GuzzleHttp\Exception\ClientException $e) {
-//            // ✅ จับ error จาก HTTP client
-//            $response = $e->getResponse();
-//            $statusCode = $response->getStatusCode();
-//            $body = $response->getBody()->getContents();
-//
-//            return $this->asJson([
-//                'success' => false,
-//                'error_type' => 'ClientException',
-//                'status_code' => $statusCode,
-//                'query_params' => $queryParams,
-//                'post_data' => $postData,
-//                'base_string' => $base_string,
-//                'signature' => $sign,
-//                'error_body' => $body,
-//                'error_decoded' => json_decode($body, true),
-//            ]);
-//
-//        } catch (\Exception $e) {
-//            return $this->asJson([
-//                'success' => false,
-//                'error_type' => 'Exception',
-//                'error_message' => $e->getMessage(),
-//                'query_params' => $queryParams,
-//                'post_data' => $postData,
-//                'base_string' => $base_string,
-//                'signature' => $sign,
-//            ]);
-//        }
         $code = 'sample-code';
-        $timestamp = 1672531200; // ใช้ timestamp คงที่เพื่อทดสอบ
+        $timestamp = 1672531200;
 
-        // ทดสอบ signature สำหรับ authorization
+        // Authorization signature (ถูกต้อง)
         $auth_path = "/api/v2/shop/auth_partner";
         $auth_base_string = $partner_id . $auth_path . $timestamp;
         $auth_sign = hash_hmac('sha256', $auth_base_string, $partner_key);
 
-        // ทดสอบ signature สำหรับ token exchange (รวม path)
+        // Token exchange signature (แก้ไขแล้ว - ไม่รวม code)
         $token_path = "/api/v2/auth/token/get";
-        $token_base_string = $partner_id . $token_path . $timestamp . $code;
+        $token_base_string = $partner_id . $token_path . $timestamp; // ✅ ลบ $code ออก
         $token_sign = hash_hmac('sha256', $token_base_string, $partner_key);
 
         return $this->asJson([
@@ -1169,10 +1207,9 @@ class SiteController extends Controller
                 'path' => $token_path,
                 'base_string' => $token_base_string,
                 'signature' => $token_sign,
+                'note' => 'Code is sent in JSON payload, not in signature'
             ]
         ]);
     }
-
-
 
 }
