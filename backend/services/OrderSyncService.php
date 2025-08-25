@@ -147,6 +147,9 @@ class OrderSyncService
                 $body = $response->getBody()->getContents();
                 $data = Json::decode($body);
 
+                // ✅ log ค่า response เต็ม
+                Yii::info("Shopee API Raw Response: " . $body, __METHOD__);
+
                 // ✅ เช็ค API errors
                 if (isset($data['error'])) {
                     if(!empty($data['error'])){
