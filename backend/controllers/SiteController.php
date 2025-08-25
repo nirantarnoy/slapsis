@@ -875,9 +875,13 @@ class SiteController extends Controller
 
             if (isset($data['access_token'])) {
                 // บันทึกลงฐานข้อมูล
-                $this->saveShopeeToken($shop_id, $data);
+                if(!empty($data['access_token'])){
+                    $this->saveShopeeToken($shop_id, $data);
+                    Yii::$app->session->setFlash('success', 'เชื่อมต่อ Shopee สำเร็จ! Shop ID: ' . $shop_id);
+                }else{
+                    Yii::$app->session->setFlash('error', 'พบ access token เป็นค่าว่าง: ' . $shop_id);
+                }
 
-                Yii::$app->session->setFlash('success', 'เชื่อมต่อ Shopee สำเร็จ! Shop ID: ' . $shop_id);
             } else {
                 $errorMsg = isset($data['message']) ? $data['message'] : 'Unknown error';
                 $errorCode = isset($data['error']) ? $data['error'] : 'unknown';
