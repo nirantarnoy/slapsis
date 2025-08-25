@@ -167,6 +167,7 @@ $this->params['breadcrumbs'][] = $this->title;
                         ]),
                         'headerOptions' => ['style' => 'width: 200px'],
                     ],
+                    'order_status',
                     [
                         'attribute' => 'created_at',
                         'label' => 'วันที่ดึงข้อมูล',
