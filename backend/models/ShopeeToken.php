@@ -21,7 +21,7 @@ class ShopeeToken extends ActiveRecord
         return [
             [['shop_id', 'access_token'], 'required'],
             [['expire_in',], 'integer'],
-            [[ 'created_at', 'updated_at','expires_at'],'datetime'],
+            [['created_at', 'updated_at','expires_at'],'datetime'],
             [['shop_id', 'access_token', 'refresh_token'], 'string', 'max' => 500],
             [['status'], 'string', 'max' => 20],
             [['status'], 'in', 'range' => [self::STATUS_ACTIVE, self::STATUS_EXPIRED, self::STATUS_REVOKED]],

@@ -503,13 +503,6 @@ class OrderSyncService
                 ],
                 'query' => $queryParams,
                 'json' => $jsonPayload,
-//                'json' => [
-//                    'partner_id' => (int)$partner_id,
-//                    'timestamp' => $timestamp,
-//                    'shop_id' => (int)$shop_id,
-//                    'refresh_token' => $refresh_token,
-//                    'sign' => $sign,
-//                ],
                 'timeout' => 30
             ]);
 
@@ -536,7 +529,7 @@ class OrderSyncService
             if (isset($data['access_token'])) {
                 $tokenModel->access_token = $data['access_token'];
                 $tokenModel->refresh_token = $data['refresh_token'];
-                $tokenModel->expires_at = date('Y-m-d H:i:s', time() + (int)($tokenData['expire_in'] ?? 14400));
+                $tokenModel->expires_at = date('Y-m-d H:i:s', time() + (int)($data['expire_in'] ?? 14400));
                 $tokenModel->updated_at = date('Y-m-d H:i:s');
 
                 if ($tokenModel->save()) {
