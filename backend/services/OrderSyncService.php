@@ -311,7 +311,8 @@ class OrderSyncService
 
                 // ✅ เพิ่ม order_status กลับมา (ถ้า table มี field นี้)
                 $order->order_status = $orderDetail['order_status'] ?? 'UNKNOWN';
-
+                $order->created_at = date('Y-m-d H:i:s');
+                $order->updated_at = date('Y-m-d H:i:s');
                 if ($order->save()) {
                     $count++;
                     Yii::info("Saved order: $unique_order_id", __METHOD__);
