@@ -19,8 +19,8 @@ class ShopeeToken extends ActiveRecord
     public function rules()
     {
         return [
-            [['channel_id', 'shop_id', 'access_token'], 'required'],
-            [['channel_id', 'expires_at', 'created_at', 'updated_at'], 'integer'],
+            [['shop_id', 'access_token'], 'required'],
+            [['expire_in', 'created_at', 'updated_at','expires_at'], 'integer'],
             [['shop_id', 'access_token', 'refresh_token'], 'string', 'max' => 500],
             [['status'], 'string', 'max' => 20],
             [['status'], 'in', 'range' => [self::STATUS_ACTIVE, self::STATUS_EXPIRED, self::STATUS_REVOKED]],
@@ -31,12 +31,12 @@ class ShopeeToken extends ActiveRecord
     {
         return [
             'id' => 'ID',
-            'channel_id' => 'Channel ID',
             'shop_id' => 'Shop ID',
             'access_token' => 'Access Token',
             'refresh_token' => 'Refresh Token',
-            'expires_at' => 'Expires At',
+            'expire_in' => 'Expires At',
             'status' => 'Status',
+            'expires_at'=>'Expires At',
             'created_at' => 'Created At',
             'updated_at' => 'Updated At',
         ];
