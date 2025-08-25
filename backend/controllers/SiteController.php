@@ -852,7 +852,7 @@ class SiteController extends Controller
             Yii::info("Response headers: " . json_encode($headers), __METHOD__);
 
             if ($statusCode !== 200) {
-                throw new \Exception("HTTP Error: $statusCode - $body");
+                throw new \Exception("HTTP Error inside try: $statusCode - $body");
             }
 
             $data = json_decode($body, true);
