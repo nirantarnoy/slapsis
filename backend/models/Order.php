@@ -41,10 +41,10 @@ class Order extends \yii\db\ActiveRecord
     {
         return [
             [['order_id', 'channel_id', 'product_name', 'price', 'total_amount', 'order_date'], 'required'],
-            [['channel_id', 'quantity', 'created_at', 'updated_at'], 'integer'],
+            [['channel_id', 'quantity',], 'integer'],
             [['product_detail'], 'string'],
             [['price', 'total_amount'], 'number'],
-            [['order_date'], 'safe'],
+            [['order_date', 'created_at', 'updated_at'], 'safe'],
             [['order_id', 'sku'], 'string', 'max' => 100],
             [['product_name'], 'string', 'max' => 255],
             [['order_id'], 'unique'],
