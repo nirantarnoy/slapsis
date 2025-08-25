@@ -115,9 +115,9 @@ class OrderSyncService
 
                 // Parameters สำหรับ API call
                 $params = [
-                    'sign' => $sign,
                     'partner_id' => $partner_id,
                     'shop_id' => (int)$shop_id,
+                    'sign' => $sign,
                     'timestamp' => time(),
                     'access_token' => $access_token,
                     'time_range_field' => 'create_time',
