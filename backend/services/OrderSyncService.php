@@ -115,16 +115,18 @@ class OrderSyncService
 
                 // Parameters สำหรับ API call
                 $params = [
-                    'partner_id' => (int)$partner_id, // ✅ cast เป็น int
-                    'timestamp' => $timestamp,
+                   // 'sign' => $sign,
+                    'partner_id' => $partner_id,
+                    'shop_id' => (int)$shop_id,
+                    'timestamp' => time(),
                     'access_token' => $access_token,
-                    'shop_id' => (int)$shop_id, // ✅ cast เป็น int
-                    'sign' => $sign,
-                    'page_size' => $page_size,
                     'time_range_field' => 'create_time',
-                    'time_from' => strtotime('-7 days'),
+                    'time_from' => strtotime('-1 day'),
                     'time_to' => time(),
-                  //  'order_status' => 'READY_TO_SHIP,SHIPPED,COMPLETED',
+                    'page_size' => 20,
+                    'response_optional_fields' => 'order_status',
+                    'order_status' => 'READY_TO_SHIP', // optional
+                    'cursor' => '',
                 ];
 
                 if (!empty($cursor)) {
