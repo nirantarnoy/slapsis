@@ -123,9 +123,9 @@ class OrderSyncService
                     'time_range_field' => 'create_time',
                     'time_from' => strtotime('-1 day'),
                     'time_to' => time(),
-                    'page_size' => 20,
+                    'page_size' => $page_size,
                     'response_optional_fields' => 'order_status',
-                    'order_status' => 'READY_TO_SHIP', // optional
+                 //   'order_status' => 'READY_TO_SHIP', // optional
                     'cursor' => '',
                 ];
 
