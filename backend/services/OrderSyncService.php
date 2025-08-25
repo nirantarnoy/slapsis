@@ -138,6 +138,8 @@ class OrderSyncService
                     'timeout' => 30 // ✅ เพิ่ม timeout
                 ]);
 
+                Yii::warning("Shopee Response Headers: " . Json::encode($response->getHeaders()), __METHOD__);
+
                 Yii::info("Shopee API Raw Response: " . $response->getBody()->getContents(), __METHOD__);
 
                 $statusCode = $response->getStatusCode();
