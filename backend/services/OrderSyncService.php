@@ -49,7 +49,7 @@ class OrderSyncService
         foreach ($channels as $channel) {
             try {
                 switch ($channel->name) {
-                    case 'TikTok Shop':
+                    case 'TikTok':
                         $totalSynced += $this->syncTikTokOrders($channel);
                         break;
                     case 'Shopee':
@@ -77,7 +77,7 @@ class OrderSyncService
     {
         // ดึงข้อมูล token จากตาราง shopee_tokens
         $tokenModel = ShopeeToken::find()
-            ->where(['channel_id' => $channel->id, 'status' => 'active'])
+            ->where(['status' => 'active'])
             ->orderBy(['created_at' => SORT_DESC])
             ->one();
 
@@ -95,8 +95,8 @@ class OrderSyncService
             }
         }
 
-        $partner_id = 2012399; // ใส่ partner_id จริง
-        $partner_key = 'shpk72476151525864414e4b6e475449626679624f695a696162696570417043'; // ใส่ partner_key จริง
+        $partner_id = 2012399;
+        $partner_key = 'shpk72476151525864414e4b6e475449626679624f695a696162696570417043';
         $shop_id = $tokenModel->shop_id;
         $access_token = $tokenModel->access_token;
 
@@ -109,22 +109,22 @@ class OrderSyncService
                 $timestamp = time();
                 $path = "/api/v2/order/get_order_list";
 
-                // สร้าง base string สำหรับ signature
+                // ✅ แก้ base string ให้ถูกต้อง
                 $base_string = $partner_id . $path . $timestamp . $access_token . $shop_id;
                 $sign = hash_hmac('sha256', $base_string, $partner_key);
 
                 // Parameters สำหรับ API call
                 $params = [
-                    'partner_id' => $partner_id,
+                    'partner_id' => (int)$partner_id, // ✅ cast เป็น int
                     'timestamp' => $timestamp,
                     'access_token' => $access_token,
-                    'shop_id' => $shop_id,
+                    'shop_id' => (int)$shop_id, // ✅ cast เป็น int
                     'sign' => $sign,
                     'page_size' => $page_size,
                     'time_range_field' => 'create_time',
-                    'time_from' => strtotime('-7 days'), // ดึงข้อมูล 7 วันที่ผ่านมา
+                    'time_from' => strtotime('-7 days'),
                     'time_to' => time(),
-                    'order_status' => 'READY_TO_SHIP,SHIPPED,COMPLETED', // เฉพาะ order ที่จ่ายแล้ว
+                    'order_status' => 'READY_TO_SHIP,SHIPPED,COMPLETED',
                 ];
 
                 if (!empty($cursor)) {
@@ -132,23 +132,62 @@ class OrderSyncService
                 }
 
                 $response = $this->httpClient->get('https://partner.shopeemobile.com' . $path, [
-                    'query' => $params
+                    'query' => $params,
+                    'timeout' => 30 // ✅ เพิ่ม timeout
                 ]);
+
+                // ✅ เช็ค HTTP status
+                if ($response->getStatusCode() !== 200) {
+                    Yii::error('HTTP Error: ' . $response->getStatusCode(), __METHOD__);
+                    break;
+                }
 
                 $body = $response->getBody()->getContents();
                 $data = Json::decode($body);
 
-                if (!isset($data['response']['order_list'])) {
+                // ✅ เช็ค API errors
+                if (isset($data['error'])) {
+                    Yii::error("Shopee API Error: {$data['error']} - " . ($data['message'] ?? 'Unknown error'), __METHOD__);
+
+                    // ถ้าเป็น token error ให้ลองรีเฟรช
+                    if (in_array($data['error'], ['error_auth', 'error_permission'])) {
+                        if ($this->refreshShopeeToken($tokenModel)) {
+                            continue; // ลองใหม่ด้วย token ใหม่
+                        }
+                    }
                     break;
                 }
 
-                foreach ($data['response']['order_list'] as $orderData) {
-                    $count += $this->processShopeeOrder($channel, $orderData, $partner_id, $partner_key, $access_token, $shop_id);
+                // ✅ ปรับการเช็ค response structure
+                if (!isset($data['response']['order_list']) || !is_array($data['response']['order_list'])) {
+                    Yii::warning('Invalid response structure from Shopee API', __METHOD__);
+                    break;
+                }
+
+                $orderList = $data['response']['order_list'];
+                if (empty($orderList)) {
+                    Yii::info('No orders found in this batch', __METHOD__);
+                    break;
+                }
+
+                foreach ($orderList as $orderData) {
+                    $processResult = $this->processShopeeOrder($channel, $orderData, $partner_id, $partner_key, $access_token, $shop_id);
+                    if ($processResult !== false) { // ✅ เช็คผลลัพธ์ดีขึ้น
+                        $count += $processResult;
+                    }
                 }
 
                 $cursor = $data['response']['next_cursor'] ?? '';
 
+                // ✅ เพิ่ม delay เพื่อไม่ให้ hit rate limit
+                if (!empty($cursor)) {
+                    usleep(200000); // หน่วง 0.2 วินาที
+                }
+
             } while (!empty($cursor));
+
+            // ✅ เพิ่ม success log
+            Yii::info("Synced $count Shopee orders for channel: " . $channel->id, __METHOD__);
 
         } catch (\Exception $e) {
             Yii::error('Shopee API error: ' . $e->getMessage(), __METHOD__);
@@ -182,27 +221,54 @@ class OrderSyncService
 
             $response = $this->httpClient->get('https://partner.shopeemobile.com' . $path, [
                 'query' => [
-                    'partner_id' => $partner_id,
+                    'partner_id' => (int)$partner_id, // ✅ cast เป็น int
                     'timestamp' => $timestamp,
                     'access_token' => $access_token,
-                    'shop_id' => $shop_id,
+                    'shop_id' => (int)$shop_id, // ✅ cast เป็น int
                     'sign' => $sign,
                     'order_sn_list' => $order_sn,
                     'response_optional_fields' => 'item_list',
-                ]
+                ],
+                'timeout' => 30 // ✅ เพิ่ม timeout
             ]);
+
+            // ✅ เช็ค HTTP status
+            if ($response->getStatusCode() !== 200) {
+                Yii::error("HTTP Error {$response->getStatusCode()} for order: $order_sn", __METHOD__);
+                return 0;
+            }
 
             $body = $response->getBody()->getContents();
             $data = Json::decode($body);
 
-            if (!isset($data['response']['order_list'][0])) {
+            // ✅ เช็ค API errors
+            if (isset($data['error'])) {
+                Yii::error("Shopee API Error for order $order_sn: {$data['error']} - " . ($data['message'] ?? 'Unknown error'), __METHOD__);
+                return 0;
+            }
+
+            // ✅ ปรับการเช็ค response structure
+            if (!isset($data['response']['order_list']) || empty($data['response']['order_list'])) {
+                Yii::warning("No order detail found for order: $order_sn", __METHOD__);
                 return 0;
             }
 
             $orderDetail = $data['response']['order_list'][0];
 
+            // ✅ เช็ค item_list
+            if (!isset($orderDetail['item_list']) || !is_array($orderDetail['item_list'])) {
+                Yii::warning("No items found for order: $order_sn", __METHOD__);
+                return 0;
+            }
+
             // สร้าง Order records สำหรับแต่ละ item
             foreach ($orderDetail['item_list'] as $item) {
+                // ✅ เช็ค required fields
+                if (empty($item['item_id']) || empty($item['item_name'])) {
+                    Yii::warning("Missing required item data for order: $order_sn", __METHOD__);
+                    continue;
+                }
+
                 $unique_order_id = $order_sn . '_' . $item['item_id'];
 
                 $existingOrder = Order::findOne(['order_id' => $unique_order_id]);
@@ -213,25 +279,44 @@ class OrderSyncService
                 $order = new Order();
                 $order->order_id = $unique_order_id;
                 $order->channel_id = $channel->id;
-//                $order->shop_id = $shop_id;
-//                $order->order_sn = $order_sn;
-                $order->sku = $item['model_sku'] ?? $item['item_sku'] ?? '';
+                $order->shop_id = $shop_id;
+                $order->order_sn = $order_sn;
+
+                // ✅ ปรับการดึง SKU ให้ปลอดภัยขึ้น
+                $order->sku = $item['model_sku'] ?? $item['item_sku'] ?? 'UNKNOWN_SKU';
                 $order->product_name = $item['item_name'];
-                $order->quantity = $item['model_quantity_purchased'];
-                $order->price = $item['model_discounted_price'] / 100000; // Shopee ส่งมาเป็น micro units
+
+                // ✅ เช็คและปรับค่า quantity
+                $quantity = $item['model_quantity_purchased'] ?? 0;
+                if ($quantity <= 0) {
+                    Yii::warning("Invalid quantity for item {$item['item_id']} in order: $order_sn", __METHOD__);
+                    continue;
+                }
+                $order->quantity = $quantity;
+
+                // ✅ ปรับการคำนวณราคาให้ปลอดภัย
+                $price_micro = $item['model_discounted_price'] ?? $item['model_original_price'] ?? 0;
+                $order->price = $price_micro > 0 ? $price_micro / 100000 : 0; // Shopee ส่งมาเป็น micro units
                 $order->total_amount = $order->quantity * $order->price;
-                $order->order_date = date('Y-m-d H:i:s', $orderDetail['create_time']);
-              //  $order->order_status = $orderDetail['order_status'];
+
+                // ✅ ปรับการจัดการวันที่
+                $create_time = $orderDetail['create_time'] ?? time();
+                $order->order_date = date('Y-m-d H:i:s', $create_time);
+
+                // ✅ เพิ่ม order_status กลับมา (ถ้า table มี field นี้)
+                $order->order_status = $orderDetail['order_status'] ?? 'UNKNOWN';
 
                 if ($order->save()) {
                     $count++;
+                    Yii::info("Saved order: $unique_order_id", __METHOD__);
                 } else {
-                    Yii::error('Failed to save Shopee order: ' . Json::encode($order->errors), __METHOD__);
+                    Yii::error("Failed to save Shopee order $unique_order_id: " . Json::encode($order->errors), __METHOD__);
                 }
             }
 
         } catch (\Exception $e) {
             Yii::error('Error processing Shopee order ' . $order_sn . ': ' . $e->getMessage(), __METHOD__);
+            return 0; // ✅ return 0 แทน false เพื่อให้ consistent
         }
 
         return $count;
@@ -390,21 +475,43 @@ class OrderSyncService
 
             $timestamp = time();
             $path = "/api/v2/auth/access_token/get";
-            $base_string = $partner_id . $path . $timestamp . $shop_id . $refresh_token;
+
+            // ✅ แก้ base_string ให้ถูกต้อง (ไม่รวม shop_id และ refresh_token)
+            $base_string = $partner_id . $path . $timestamp;
             $sign = hash_hmac('sha256', $base_string, $partner_key);
 
+            // ✅ เปลี่ยนจาก form_params เป็น json
             $response = $this->httpClient->post('https://partner.shopeemobile.com' . $path, [
-                'form_params' => [
-                    'partner_id' => $partner_id,
+                'headers' => [
+                    'Content-Type' => 'application/json'
+                ],
+                'json' => [
+                    'partner_id' => (int)$partner_id,
                     'timestamp' => $timestamp,
-                    'shop_id' => $shop_id,
+                    'shop_id' => (int)$shop_id,
                     'refresh_token' => $refresh_token,
                     'sign' => $sign,
-                ]
+                ],
+                'timeout' => 30
             ]);
+
+            // ✅ เช็ค HTTP status code
+            if ($response->getStatusCode() !== 200) {
+                Yii::error('HTTP Error: ' . $response->getStatusCode(), __METHOD__);
+                return false;
+            }
 
             $body = $response->getBody()->getContents();
             $data = Json::decode($body);
+
+            // ✅ เพิ่มการเช็ค error response
+            if (isset($data['error'])) {
+                if(!empty($data['error'])){
+                    Yii::error("Shopee API Error: {$data['error']} - " . ($data['message'] ?? 'Unknown error'), __METHOD__);
+                    return false;
+                }
+
+            }
 
             if (isset($data['access_token'])) {
                 $tokenModel->access_token = $data['access_token'];
@@ -412,14 +519,22 @@ class OrderSyncService
                 $tokenModel->expires_at = time() + $data['expires_in'];
                 $tokenModel->updated_at = time();
 
-                return $tokenModel->save();
+                if ($tokenModel->save()) {
+                    Yii::info("Token refreshed successfully for shop_id: $shop_id", __METHOD__);
+                    return true;
+                } else {
+                    Yii::error('Failed to save token model: ' . Json::encode($tokenModel->errors), __METHOD__);
+                    return false;
+                }
+            } else {
+                Yii::error('No access_token in response: ' . $body, __METHOD__);
+                return false;
             }
 
         } catch (\Exception $e) {
             Yii::error('Failed to refresh Shopee token: ' . $e->getMessage(), __METHOD__);
+            return false;
         }
-
-        return false;
     }
 
     /**
