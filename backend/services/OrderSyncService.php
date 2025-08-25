@@ -150,11 +150,11 @@ class OrderSyncService
                     break;
                 }
 
-                $body = $response->getBody()->getContents();
-                $data = Json::decode($body);
+                $rawBody = (string)$response->getBody();   // ✅ ดึง body แบบไม่หาย
+                Yii::warning("Shopee Raw Body String: " . $rawBody, __METHOD__);
 
-                // ✅ log ค่า response เต็ม
-                Yii::info("Shopee API Raw Response: " . $body, __METHOD__);
+                $data = Json::decode($rawBody);
+
 
                 // ✅ เช็ค API errors
                 if (isset($data['error'])) {
