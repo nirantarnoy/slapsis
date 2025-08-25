@@ -140,6 +140,8 @@ class OrderSyncService
 
                 Yii::info("Shopee API Raw Response: " . $response->getBody()->getContents(), __METHOD__);
 
+                $statusCode = $response->getStatusCode();
+                Yii::warning("Shopee HTTP Status: " . $statusCode, __METHOD__);
                 // ✅ เช็ค HTTP status
                 if ($response->getStatusCode() !== 200) {
                     Yii::error('HTTP Shopee Sync Error: ' . $response->getStatusCode(), __METHOD__);
