@@ -147,7 +147,10 @@ class OrderSyncService
 
                 // ✅ เช็ค API errors
                 if (isset($data['error'])) {
-                    Yii::error("Shopee API Error: {$data['error']} - " . ($data['message'] ?? 'Unknown error'), __METHOD__);
+                    if(!empty($data['error'])){
+                        Yii::error("Shopee API Error Sync: {$data['error']} - " . ($data['message'] ?? 'Unknown error'), __METHOD__);
+                    }
+
 
                     // ถ้าเป็น token error ให้ลองรีเฟรช
                     if (in_array($data['error'], ['error_auth', 'error_permission'])) {
@@ -190,7 +193,7 @@ class OrderSyncService
             Yii::info("Synced $count Shopee orders for channel: " . $channel->id, __METHOD__);
 
         } catch (\Exception $e) {
-            Yii::error('Shopee API error: ' . $e->getMessage(), __METHOD__);
+            Yii::error('Shopee API error on Catch: ' . $e->getMessage(), __METHOD__);
             throw $e;
         }
 
