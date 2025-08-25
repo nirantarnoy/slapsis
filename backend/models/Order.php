@@ -81,6 +81,8 @@ class Order extends \yii\db\ActiveRecord
         if (parent::beforeSave($insert)) {
             // คำนวณยอดรวมอัตโนมัติ
             $this->total_amount = $this->price * $this->quantity;
+            $this->created_at = date('Y-m-d H:i:s');
+            $this->updated_at = date('Y-m-d H:i:s');
             return true;
         }
         return false;
