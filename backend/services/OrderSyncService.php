@@ -246,8 +246,11 @@ class OrderSyncService
 
             // ✅ เช็ค API errors
             if (isset($data['error'])) {
-                Yii::error("Shopee API Error for order $order_sn: {$data['error']} - " . ($data['message'] ?? 'Unknown error'), __METHOD__);
-                return 0;
+                if(!empty($data['error'])){
+                    Yii::error("Shopee API Error for order $order_sn: {$data['error']} - " . ($data['message'] ?? 'Unknown error'), __METHOD__);
+                    return 0;
+                }
+
             }
 
             // ✅ ปรับการเช็ค response structure
