@@ -491,8 +491,8 @@ class OrderSyncService
             ];
 
             $jsonPayload = [
-                'shop_id' => $shop_id,
-                'partner_id' => $partner_id,
+                'shop_id' => (int)$shop_id,
+                'partner_id' => (int)$partner_id,
                 'refresh_token' => $refresh_token,
             ];
 
