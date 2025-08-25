@@ -86,7 +86,7 @@ class OrderSyncService
         }
 
         // ตรวจสอบ token หมดอายุ
-        if ($tokenModel->expires_at && $tokenModel->expires_at < time()) {
+        if ($tokenModel->expires_at < time()) {
             if (!$this->refreshShopeeToken($tokenModel)) {
                 Yii::warning('Failed to refresh Shopee token for channel: ' . $channel->id, __METHOD__);
                 return $this->shopeeSampleOrders($channel);
