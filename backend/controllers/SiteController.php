@@ -1032,7 +1032,7 @@ class SiteController extends Controller
     private function saveShopeeToken($shop_id, $tokenData)
     {
         try {
-            $now = date('Y-m-d H:i:s');
+            //$now = date('Y-m-d H:i:s');
             $expiresAt = date('Y-m-d H:i:s', time() + (int)($tokenData['expire_in'] ?? 14400));
 
             $db = Yii::$app->db;
@@ -1050,7 +1050,7 @@ class SiteController extends Controller
                     'expire_in'     => (int)($tokenData['expire_in'] ?? 14400),
                     'expires_at'    => $expiresAt,
                     'status'        => 'active', // เพิ่มสถานะ active
-                    'updated_at'    => $now,
+                    'updated_at'    => date('Y-m-d H:i:s'),
                 ], ['shop_id' => $shop_id])->execute();
 
                 Yii::info("Updated Shopee token for shop_id: {$shop_id}", __METHOD__);
@@ -1063,8 +1063,8 @@ class SiteController extends Controller
                     'expire_in'     => (int)($tokenData['expire_in'] ?? 14400),
                     'expires_at'    => $expiresAt,
                     'status'        => 'active',
-                    'created_at'    => $now,
-                    'updated_at'    => $now,
+                    'created_at'    => date('Y-m-d H:i:s'),
+                    'updated_at'    => date('Y-m-d H:i:s'),
                 ])->execute();
 
                 Yii::info("Inserted new Shopee token for shop_id: {$shop_id}", __METHOD__);
