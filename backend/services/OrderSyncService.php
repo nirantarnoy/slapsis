@@ -485,7 +485,7 @@ class OrderSyncService
                     'Content-Type' => 'application/json'
                 ],
                 'json' => [
-                    'partner_id' => $partner_id,
+                    'partner_id' => (int)$partner_id,
                     'timestamp' => $timestamp,
                     'shop_id' => (int)$shop_id,
                     'refresh_token' => $refresh_token,
