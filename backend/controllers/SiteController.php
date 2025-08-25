@@ -32,7 +32,8 @@ class SiteController extends Controller
                         'allow' => true,
                     ],
                     [
-                        'actions' => ['logout', 'index', 'changepassword','grab','logoutdriver','connect-tiktok','tiktok-callback','shopee-callback','connect-shopee','test-shopee-signature','test-shopee-token-exchange'],
+                        'actions' => ['logout', 'index', 'changepassword','grab','logoutdriver','connect-tiktok','tiktok-callback','shopee-callback',
+                            'connect-shopee','test-shopee-signature','test-shopee-token-exchange','test-with-real-code'],
                         'allow' => true,
                         'roles' => ['@'],
                     ],
@@ -809,6 +810,117 @@ class SiteController extends Controller
         Yii::info("Token exchange base string: {$base_string}", __METHOD__);
         Yii::info("Token exchange signature: {$sign}", __METHOD__);
 
+        try {
+            $client = new \GuzzleHttp\Client();
+
+            // ✅ แยก partner_id และ timestamp ไปเป็น query parameters
+            $queryParams = [
+                'partner_id' => $partner_id,
+                'timestamp' => $timestamp,
+                'sign' => $sign,
+            ];
+
+            $jsonPayload = [
+                'code' => $code,
+                'shop_id' => $shop_id,
+                'partner_id' => $partner_id,
+            ];
+
+            // ✅ Debug
+            Yii::info("Query params: " . json_encode($queryParams), __METHOD__);
+            Yii::info("JSON payload: " . json_encode($jsonPayload), __METHOD__);
+
+            $response = $client->post('https://partner.shopeemobile.com/api/v2/auth/token/get', [
+                'query' => $queryParams, // ✅ ส่งเป็น query parameters
+                'json' => $jsonPayload,   // ✅ ส่งเป็น JSON body (ไม่ใช่ form_params)
+                'timeout' => 30,
+                'headers' => [
+                    'Content-Type' => 'application/json',
+                    'Accept' => 'application/json',
+                    'User-Agent' => 'YourApp/1.0',
+                ],
+            ]);
+
+            $statusCode = $response->getStatusCode();
+            $body = $response->getBody()->getContents();
+
+            Yii::info("Response status: {$statusCode}", __METHOD__);
+            Yii::info("Response body: {$body}", __METHOD__);
+
+            // ✅ ตรวจสอบ response headers
+            $headers = $response->getHeaders();
+            Yii::info("Response headers: " . json_encode($headers), __METHOD__);
+
+            if ($statusCode !== 200) {
+                throw new \Exception("HTTP Error: $statusCode - $body");
+            }
+
+            $data = json_decode($body, true);
+
+            if (json_last_error() !== JSON_ERROR_NONE) {
+                throw new \Exception("JSON decode error: " . json_last_error_msg());
+            }
+
+            // ✅ ตรวจสอบว่า response มี error หรือไม่
+            if (isset($data['error'])) {
+                $errorDetail = isset($data['message']) ? $data['message'] : 'No error message';
+                throw new \Exception("API Error: {$data['error']} - {$errorDetail}");
+            }
+
+            if (isset($data['access_token'])) {
+                // บันทึกลงฐานข้อมูล
+                $this->saveShopeeToken($shop_id, $data);
+
+                Yii::$app->session->setFlash('success', 'เชื่อมต่อ Shopee สำเร็จ! Shop ID: ' . $shop_id);
+            } else {
+                $errorMsg = isset($data['message']) ? $data['message'] : 'Unknown error';
+                $errorCode = isset($data['error']) ? $data['error'] : 'unknown';
+
+                // ✅ Debug ข้อมูลที่ได้รับทั้งหมด
+                Yii::error("Complete API response: " . json_encode($data), __METHOD__);
+                Yii::error("Query params sent: " . json_encode($queryParams), __METHOD__);
+                Yii::error("JSON payload sent: " . json_encode($jsonPayload), __METHOD__);
+                Yii::error("Base string used: {$base_string}", __METHOD__);
+                Yii::error("Signature used: {$sign}", __METHOD__);
+
+                Yii::$app->session->setFlash('error', "ไม่สามารถเชื่อมต่อ Shopee ได้: [$errorCode] $errorMsg");
+            }
+
+        } catch (\GuzzleHttp\Exception\ClientException $e) {
+            $response = $e->getResponse();
+            $statusCode = $response->getStatusCode();
+            $errorBody = $response->getBody()->getContents();
+
+            Yii::error("HTTP Status: {$statusCode}", __METHOD__);
+            Yii::error("Error Body: {$errorBody}", __METHOD__);
+            Yii::error("Request URL: https://partner.shopeemobile.com/api/v2/auth/token/get", __METHOD__);
+
+            Yii::$app->session->setFlash('error', "HTTP Error {$statusCode}: {$errorBody}");
+
+        } catch (\Exception $e) {
+            Yii::error('Shopee callback error: ' . $e->getMessage(), __METHOD__);
+            Yii::$app->session->setFlash('error', 'เกิดข้อผิดพลาด: ' . $e->getMessage());
+        }
+
+        return $this->redirect(['site/index']);
+    }
+
+    public function actionTestWithRealCode()
+    {
+        $code = '4a466f51734c697a6e654b4857757646'; // code จาก log
+        $shop_id = '816547426'; // shop_id จาก log
+        $partner_id = 2012399; // ✅ ใช้ค่าเดียวกับใน actionConnectShopee
+        $partner_key = 'shpk72476151525864414e4b6e475449626679624f695a696162696570417043'; // ✅ ใส่ partner_key เต็ม
+
+        $timestamp = time();
+
+        // ✅ สร้าง signature สำหรับ token exchange ตาม Shopee docs ที่ถูกต้อง
+        // Format: partner_id + path + timestamp (ไม่รวม code)
+        $path = "/api/v2/auth/token/get";
+        $base_string = $partner_id . $path . $timestamp;
+        $sign = hash_hmac('sha256', $base_string, $partner_key);
+        // ใช้โค้ดเดียวกับใน callback เพื่อทดสอบ
+        // ... (คัดลอกส่วน API call จาก callback)
         try {
             $client = new \GuzzleHttp\Client();
 
