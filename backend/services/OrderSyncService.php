@@ -168,7 +168,9 @@ class OrderSyncService
                     break;
                 }
 
-                // ✅ ปรับการเช็ค response structure
+                // ✅ Debug Response ทั้งหมด ก่อนเช็ค
+                Yii::warning("Shopee Raw Response: " . Json::encode($data), __METHOD__);
+
                 if (!isset($data['response']['order_list']) || !is_array($data['response']['order_list'])) {
                     Yii::warning('Invalid response structure from Shopee API', __METHOD__);
                     break;
