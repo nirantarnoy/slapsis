@@ -100,7 +100,7 @@ class OrderSyncService
         $shop_id = $tokenModel->shop_id;
         $access_token = $tokenModel->access_token;
 
-        $count = 10;
+        $count = 0;
         $page_size = 100;
         $cursor = '';
 
@@ -138,9 +138,11 @@ class OrderSyncService
                     'timeout' => 30 // ✅ เพิ่ม timeout
                 ]);
 
+                Yii::info("Shopee API Raw Response: " . $response->getBody()->getContents(), __METHOD__);
+
                 // ✅ เช็ค HTTP status
                 if ($response->getStatusCode() !== 200) {
-                    Yii::error('HTTP Error: ' . $response->getStatusCode(), __METHOD__);
+                    Yii::error('HTTP Shopee Sync Error: ' . $response->getStatusCode(), __METHOD__);
                     break;
                 }
 
