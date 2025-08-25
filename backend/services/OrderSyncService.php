@@ -87,6 +87,7 @@ class OrderSyncService
 
         // ตรวจสอบ token หมดอายุ
         if (strtotime($tokenModel->expires_at) < time()) {
+                Yii::error('Access Token is expired');
             if (!$this->refreshShopeeToken($tokenModel)) {
                 Yii::warning('Failed to refresh Shopee token for channel: ' . $channel->id, __METHOD__);
                 return $this->shopeeSampleOrders($channel);
