@@ -522,7 +522,7 @@ class OrderSyncService
                 $tokenModel->access_token = $data['access_token'];
                 $tokenModel->refresh_token = $data['refresh_token'];
                 $tokenModel->expires_at = time() + $data['expires_in'];
-                $tokenModel->updated_at = time();
+                $tokenModel->updated_at = date('Y-m-d H:i:s');
 
                 if ($tokenModel->save()) {
                     Yii::info("Token refreshed successfully for shop_id: $shop_id", __METHOD__);
