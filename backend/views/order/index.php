@@ -16,7 +16,14 @@ $this->title = 'จัดการคำสั่งซื้อ';
 $this->params['breadcrumbs'][] = $this->title;
 ?>
 <div class="order-index">
-
+    <?php
+    if (Yii::$app->session->hasFlash('success')) {
+        echo '<div class="alert alert-success">'.Yii::$app->session->getFlash('success').'</div>';
+    }
+    if (Yii::$app->session->hasFlash('error')) {
+        echo '<div class="alert alert-danger">'.Yii::$app->session->getFlash('error').'</div>';
+    }
+    ?>
     <div class="card">
         <div class="card-header">
             <h3 class="card-title"><?= Html::encode($this->title) ?></h3>
