@@ -124,7 +124,7 @@ class OrderSyncService
                     'time_from' => strtotime('-1 day'),
                     'time_to' => time(),
                     'page_size' => $page_size,
-                    'response_optional_fields' => 'order_status,total_amount',
+                    'response_optional_fields' => 'order_status',
                     'order_status' => 'SHIPPED', // optional
                     'cursor' => '',
                 ];
