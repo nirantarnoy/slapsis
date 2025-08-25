@@ -55,7 +55,7 @@ class ShopeeToken extends ActiveRecord
                 $this->created_at = time();
                 $this->status = self::STATUS_ACTIVE;
             }
-            $this->updated_at = time();
+          //  $this->updated_at = time();
             return true;
         }
         return false;
