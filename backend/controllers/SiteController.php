@@ -810,7 +810,7 @@ class SiteController extends Controller
         Yii::info("Token exchange base string: {$base_string}", __METHOD__);
         Yii::info("Token exchange signature: {$sign}", __METHOD__);
 
-        //try {
+        try {
             $client = new \GuzzleHttp\Client();
 
             // ✅ แยก partner_id และ timestamp ไปเป็น query parameters
@@ -863,8 +863,14 @@ class SiteController extends Controller
 
             // ✅ ตรวจสอบว่า response มี error หรือไม่
             if (isset($data['error'])) {
-                $errorDetail = isset($data['message']) ? $data['message'] : 'No error message';
-                throw new \Exception("API Error: {$data['error']} - {$errorDetail}");
+                if(!empty($data['error'])){
+                    $errorDetail = '';
+                    if(isset($data['message'])){
+                        $errorDetail = !empty($data['message']) ? $data['message'] : 'No error message';
+                    }
+                    throw new \Exception("API Error: {$data['error']} - {$errorDetail}");
+                }
+
             }
 
             if (isset($data['access_token'])) {
@@ -886,21 +892,21 @@ class SiteController extends Controller
                 Yii::$app->session->setFlash('error', "ไม่สามารถเชื่อมต่อ Shopee ได้: [$errorCode] $errorMsg");
             }
 
-//        } catch (\GuzzleHttp\Exception\ClientException $e) {
-//            $response = $e->getResponse();
-//            $statusCode = $response->getStatusCode();
-//            $errorBody = $response->getBody()->getContents();
-//
-//            Yii::error("HTTP Status: {$statusCode}", __METHOD__);
-//            Yii::error("Error Body: {$errorBody}", __METHOD__);
-//            Yii::error("Request URL: https://partner.shopeemobile.com/api/v2/auth/token/get", __METHOD__);
-//
-//            Yii::$app->session->setFlash('error', "HTTP Error {$statusCode}: {$errorBody}");
-//
-//        } catch (\Exception $e) {
-//            Yii::error('Shopee callback error: ' . $e->getMessage(), __METHOD__);
-//            Yii::$app->session->setFlash('error', 'เกิดข้อผิดพลาด: ' . $e->getMessage());
-//        }
+        } catch (\GuzzleHttp\Exception\ClientException $e) {
+            $response = $e->getResponse();
+            $statusCode = $response->getStatusCode();
+            $errorBody = $response->getBody()->getContents();
+
+            Yii::error("HTTP Status: {$statusCode}", __METHOD__);
+            Yii::error("Error Body: {$errorBody}", __METHOD__);
+            Yii::error("Request URL: https://partner.shopeemobile.com/api/v2/auth/token/get", __METHOD__);
+
+            Yii::$app->session->setFlash('error', "HTTP Error {$statusCode}: {$errorBody}");
+
+        } catch (\Exception $e) {
+            Yii::error('Shopee callback error: ' . $e->getMessage(), __METHOD__);
+            Yii::$app->session->setFlash('error', 'เกิดข้อผิดพลาด: ' . $e->getMessage());
+        }
 
         return $this->redirect(['site/index']);
     }
