@@ -479,20 +479,33 @@ class OrderSyncService
             $base_string = $partner_id . $path . $timestamp;
             $sign = hash_hmac('sha256', $base_string, $partner_key);
 
-            // ✅ เปลี่ยนจาก form_params เป็น json
-            $response = $this->httpClient->post('https://partner.shopeemobile.com' . $path, [
-                'headers' => [
-                    'Content-Type' => 'application/json'
-                ],
-                'json' => [
-                    'partner_id' => (int)$partner_id,
+            $url = 'https://partner.shopeemobile.com' . $path . '?' . http_build_query([
+                    'partner_id' => $partner_id,
                     'timestamp' => $timestamp,
+                    'sign' => $sign,
+                ]);
+            $response = $this->httpClient->post($url, [
+                'headers' => ['Content-Type' => 'application/json'],
+                'json' => [
                     'shop_id' => (int)$shop_id,
                     'refresh_token' => $refresh_token,
-                    'sign' => $sign,
                 ],
                 'timeout' => 30
             ]);
+            // ✅ เปลี่ยนจาก form_params เป็น json
+//            $response = $this->httpClient->post('https://partner.shopeemobile.com' . $path, [
+//                'headers' => [
+//                    'Content-Type' => 'application/json'
+//                ],
+//                'json' => [
+//                    'partner_id' => (int)$partner_id,
+//                    'timestamp' => $timestamp,
+//                    'shop_id' => (int)$shop_id,
+//                    'refresh_token' => $refresh_token,
+//                    'sign' => $sign,
+//                ],
+//                'timeout' => 30
+//            ]);
 
             Yii::info('Http token refresh is: '.$response->getStatusCode());
 
