@@ -107,10 +107,10 @@ class OrderSearch extends Order
 
         if (!empty($this->dateRange)) {
             list($start_date, $end_date) = explode(' - ', $this->dateRange);
-            list($d, $m, $y) = explode('-', $start_date);
+            list($d, $m, $y) = explode('/', $start_date);
             $start_date = "$y-$m-$d";
 
-            list($d, $m, $y) = explode('-', $end_date);
+            list($d, $m, $y) = explode('/', $end_date);
             $end_date = "$y-$m-$d";
             $query->andWhere(['between', 'order_date',
                 date('Y-m-d 00:00:00', strtotime($start_date)),
