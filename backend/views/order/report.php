@@ -204,71 +204,71 @@ foreach ($chartData['salesByChannel'] as $channel => $amount) {
     ];
 }
 
-//$js = <<<JS
-//// Line Chart
-//Highcharts.chart('salesChart', {
-//    chart: {
-//        type: 'line'
-//    },
-//    title: {
-//        text: ''
-//    },
-//    xAxis: {
-//        categories: " . json_encode($dates) . "
-//    },
-//    yAxis: {
-//        title: {
-//            text: 'ยอดขาย (บาท)'
-//        }
-//    },
-//    plotOptions: {
-//        line: {
-//            dataLabels: {
-//                enabled: true
-//            },
-//            enableMouseTracking: true
-//        }
-//    },
-//    series: [{
-//        name: 'ยอดขาย',
-//        data: " . json_encode($salesData) . "
-//    }]
-//});
-//
-//// Pie Chart
-//Highcharts.chart('channelChart', {
-//    chart: {
-//        type: 'pie'
-//    },
-//    title: {
-//        text: ''
-//    },
-//    tooltip: {
-//        pointFormat: '{series.name}: <b>{point.percentage:.1f}%</b><br/>ยอดขาย: <b>฿{point.y:,.2f}</b>'
-//    },
-//    accessibility: {
-//        point: {
-//            valueSuffix: '%'
-//        }
-//    },
-//    plotOptions: {
-//        pie: {
-//            allowPointSelect: true,
-//            cursor: 'pointer',
-//            dataLabels: {
-//                enabled: true,
-//                format: '<b>{point.name}</b>: {point.percentage:.1f} %'
-//            }
-//        }
-//    },
-//    series: [{
-//        name: 'สัดส่วน',
-//        colorByPoint: true,
-//        data: " . json_encode($channelData) . "
-//    }]
-//});
-//JS;
-//$this->registerJs($js);
+$js = <<<JS
+// Line Chart
+Highcharts.chart('salesChart', {
+    chart: {
+        type: 'line'
+    },
+    title: {
+        text: ''
+    },
+    xAxis: {
+        categories: " . json_encode($dates) . "
+    },
+    yAxis: {
+        title: {
+            text: 'ยอดขาย (บาท)'
+        }
+    },
+    plotOptions: {
+        line: {
+            dataLabels: {
+                enabled: true
+            },
+            enableMouseTracking: true
+        }
+    },
+    series: [{
+        name: 'ยอดขาย',
+        data: " . json_encode($salesData) . "
+    }]
+});
+
+// Pie Chart
+Highcharts.chart('channelChart', {
+    chart: {
+        type: 'pie'
+    },
+    title: {
+        text: ''
+    },
+    tooltip: {
+        pointFormat: '{series.name}: <b>{point.percentage:.1f}%</b><br/>ยอดขาย: <b>฿{point.y:,.2f}</b>'
+    },
+    accessibility: {
+        point: {
+            valueSuffix: '%'
+        }
+    },
+    plotOptions: {
+        pie: {
+            allowPointSelect: true,
+            cursor: 'pointer',
+            dataLabels: {
+                enabled: true,
+                format: '<b>{point.name}</b>: {point.percentage:.1f} %'
+            }
+        }
+    },
+    series: [{
+        name: 'สัดส่วน',
+        colorByPoint: true,
+        data: " . json_encode($channelData) . "
+    }]
+});
+JS;
+$this->registerJs($js);
 ?>
 
 <!-- Print CSS -->
