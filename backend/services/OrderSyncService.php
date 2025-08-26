@@ -230,7 +230,7 @@ class OrderSyncService
                     'shop_id' => (int)$shop_id, // ✅ cast เป็น int
                     'sign' => $sign,
                     'order_sn_list' => $order_sn,
-                    'response_optional_fields' => 'item_list,,buyer_paid_amount,buyer_total_amount,total_amount,payment_info,escrow_amount,commission_fee,service_fee',
+                    'response_optional_fields' => 'item_list,buyer_paid_amount,buyer_total_amount,total_amount,payment_info,escrow_amount,commission_fee,service_fee',
                 ],
                 'timeout' => 30 // ✅ เพิ่ม timeout
             ]);
