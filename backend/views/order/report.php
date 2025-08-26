@@ -184,8 +184,14 @@ if ($totalOrders > 0) {
 
 <!-- Include Highcharts -->
 <?php
-$this->registerJsFile('https://code.highcharts.com/highcharts.js', ['depends' => [\yii\web\JqueryAsset::class]]);
-$this->registerJsFile('https://code.highcharts.com/modules/exporting.js', ['depends' => [\yii\web\JqueryAsset::class]]);
+$this->registerJsFile('https://code.highcharts.com/highcharts.js', [
+    'depends' => [\yii\web\JqueryAsset::class],
+    'position' => \yii\web\View::POS_HEAD
+]);
+$this->registerJsFile('https://code.highcharts.com/modules/exporting.js', [
+    'depends' => [\yii\web\JqueryAsset::class],
+    'position' => \yii\web\View::POS_HEAD
+]);
 
 // Prepare data for line chart
 $dates = [];
@@ -205,70 +211,134 @@ foreach ($chartData['salesByChannel'] as $channel => $amount) {
 }
 
 $js = <<<JS
-// Line Chart
-Highcharts.chart('salesChart', {
-    chart: {
-        type: 'line'
-    },
-    title: {
-        text: ''
-    },
-    xAxis: {
-        categories: " . json_encode($dates) . "
-    },
-    yAxis: {
-        title: {
-            text: 'ยอดขาย (บาท)'
+$(document).ready(function() {
+    // รอให้ DOM โหลดเสร็จก่อน
+    
+    // ตรวจสอบว่า Highcharts โหลดแล้วหรือยัง
+    if (typeof Highcharts === 'undefined') {
+        console.error('Highcharts is not loaded');
+        return;
+    }
+    
+    // ตรวจสอบข้อมูล
+    var dates = {$dates|@json_encode};
+    var salesData = {$salesData|@json_encode};
+    var channelData = {$channelData|@json_encode};
+    
+    console.log('Dates:', dates);
+    console.log('Sales Data:', salesData);
+    console.log('Channel Data:', channelData);
+    
+    // Line Chart
+    if ($('#salesChart').length && dates.length > 0) {
+        try {
+            Highcharts.chart('salesChart', {
+                chart: {
+                    type: 'line',
+                    height: 350
+                },
+                title: {
+                    text: ''
+                },
+                xAxis: {
+                    categories: dates,
+                    title: {
+                        text: 'วันที่'
+                    }
+                },
+                yAxis: {
+                    title: {
+                        text: 'ยอดขาย (บาท)'
+                    },
+                    labels: {
+                        formatter: function() {
+                            return '฿' + Highcharts.numberFormat(this.value, 0);
+                        }
+                    }
+                },
+                tooltip: {
+                    formatter: function() {
+                        return '<b>' + this.series.name + '</b><br/>' +
+                               this.x + ': ฿' + Highcharts.numberFormat(this.y, 2);
+                    }
+                },
+                plotOptions: {
+                    line: {
+                        dataLabels: {
+                            enabled: false // ปิดเพื่อไม่ให้รกหากข้อมูลเยอะ
+                        },
+                        enableMouseTracking: true
+                    }
+                },
+                series: [{
+                    name: 'ยอดขาย',
+                    data: salesData,
+                    color: '#007bff'
+                }],
+                credits: {
+                    enabled: false
+                }
+            });
+        } catch (e) {
+            console.error('Error creating line chart:', e);
         }
-    },
-    plotOptions: {
-        line: {
-            dataLabels: {
-                enabled: true
-            },
-            enableMouseTracking: true
-        }
-    },
-    series: [{
-        name: 'ยอดขาย',
-        data: " . json_encode($salesData) . "
-    }]
-});
+    } else {
+        console.warn('salesChart element not found or no data');
+    }
 
-// Pie Chart
-Highcharts.chart('channelChart', {
-    chart: {
-        type: 'pie'
-    },
-    title: {
-        text: ''
-    },
-    tooltip: {
-        pointFormat: '{series.name}: <b>{point.percentage:.1f}%</b><br/>ยอดขาย: <b>฿{point.y:,.2f}</b>'
-    },
-    accessibility: {
-        point: {
-            valueSuffix: '%'
+    // Pie Chart
+    if ($('#channelChart').length && channelData.length > 0) {
+        try {
+            Highcharts.chart('channelChart', {
+                chart: {
+                    type: 'pie',
+                    height: 350
+                },
+                title: {
+                    text: ''
+                },
+                tooltip: {
+                    pointFormat: '{series.name}: <b>{point.percentage:.1f}%</b><br/>ยอดขาย: <b>฿{point.y:,.2f}</b>'
+                },
+                accessibility: {
+                    point: {
+                        valueSuffix: '%'
+                    }
+                },
+                plotOptions: {
+                    pie: {
+                        allowPointSelect: true,
+                        cursor: 'pointer',
+                        dataLabels: {
+                            enabled: true,
+                            format: '<b>{point.name}</b>: {point.percentage:.1f}%',
+                            style: {
+                                fontSize: '12px'
+                            }
+                        },
+                        showInLegend: true
+                    }
+                },
+                series: [{
+                    name: 'สัดส่วน',
+                    colorByPoint: true,
+                    data: channelData
+                }],
+                credits: {
+                    enabled: false
+                }
+            });
+        } catch (e) {
+            console.error('Error creating pie chart:', e);
         }
-    },
-    plotOptions: {
-        pie: {
-            allowPointSelect: true,
-            cursor: 'pointer',
-            dataLabels: {
-                enabled: true,
-                format: '<b>{point.name}</b>: {point.percentage:.1f} %'
-            }
-        }
-    },
-    series: [{
-        name: 'สัดส่วน',
-        colorByPoint: true,
-        data: " . json_encode($channelData) . "
-    }]
+    } else {
+        console.warn('channelChart element not found or no data');
+    }
 });
 JS;
-$this->registerJs($js);
+
+// ใช้ POS_READY เพื่อให้แน่ใจว่า DOM โหลดเสร็จแล้ว
+$this->registerJs($js, \yii\web\View::POS_READY);
 ?>
 
 <!-- Print CSS -->
