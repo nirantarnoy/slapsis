@@ -267,12 +267,24 @@ class OrderSyncService
                 return 0;
             }
 
+            $order_status = strtoupper($orderDetail['order_status'] ?? 'UNKNOWN');
+            if (!in_array($order_status, ['SHIPPED', 'COMPLETED'])) {
+                Yii::info("Skip order $order_sn with status $order_status", __METHOD__);
+                continue; // ข้ามถ้าไม่ใช่ SHIPPED หรือ COMPLETED
+            }
+
             // สร้าง Order records สำหรับแต่ละ item
             foreach ($orderDetail['item_list'] as $item) {
                 // ✅ เช็ค required fields
                 if (empty($item['item_id']) || empty($item['item_name'])) {
                     Yii::warning("Missing required item data for order: $order_sn", __METHOD__);
                     continue;
+                }
+
+                $order_status = strtoupper($orderDetail['order_status'] ?? 'UNKNOWN');
+                if (!in_array($order_status, ['SHIPPED', 'COMPLETED'])) {
+                    Yii::info("Skip order $order_sn with status $order_status", __METHOD__);
+                    continue; // ข้ามถ้าไม่ใช่ SHIPPED หรือ COMPLETED
                 }
 
                 $unique_order_id = $order_sn . '_' . $item['item_id'];
@@ -319,7 +331,7 @@ class OrderSyncService
                 $order->order_date = date('Y-m-d H:i:s', $create_time);
 
                 // ✅ เพิ่ม order_status กลับมา (ถ้า table มี field นี้)
-                $order->order_status = $orderDetail['order_status'] ?? 'UNKNOWN';
+                $order->order_status = $order_status;
                 $order->created_at = date('Y-m-d H:i:s');
                 $order->updated_at = date('Y-m-d H:i:s');
                 if ($order->save()) {
