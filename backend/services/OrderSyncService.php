@@ -121,7 +121,7 @@ class OrderSyncService
                     'timestamp' => $timestamp,
                     'access_token' => $access_token,
                     'time_range_field' => 'create_time',
-                    'time_from' => strtotime('-1 day'),
+                    'time_from' => strtotime('-10 day'),
                     'time_to' => time(),
                     'page_size' => $page_size,
                     'response_optional_fields' => 'order_status',
