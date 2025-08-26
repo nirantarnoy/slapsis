@@ -267,12 +267,6 @@ class OrderSyncService
                 return 0;
             }
 
-            $order_status = strtoupper($orderDetail['order_status'] ?? 'UNKNOWN');
-            if (!in_array($order_status, ['SHIPPED', 'COMPLETED'])) {
-                Yii::info("Skip order $order_sn with status $order_status", __METHOD__);
-                continue; // ข้ามถ้าไม่ใช่ SHIPPED หรือ COMPLETED
-            }
-
             // สร้าง Order records สำหรับแต่ละ item
             foreach ($orderDetail['item_list'] as $item) {
                 // ✅ เช็ค required fields
