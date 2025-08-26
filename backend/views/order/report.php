@@ -184,6 +184,7 @@ if ($totalOrders > 0) {
 
 <!-- Include Highcharts -->
 <?php
+// Include Highcharts
 $this->registerJsFile('https://code.highcharts.com/highcharts.js', [
     'depends' => [\yii\web\JqueryAsset::class],
     'position' => \yii\web\View::POS_HEAD
@@ -196,20 +197,27 @@ $this->registerJsFile('https://code.highcharts.com/modules/exporting.js', [
 // Prepare data for line chart
 $dates = [];
 $salesData = [];
-foreach ($chartData['salesByDate'] as $date => $amount) {
-    $dates[] = date('d/m', strtotime($date));
-    $salesData[] = round($amount, 2);
+
+// ตรวจสอบว่ามีข้อมูลหรือไม่
+if (isset($chartData['salesByDate']) && !empty($chartData['salesByDate'])) {
+    foreach ($chartData['salesByDate'] as $date => $amount) {
+        $dates[] = date('d/m', strtotime($date));
+        $salesData[] = (float)$amount; // แปลงเป็น float
+    }
 }
 
 // Prepare data for pie chart
 $channelData = [];
-foreach ($chartData['salesByChannel'] as $channel => $amount) {
-    $channelData[] = [
-        'name' => $channel,
-        'y' => round($amount, 2)
-    ];
+if (isset($chartData['salesByChannel']) && !empty($chartData['salesByChannel'])) {
+    foreach ($chartData['salesByChannel'] as $channel => $amount) {
+        $channelData[] = [
+            'name' => $channel,
+            'y' => (float)$amount // แปลงเป็น float
+        ];
+    }
 }
 
+// JavaScript code
 $js = <<<JS
 $(document).ready(function() {
     // รอให้ DOM โหลดเสร็จก่อน
@@ -221,9 +229,9 @@ $(document).ready(function() {
     }
     
     // ตรวจสอบข้อมูล
-    var dates = {$dates|@json_encode};
-    var salesData = {$salesData|@json_encode};
-    var channelData = {$channelData|@json_encode};
+    var dates = " . json_encode($dates) . ";
+    var salesData = " . json_encode($salesData) . ";
+    var channelData = " . json_encode($channelData) . ";
     
     console.log('Dates:', dates);
     console.log('Sales Data:', salesData);
