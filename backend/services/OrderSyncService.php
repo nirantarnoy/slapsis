@@ -293,7 +293,9 @@ class OrderSyncService
                 $order->product_name = $item['item_name'];
 
                 // ✅ เช็คและปรับค่า quantity
-                $quantity = $item['model_quantity_purchased'] ?? 0;
+                $quantity = $item['model_quantity_purchased']
+                    ?? $item['quantity_purchased']
+                    ?? 0;
                 if ($quantity <= 0) {
                     Yii::warning("Invalid quantity for item {$item['item_id']} in order: $order_sn", __METHOD__);
                     continue;
@@ -301,8 +303,15 @@ class OrderSyncService
                 $order->quantity = $quantity;
 
                 // ✅ ปรับการคำนวณราคาให้ปลอดภัย
-                $price_micro = $item['model_discounted_price'] ?? $item['model_original_price'] ?? 0;
-                $order->price = $price_micro > 0 ? $price_micro / 100000 : 0; // Shopee ส่งมาเป็น micro units
+               // $price_micro = $item['model_discounted_price'] ?? $item['model_original_price'] ?? 0;
+                // ✅ ราคาจริง Shopee ส่งมาเป็น float ไม่ใช่ micro units
+                $price_value = $item['model_discounted_price']
+                    ?? $item['discounted_price']
+                    ?? $item['model_original_price']
+                    ?? $item['original_price']
+                    ?? 0;
+               // $order->price = $price_micro > 0 ? $price_micro / 100000 : 0; // Shopee ส่งมาเป็น micro units
+                $order->price =  (float) $price_value;
                 $order->total_amount = $order->quantity * $order->price;
 
                 // ✅ ปรับการจัดการวันที่
