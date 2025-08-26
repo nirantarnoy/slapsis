@@ -202,7 +202,7 @@ $salesData = [];
 if (isset($chartData['salesByDate']) && !empty($chartData['salesByDate'])) {
     foreach ($chartData['salesByDate'] as $date => $amount) {
         $dates[] = date('d/m', strtotime($date));
-        $salesData[] = (float)$amount; // แปลงเป็น float
+        $salesData[] = (float)$amount;
     }
 }
 
@@ -212,26 +212,29 @@ if (isset($chartData['salesByChannel']) && !empty($chartData['salesByChannel']))
     foreach ($chartData['salesByChannel'] as $channel => $amount) {
         $channelData[] = [
             'name' => $channel,
-            'y' => (float)$amount // แปลงเป็น float
+            'y' => (float)$amount
         ];
     }
 }
 
+// แปลงข้อมูลเป็น JSON string ก่อนส่งไป JavaScript
+$datesJson = json_encode($dates);
+$salesDataJson = json_encode($salesData);
+$channelDataJson = json_encode($channelData);
+
 // JavaScript code
 $js = <<<JS
 $(document).ready(function() {
-    // รอให้ DOM โหลดเสร็จก่อน
-    
     // ตรวจสอบว่า Highcharts โหลดแล้วหรือยัง
     if (typeof Highcharts === 'undefined') {
         console.error('Highcharts is not loaded');
         return;
     }
     
-    // ตรวจสอบข้อมูล
-    var dates = " . json_encode($dates) . ";
-    var salesData = " . json_encode($salesData) . ";
-    var channelData = " . json_encode($channelData) . ";
+    // รับข้อมูลจาก PHP
+    var dates = {$datesJson};
+    var salesData = {$salesDataJson};
+    var channelData = {$channelDataJson};
     
     console.log('Dates:', dates);
     console.log('Sales Data:', salesData);
@@ -273,7 +276,7 @@ $(document).ready(function() {
                 plotOptions: {
                     line: {
                         dataLabels: {
-                            enabled: false // ปิดเพื่อไม่ให้รกหากข้อมูลเยอะ
+                            enabled: false
                         },
                         enableMouseTracking: true
                     }
@@ -292,6 +295,7 @@ $(document).ready(function() {
         }
     } else {
         console.warn('salesChart element not found or no data');
+        $('#salesChart').html('<div class="text-center p-4">ไม่มีข้อมูลสำหรับแสดงกราฟ</div>');
     }
 
     // Pie Chart
@@ -307,11 +311,6 @@ $(document).ready(function() {
                 },
                 tooltip: {
                     pointFormat: '{series.name}: <b>{point.percentage:.1f}%</b><br/>ยอดขาย: <b>฿{point.y:,.2f}</b>'
-                },
-                accessibility: {
-                    point: {
-                        valueSuffix: '%'
-                    }
                 },
                 plotOptions: {
                     pie: {
@@ -341,11 +340,11 @@ $(document).ready(function() {
         }
     } else {
         console.warn('channelChart element not found or no data');
+        $('#channelChart').html('<div class="text-center p-4">ไม่มีข้อมูลสำหรับแสดงกราฟ</div>');
     }
 });
 JS;
 
-// ใช้ POS_READY เพื่อให้แน่ใจว่า DOM โหลดเสร็จแล้ว
 $this->registerJs($js, \yii\web\View::POS_READY);
 ?>
 
