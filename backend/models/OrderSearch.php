@@ -98,7 +98,7 @@ class OrderSearch extends Order
                 'AVG(total_amount) as avg_order_value'
             ])
             ->with('channel')
-            ->groupBy(['channel_id', 'DATE(order_date)']);
+            ->groupBy(['channel_id', 'DATE(order_date)'])->orderBy(['order_date' => SORT_DESC]);
 
         // Apply filters
         if ($this->channel_id) {
