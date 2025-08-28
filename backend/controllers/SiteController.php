@@ -485,7 +485,7 @@ class SiteController extends Controller
 
     public function actionConnectTiktok()
     {
-        $appKey = '6gtr1ukn2k2hj'; // ✅ ใช้ app key จริง
+        $appKey = '6h9n461r774e1'; // ✅ ใช้ app key จริง
         $redirectUri = 'https://www.pjrichth.co/site/tiktok-callback';
         $state = Yii::$app->security->generateRandomString(32);
 
@@ -567,8 +567,8 @@ class SiteController extends Controller
         // ลบ state จาก session
         Yii::$app->session->remove('tiktok_oauth_state');
 
-        $appKey = '6gtr1ukn2k2hj';
-        $appSecret = 'ea10324fb3c72d8e3a6b3c0a83672df6ea8f131d';
+        $appKey = '6h9n461r774e1';
+        $appSecret = '1c45a0c25224293abd7de681049f90de3363389a';
         $url = "https://auth.tiktok-shops.com/api/v2/token/get";
 
         try {
