@@ -681,34 +681,34 @@ class SiteController extends Controller
         $appSecret = '1c45a0c25224293abd7de681049f90de3363389a';
 
         try {
-//            $client = new \GuzzleHttp\Client(['timeout' => 30]);
-//            $url = 'https://open.tiktokapis.com/v2/oauth/token/';
-//           // $url = 'https://auth.tiktok-shops.com/api/v2/token/get';
-//            $redirectUri = 'https://www.pjrichth.co/site/tiktok-callback';
-//
-//            $response = $client->post($url, [
-//                'form_params' => [
-//                    'client_key'    => $appKey,
-//                    'client_secret' => $appSecret,
-//                    'code'          => $code,
-//                    'grant_type'    => 'authorization_code',
-//                 //   'redirect_uri'  => $redirectUri,
-//                ],
-//            ]);
             $client = new \GuzzleHttp\Client(['timeout' => 30]);
-            $url = 'https://auth.tiktok-shops.com/api/v2/token/get';
+            $url = 'https://open.tiktokapis.com/v2/oauth/token/';
+           // $url = 'https://auth.tiktok-shops.com/api/v2/token/get';
+            $redirectUri = 'https://www.pjrichth.co/site/tiktok-callback';
 
             $response = $client->post($url, [
                 'form_params' => [
-                    'app_key'    => '6h9n461r774e1',
-                    'app_secret' => '1c45a0c25224293abd7de681049f90de3363389a',
-                    'auth_code'  => 'TTP_FeBoANmHP3yqdoUI9fZOCw',
-                    'grant_type' => 'authorized_code',
+                    'client_key'    => $appKey,
+                    'client_secret' => $appSecret,
+                    'code'          => $code,
+                    'grant_type'    => 'authorization_code',
+                 //   'redirect_uri'  => $redirectUri,
                 ],
-                'headers' => [
-                    'Content-Type' => 'application/x-www-form-urlencoded',
-                ]
             ]);
+   //         $client = new \GuzzleHttp\Client(['timeout' => 30]);
+  //          $url = 'https://auth.tiktok-shops.com/api/v2/token/get';
+
+//            $response = $client->post($url, [
+//                'form_params' => [
+//                    'app_key'    => '6h9n461r774e1',
+//                    'app_secret' => '1c45a0c25224293abd7de681049f90de3363389a',
+//                    'auth_code'  => 'TTP_FeBoANmHP3yqdoUI9fZOCw',
+//                    'grant_type' => 'authorized_code',
+//                ],
+//                'headers' => [
+//                    'Content-Type' => 'application/x-www-form-urlencoded',
+//                ]
+//            ]);
 
             $statusCode = $response->getStatusCode();
             $raw        = (string)$response->getBody();
