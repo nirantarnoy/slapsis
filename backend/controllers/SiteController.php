@@ -643,8 +643,8 @@ class SiteController extends Controller
 
         try {
             $client = new \GuzzleHttp\Client(['timeout' => 30]);
-          //  $url = 'https://open.tiktokapis.com/v2/oauth/token/';
-            $url = 'https://auth.tiktok-shops.com/api/v2/token/get';
+            $url = 'https://open.tiktokapis.com/v2/oauth/token/';
+           // $url = 'https://auth.tiktok-shops.com/api/v2/token/get';
             $redirectUri = 'https://www.pjrichth.co/site/tiktok-callback';
 
             $response = $client->post($url, [
