@@ -574,7 +574,7 @@ class SiteController extends Controller
     public function actionConnectTiktok()
     {
         $appKey = '6h9n461r774e1'; // ✅ App Key จาก TikTok Developer Portal
-        $redirectUri = Url::to(['site/tiktok-callback'], true); // ต้องตรงกับที่ลงทะเบียนใน TikTok
+        $redirectUri = 'https://www.pjrichth.co/site/tiktok-callback'; // ต้องตรงกับที่ลงทะเบียนใน TikTok
         $state = Yii::$app->security->generateRandomString(32);
 
         // เปิด session และบันทึก state
@@ -607,9 +607,11 @@ class SiteController extends Controller
 
         Yii::$app->session->open();
 
-        $code  = Yii::$app->request->get('code');
-        $state = Yii::$app->request->get('state');
-        $error = Yii::$app->request->get('error');
+        $code        = Yii::$app->request->get('code');
+        $state       = Yii::$app->request->get('state');
+        $error       = Yii::$app->request->get('error');
+        $shopRegion  = Yii::$app->request->get('shop_region');
+        $shopIdParam = Yii::$app->request->get('shop_id'); // อาจไม่มี ต้องดึงจาก response ภายหลัง
 
         if ($error) {
             Yii::$app->session->setFlash('error', 'TikTok authorization error: ' . $error);
@@ -629,105 +631,64 @@ class SiteController extends Controller
         }
         Yii::$app->session->remove('tiktok_oauth_state');
 
-        $appKey     = '6h9n461r774e1';
-        $appSecret  = '1c45a0c25224293abd7de681049f90de3363389a';
-        $redirectUri = Url::to(['site/tiktok-callback'], true);
+        $appKey    = '6h9n461r774e1';
+        $appSecret = '1c45a0c25224293abd7de681049f90de3363389a';
 
         try {
             $client = new \GuzzleHttp\Client(['timeout' => 30]);
+            $url    = "https://open-api.tiktokglobalshop.com/api/v2/token/get";
 
-            // ✅ Endpoint TikTok OAuth v2 (มาตรฐาน)
-            $endpointOauth = "https://open.tiktokapis.com/v2/oauth/token/";
-            // ✅ Endpoint TikTok Shop (บางกรณี)
-            $endpointShop = "https://auth.tiktok-shops.com/api/v2/token/get";
-
-            // เตรียมข้อมูลสำหรับ OAuth v2
-            $postDataOauth = [
-                'client_key'    => $appKey,
-                'client_secret' => $appSecret,
-                'code'          => $code,
-                'grant_type'    => 'authorization_code',
-                'redirect_uri'  => $redirectUri,
-            ];
-
-            // เตรียมข้อมูลสำหรับ Shop API
-            $postDataShop = [
-                'app_key'    => $appKey,
-                'app_secret' => $appSecret,
-                'code'       => $code,
-                'grant_type' => 'authorized_code',
-            ];
-
-            $response = null;
-            $data = null;
-
-            try {
-                // 🔹 ลองเรียก OAuth v2 ก่อน
-                $response = $client->post($endpointOauth, [
-                    'form_params' => $postDataOauth,
-                    'headers' => ['Content-Type' => 'application/x-www-form-urlencoded'],
-                ]);
-                Yii::info("TikTok Used endpoint: {$endpointOauth}", __METHOD__);
-            } catch (\Exception $e) {
-                Yii::warning("OAuth v2 failed, fallback to Shop API: " . $e->getMessage(), __METHOD__);
-
-                // 🔹 ถ้า fail ให้ลอง Shop API
-                $response = $client->post($endpointShop, [
-                    'form_params' => $postDataShop,
-                    'headers' => ['Content-Type' => 'application/x-www-form-urlencoded'],
-                ]);
-                Yii::info("TikTok Used endpoint: {$endpointShop}", __METHOD__);
-            }
+            $response = $client->post($url, [
+                'form_params' => [
+                    'app_key'    => $appKey,
+                    'app_secret' => $appSecret,
+                    'auth_code'  => $code,
+                    'grant_type' => 'authorized_code',
+                ]
+            ]);
 
             $statusCode = $response->getStatusCode();
-            $body = $response->getBody()->getContents();
+            $raw        = (string)$response->getBody();
 
             Yii::info("TikTok Response status: {$statusCode}", __METHOD__);
-            Yii::info("TikTok Response body: {$body}", __METHOD__);
+            Yii::info("TikTok raw response: " . $raw, __METHOD__);
 
             if ($statusCode !== 200) {
-                throw new \Exception("HTTP Error: $statusCode - $body");
+                throw new \Exception("HTTP Error: $statusCode - $raw");
             }
 
-            $data = json_decode($body, true);
+            $data = json_decode($raw, true);
             if (json_last_error() !== JSON_ERROR_NONE) {
                 throw new \Exception("JSON decode error: " . json_last_error_msg());
             }
 
             // ✅ ตรวจสอบรูปแบบ response
             $tokenData = [];
-            $shopId = null;
+            $shopId    = null;
 
             if (isset($data['data']['access_token'])) {
                 // TikTok Shop API response
                 $tokenData = [
-                    'access_token' => $data['data']['access_token'],
-                    'refresh_token' => $data['data']['refresh_token'] ?? '',
-                    'access_token_expire_in' => $data['data']['access_token_expire_in'] ?? $data['data']['expires_in'] ?? 86400,
+                    'access_token'            => $data['data']['access_token'],
+                    'refresh_token'           => $data['data']['refresh_token'] ?? '',
+                    'access_token_expire_in'  => $data['data']['access_token_expire_in'] ?? $data['data']['expires_in'] ?? 86400,
                     'refresh_token_expire_in' => $data['data']['refresh_token_expire_in'] ?? 2592000,
                 ];
-                $shopId = $data['data']['shop_id'] ?? null;
-            } elseif (isset($data['access_token'])) {
-                // TikTok OAuth v2 response
-                $tokenData = [
-                    'access_token' => $data['access_token'],
-                    'refresh_token' => $data['refresh_token'] ?? '',
-                    'access_token_expire_in' => $data['expires_in'] ?? 86400,
-                    'refresh_token_expire_in' => $data['refresh_expires_in'] ?? 2592000,
-                ];
-                $shopId = $data['open_id'] ?? null; // อาจใช้ open_id แทน shop_id ในกรณี OAuth v2
+                $shopId = $data['data']['shop_id'] ?? $shopIdParam;
             }
 
             if (!empty($tokenData)) {
                 if ($shopId && $this->saveTikTokToken($shopId, $tokenData)) {
-                    Yii::$app->session->setFlash('success', 'เชื่อมต่อ TikTok สำเร็จ! Shop/Open ID: ' . $shopId);
+                    Yii::$app->session->setFlash('success', 'เชื่อมต่อ TikTok สำเร็จ! Shop ID: ' . $shopId);
                 } else {
-                    Yii::$app->session->setFlash('warning', 'เชื่อมต่อสำเร็จ แต่ไม่พบ shop_id/open_id ใน response');
+                    Yii::$app->session->setFlash('warning', 'เชื่อมต่อสำเร็จ แต่ไม่พบ shop_id ใน response');
                 }
             } else {
-                $errorMsg = $data['message'] ?? 'Unknown error';
+                $errorMsg  = $data['message'] ?? 'Unknown error';
                 $errorCode = $data['code'] ?? 'unknown';
                 Yii::$app->session->setFlash('error', "ไม่สามารถเชื่อมต่อ TikTok ได้: [$errorCode] $errorMsg");
+
+                Yii::error("Invalid TikTok token response: " . json_encode($data), __METHOD__);
             }
 
         } catch (\Exception $e) {
@@ -737,6 +698,7 @@ class SiteController extends Controller
 
         return $this->redirect(['site/index']);
     }
+
 
 
 
