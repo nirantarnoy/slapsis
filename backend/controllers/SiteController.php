@@ -785,7 +785,7 @@ class SiteController extends Controller
     /**
      * ต่ออายุ TikTok token ด้วย refresh_token
      */
-    public function refreshTikTokToken($shop_id)
+    public function refreshTikTokToken($shop_id=1)
     {
         $token = (new \yii\db\Query())
             ->from('tiktok_token')
