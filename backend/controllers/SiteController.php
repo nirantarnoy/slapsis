@@ -664,6 +664,12 @@ class SiteController extends Controller
                 throw new \Exception("JSON decode error: " . json_last_error_msg());
             }
 
+            // ตรวจสอบ invalid_grant
+            if (isset($data['error']) && $data['error'] === 'invalid_grant') {
+                Yii::$app->session->setFlash('error', 'Authorization code หมดอายุ กรุณากดเชื่อมต่อ TikTok อีกครั้ง');
+                return $this->redirect(['site/index']);
+            }
+
             // ✅ ตรวจสอบรูปแบบ response
             $tokenData = [];
             $shopId    = null;
