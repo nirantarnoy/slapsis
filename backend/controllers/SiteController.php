@@ -525,8 +525,55 @@ class SiteController extends Controller
 //        return $this->redirect($auth_url);
 //    }
 
+//    public function actionConnectTiktok()
+//    {
+//        $appKey = '6h9n461r774e1';
+//        $state = Yii::$app->security->generateRandomString(32);
+//
+//        // เปิด session และบันทึก state
+//        Yii::$app->session->open();
+//        Yii::$app->session->set('tiktok_oauth_state', $state);
+//
+//        // Debug: ตรวจสอบค่าที่ใช้
+//        Yii::info("TikTok App Key: {$appKey}", __METHOD__);
+//        Yii::info("TikTok State: {$state}", __METHOD__);
+//
+//        // ใช้ parameters ที่ถูกต้องสำหรับ TikTok Shop API
+//        $params = [
+//            'service_id' => $appKey, // เปลี่ยนจาก app_key เป็น service_id
+//            'state' => $state
+//            // ไม่ต้องใส่ redirect_uri และ response_type สำหรับ TikTok Shop
+//        ];
+//
+//        // Debug: ตรวจสอบ parameters
+//        Yii::info("TikTok Auth parameters: " . json_encode($params), __METHOD__);
+//
+//        $query_string = http_build_query($params, '', '&', PHP_QUERY_RFC3986);
+//        $auth_url = "https://services.tiktokshop.com/open/authorize?{$query_string}";
+//
+//        // Debug: ตรวจสอบ URL สุดท้าย
+//        Yii::info("TikTok Final auth URL: {$auth_url}", __METHOD__);
+//
+//        // ตรวจสอบว่า URL มี service_id หรือไม่
+//        if (strpos($auth_url, 'service_id=') === false) {
+//            Yii::error("service_id not found in TikTok URL!", __METHOD__);
+//            Yii::$app->session->setFlash('error', 'เกิดข้อผิดพลาดในการสร้าง URL authorization');
+//            return $this->redirect(['site/index']);
+//        }
+//
+//        // เพิ่มการตรวจสอบความถูกต้องของ App Key
+//        if (empty($appKey) || strlen($appKey) < 10) {
+//            Yii::error("Invalid TikTok App Key: {$appKey}", __METHOD__);
+//            Yii::$app->session->setFlash('error', 'App Key ไม่ถูกต้อง');
+//            return $this->redirect(['site/index']);
+//        }
+//
+//        return $this->redirect($auth_url);
+//    }
+
     public function actionConnectTiktok()
     {
+        // ⚠️ App Key ถูกต้องแล้ว (confirmed จาก Developer Portal)
         $appKey = '6h9n461r774e1';
         $state = Yii::$app->security->generateRandomString(32);
 
@@ -540,19 +587,43 @@ class SiteController extends Controller
 
         // ใช้ parameters ที่ถูกต้องสำหรับ TikTok Shop API
         $params = [
-            'service_id' => $appKey, // เปลี่ยนจาก app_key เป็น service_id
+            'service_id' => $appKey,
             'state' => $state
-            // ไม่ต้องใส่ redirect_uri และ response_type สำหรับ TikTok Shop
         ];
 
         // Debug: ตรวจสอบ parameters
         Yii::info("TikTok Auth parameters: " . json_encode($params), __METHOD__);
 
         $query_string = http_build_query($params, '', '&', PHP_QUERY_RFC3986);
-        $auth_url = "https://services.tiktokshop.com/open/authorize?{$query_string}";
+
+        // ลอง URL หลายแบบสำหรับ TikTok Shop Thailand
+        $urls = [
+            "https://services.tiktokshop.com/open/authorize?{$query_string}",
+            "https://partner.tiktokshop.com/docx/page/6507ead7b99d5302be949ba9?{$query_string}",
+            "https://auth.tiktok-shops.com/oauth/authorize?" . http_build_query([
+                'app_key' => $appKey,
+                'state' => $state,
+                'response_type' => 'code'
+            ])
+        ];
+
+        // ใช้ URL แรกเป็นค่าเริ่มต้น แต่สามารถเปลี่ยนได้
+        $urlIndex = Yii::$app->request->get('url_test', 0); // เพิ่ม ?url_test=1 หรือ 2 เพื่อทดสอบ URL อื่น
+        $auth_url = $urls[$urlIndex] ?? $urls[0];
 
         // Debug: ตรวจสอบ URL สุดท้าย
-        Yii::info("TikTok Final auth URL: {$auth_url}", __METHOD__);
+        Yii::info("TikTok Final auth URL (index: {$urlIndex}): {$auth_url}", __METHOD__);
+
+        // แสดงข้อความแนะนำถ้าไม่ได้ผล
+        if ($urlIndex > 0) {
+            Yii::$app->session->setFlash('info', "กำลังทดสอบ Authorization URL รูปแบบที่ " . ($urlIndex + 1));
+        } else {
+            Yii::$app->session->setFlash('info',
+                'หากได้รับข้อผิดพลาด "This service does not exist" ลอง<br>' .
+                '<a href="?url_test=1">ทดสอบ URL รูปแบบที่ 2</a> หรือ ' .
+                '<a href="?url_test=2">ทดสอบ URL รูปแบบที่ 3</a>'
+            );
+        }
 
         // ตรวจสอบว่า URL มี service_id หรือไม่
         if (strpos($auth_url, 'service_id=') === false) {
