@@ -483,42 +483,88 @@ class SiteController extends Controller
 //        return $this->redirect($url);
 //    }
 
+//    public function actionConnectTiktok()
+//    {
+//        $appKey = '6h9n461r774e1'; // ✅ ใช้ app key จริง
+//        $redirectUri = 'https://www.pjrichth.co/site/tiktok-callback';
+//        $state = Yii::$app->security->generateRandomString(32);
+//
+//        // ✅ เปิด session และบันทึก state
+//        Yii::$app->session->open();
+//        Yii::$app->session->set('tiktok_oauth_state', $state);
+//
+//        // ✅ Debug: ตรวจสอบค่าที่ใช้
+//        Yii::info("TikTok App Key: {$appKey}", __METHOD__);
+//        Yii::info("TikTok Redirect URI: {$redirectUri}", __METHOD__);
+//        Yii::info("TikTok State: {$state}", __METHOD__);
+//
+//        // ✅ สร้าง parameters สำหรับ TikTok authorization
+//        $params = [
+//            'app_key' => $appKey,
+//            'redirect_uri' => $redirectUri,
+//            'state' => $state,
+//            'response_type' => 'code'
+//        ];
+//
+//        // ✅ Debug: ตรวจสอบ parameters
+//        Yii::info("TikTok Auth parameters: " . json_encode($params), __METHOD__);
+//
+//        $query_string = http_build_query($params, '', '&', PHP_QUERY_RFC3986);
+//        $auth_url = "https://auth.tiktok-shops.com/oauth/authorize?{$query_string}";
+//
+//        // ✅ Debug: ตรวจสอบ URL สุดท้าย
+//        Yii::info("TikTok Final auth URL: {$auth_url}", __METHOD__);
+//
+//        // ✅ ตรวจสอบว่า URL มี app_key หรือไม่
+//        if (strpos($auth_url, 'app_key=') === false) {
+//            Yii::error("app_key not found in TikTok URL!", __METHOD__);
+//            Yii::$app->session->setFlash('error', 'เกิดข้อผิดพลาดในการสร้าง URL authorization');
+//            return $this->redirect(['site/index']);
+//        }
+//
+//        return $this->redirect($auth_url);
+//    }
+
     public function actionConnectTiktok()
     {
-        $appKey = '6h9n461r774e1'; // ✅ ใช้ app key จริง
-        $redirectUri = 'https://www.pjrichth.co/site/tiktok-callback';
+        $appKey = '6h9n461r774e1';
         $state = Yii::$app->security->generateRandomString(32);
 
-        // ✅ เปิด session และบันทึก state
+        // เปิด session และบันทึก state
         Yii::$app->session->open();
         Yii::$app->session->set('tiktok_oauth_state', $state);
 
-        // ✅ Debug: ตรวจสอบค่าที่ใช้
+        // Debug: ตรวจสอบค่าที่ใช้
         Yii::info("TikTok App Key: {$appKey}", __METHOD__);
-        Yii::info("TikTok Redirect URI: {$redirectUri}", __METHOD__);
         Yii::info("TikTok State: {$state}", __METHOD__);
 
-        // ✅ สร้าง parameters สำหรับ TikTok authorization
+        // ใช้ parameters ที่ถูกต้องสำหรับ TikTok Shop API
         $params = [
-            'app_key' => $appKey,
-            'redirect_uri' => $redirectUri,
-            'state' => $state,
-            'response_type' => 'code'
+            'service_id' => $appKey, // เปลี่ยนจาก app_key เป็น service_id
+            'state' => $state
+            // ไม่ต้องใส่ redirect_uri และ response_type สำหรับ TikTok Shop
         ];
 
-        // ✅ Debug: ตรวจสอบ parameters
+        // Debug: ตรวจสอบ parameters
         Yii::info("TikTok Auth parameters: " . json_encode($params), __METHOD__);
 
         $query_string = http_build_query($params, '', '&', PHP_QUERY_RFC3986);
-        $auth_url = "https://auth.tiktok-shops.com/oauth/authorize?{$query_string}";
+        $auth_url = "https://services.tiktokshop.com/open/authorize?{$query_string}";
 
-        // ✅ Debug: ตรวจสอบ URL สุดท้าย
+        // Debug: ตรวจสอบ URL สุดท้าย
         Yii::info("TikTok Final auth URL: {$auth_url}", __METHOD__);
 
-        // ✅ ตรวจสอบว่า URL มี app_key หรือไม่
-        if (strpos($auth_url, 'app_key=') === false) {
-            Yii::error("app_key not found in TikTok URL!", __METHOD__);
+        // ตรวจสอบว่า URL มี service_id หรือไม่
+        if (strpos($auth_url, 'service_id=') === false) {
+            Yii::error("service_id not found in TikTok URL!", __METHOD__);
             Yii::$app->session->setFlash('error', 'เกิดข้อผิดพลาดในการสร้าง URL authorization');
+            return $this->redirect(['site/index']);
+        }
+
+        // เพิ่มการตรวจสอบความถูกต้องของ App Key
+        if (empty($appKey) || strlen($appKey) < 10) {
+            Yii::error("Invalid TikTok App Key: {$appKey}", __METHOD__);
+            Yii::$app->session->setFlash('error', 'App Key ไม่ถูกต้อง');
             return $this->redirect(['site/index']);
         }
 
@@ -527,6 +573,13 @@ class SiteController extends Controller
 
     public function actionTiktokCallback()
     {
+        // Debug URL ที่ TikTok redirect กลับมา
+        $fullUrl = Yii::$app->request->getAbsoluteUrl();
+        Yii::info("TikTok Callback full URL: {$fullUrl}", __METHOD__);
+
+        // Debug ทุก parameter ที่ได้รับ
+        $allParams = Yii::$app->request->get();
+        Yii::info('TikTok All callback parameters: ' . json_encode($allParams), __METHOD__);
         // ✅ เปิด session
         Yii::$app->session->open();
 
