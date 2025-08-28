@@ -720,7 +720,7 @@ class SiteController extends Controller
         Yii::$app->session->set('tiktok_oauth_state', $stateData);
 
         $params = [
-            'app_key' => $this->appKey,
+            'app_key' => '6h9n461r774e1',
             'state' => $stateData,
             'response_type' => 'code',
             'redirect_uri' => 'https://www.pjrichth.co/site/tiktok-callback',
