@@ -571,22 +571,159 @@ class SiteController extends Controller
 //        return $this->redirect($auth_url);
 //    }
 
-    public function actionConnectTiktok()
+//    public function actionConnectTiktok()
+//    {
+//        $appKey = '6h9n461r774e1'; // ✅ App Key จาก TikTok Developer Portal
+//        $redirectUri = 'https://www.pjrichth.co/site/tiktok-callback'; // ต้องตรงกับที่ลงทะเบียนใน TikTok
+//        $state = Yii::$app->security->generateRandomString(32);
+//
+//        // เปิด session และบันทึก state
+//        Yii::$app->session->open();
+//        Yii::$app->session->set('tiktok_oauth_state', $state);
+//
+//        // สร้าง parameter ตามเอกสาร TikTok
+//        $params = [
+//            'app_key' => $appKey,
+//            'state' => $state,
+//            'response_type' => 'code',
+//            'redirect_uri' => $redirectUri
+//        ];
+//
+//        $authUrl = "https://auth.tiktok-shops.com/oauth/authorize?" . http_build_query($params);
+//
+//        Yii::info("TikTok OAuth URL: {$authUrl}", __METHOD__);
+//
+//        return $this->redirect($authUrl);
+//    }
+//
+//
+//    public function actionTiktokCallback()
+//    {
+//        $fullUrl = Yii::$app->request->getAbsoluteUrl();
+//        Yii::info("TikTok Callback full URL: {$fullUrl}", __METHOD__);
+//
+//        $allParams = Yii::$app->request->get();
+//        Yii::info('TikTok All callback parameters: ' . json_encode($allParams), __METHOD__);
+//
+//        Yii::$app->session->open();
+//
+//        $code        = Yii::$app->request->get('code');
+//        $state       = Yii::$app->request->get('state');
+//        $error       = Yii::$app->request->get('error');
+//        $shopRegion  = Yii::$app->request->get('shop_region');
+//        $shopIdParam = Yii::$app->request->get('shop_id'); // อาจไม่มี ต้องดึงจาก response ภายหลัง
+//
+//        if ($error) {
+//            Yii::$app->session->setFlash('error', 'TikTok authorization error: ' . $error);
+//            return $this->redirect(['site/index']);
+//        }
+//
+//        if (!$code) {
+//            Yii::$app->session->setFlash('error', 'Missing authorization code from TikTok');
+//            return $this->redirect(['site/index']);
+//        }
+//
+//        // ✅ ตรวจสอบ state
+//        $sessionState = Yii::$app->session->get('tiktok_oauth_state');
+//        if ($sessionState && $state && $sessionState !== $state) {
+//            Yii::$app->session->setFlash('error', 'Invalid state parameter');
+//            return $this->redirect(['site/index']);
+//        }
+//        Yii::$app->session->remove('tiktok_oauth_state');
+//
+//        $appKey    = '6h9n461r774e1';
+//        $appSecret = '1c45a0c25224293abd7de681049f90de3363389a';
+//
+//        try {
+//            $client = new \GuzzleHttp\Client(['timeout' => 30]);
+//            $url = 'https://open.tiktokapis.com/v2/oauth/token/';
+//            $redirectUri = 'https://www.pjrichth.co/site/tiktok-callback';
+//
+//            $response = $client->post($url, [
+//                'form_params' => [
+//                    'client_key'    => $appKey,
+//                    'client_secret' => $appSecret,
+//                    'code'          => $code,
+//                    'grant_type'    => 'authorization_code',
+//                    'redirect_uri'  => $redirectUri,
+//                ],
+//            ]);
+//
+//            $statusCode = $response->getStatusCode();
+//            $raw        = (string)$response->getBody();
+//
+//            Yii::info("TikTok Response status: {$statusCode}", __METHOD__);
+//            Yii::info("TikTok raw response: " . $raw, __METHOD__);
+//
+//            if ($statusCode !== 200) {
+//                throw new \Exception("HTTP Error: $statusCode - $raw");
+//            }
+//
+//            $data = json_decode($raw, true);
+//            if (json_last_error() !== JSON_ERROR_NONE) {
+//                throw new \Exception("JSON decode error: " . json_last_error_msg());
+//            }
+//
+//            // ตรวจสอบ invalid_grant
+//            if (isset($data['error']) && $data['error'] === 'invalid_grant') {
+//                Yii::$app->session->setFlash('error', 'Authorization code หมดอายุ กรุณากดเชื่อมต่อ TikTok อีกครั้ง');
+//                return $this->redirect(['site/index']);
+//            }
+//
+//            // ✅ ตรวจสอบรูปแบบ response
+//            $tokenData = [];
+//            $shopId    = null;
+//
+//            if (isset($data['data']['access_token'])) {
+//                // TikTok Shop API response
+//                $tokenData = [
+//                    'access_token'            => $data['data']['access_token'],
+//                    'refresh_token'           => $data['data']['refresh_token'] ?? '',
+//                    'access_token_expire_in'  => $data['data']['access_token_expire_in'] ?? $data['data']['expires_in'] ?? 86400,
+//                    'refresh_token_expire_in' => $data['data']['refresh_token_expire_in'] ?? 2592000,
+//                ];
+//                $shopId = $data['data']['shop_id'] ?? $shopIdParam;
+//            }
+//
+//            if (!empty($tokenData)) {
+//                if ($shopId && $this->saveTikTokToken($shopId, $tokenData)) {
+//                    Yii::$app->session->setFlash('success', 'เชื่อมต่อ TikTok สำเร็จ! Shop ID: ' . $shopId);
+//                } else {
+//                    Yii::$app->session->setFlash('warning', 'เชื่อมต่อสำเร็จ แต่ไม่พบ shop_id ใน response');
+//                }
+//            } else {
+//                $errorMsg  = $data['message'] ?? 'Unknown error';
+//                $errorCode = $data['code'] ?? 'unknown';
+//                Yii::$app->session->setFlash('error', "ไม่สามารถเชื่อมต่อ TikTok ได้: [$errorCode] $errorMsg");
+//
+//                Yii::error("Invalid TikTok token response: " . json_encode($data), __METHOD__);
+//            }
+//
+//        } catch (\Exception $e) {
+//            Yii::error('TikTok callback error: ' . $e->getMessage(), __METHOD__);
+//            Yii::$app->session->setFlash('error', 'เกิดข้อผิดพลาด: ' . $e->getMessage());
+//        }
+//
+//        return $this->redirect(['site/index']);
+//    }
+//
+
+    public function actionConnectTiktok($shop_id)
     {
-        $appKey = '6h9n461r774e1'; // ✅ App Key จาก TikTok Developer Portal
-        $redirectUri = 'https://www.pjrichth.co/site/tiktok-callback'; // ต้องตรงกับที่ลงทะเบียนใน TikTok
-        $state = Yii::$app->security->generateRandomString(32);
-
-        // เปิด session และบันทึก state
         Yii::$app->session->open();
-        Yii::$app->session->set('tiktok_oauth_state', $state);
 
-        // สร้าง parameter ตามเอกสาร TikTok
+        $stateData = base64_encode(json_encode([
+            'shop_id' => $shop_id,
+            'csrf' => Yii::$app->security->generateRandomString(16),
+        ]));
+
+        Yii::$app->session->set('tiktok_oauth_state', $stateData);
+
         $params = [
-            'app_key' => $appKey,
-            'state' => $state,
+            'app_key' => $this->appKey,
+            'state' => $stateData,
             'response_type' => 'code',
-            'redirect_uri' => $redirectUri
+            'redirect_uri' => 'https://www.pjrichth.co/site/tiktok-callback',
         ];
 
         $authUrl = "https://auth.tiktok-shops.com/oauth/authorize?" . http_build_query($params);
@@ -596,117 +733,92 @@ class SiteController extends Controller
         return $this->redirect($authUrl);
     }
 
-
-    public function actionTiktokCallback()
+    /**
+     * Callback จาก TikTok
+     */
+    public function actionTiktokCallback($code, $state)
     {
-        $fullUrl = Yii::$app->request->getAbsoluteUrl();
-        Yii::info("TikTok Callback full URL: {$fullUrl}", __METHOD__);
-
-        $allParams = Yii::$app->request->get();
-        Yii::info('TikTok All callback parameters: ' . json_encode($allParams), __METHOD__);
-
         Yii::$app->session->open();
 
-        $code        = Yii::$app->request->get('code');
-        $state       = Yii::$app->request->get('state');
-        $error       = Yii::$app->request->get('error');
-        $shopRegion  = Yii::$app->request->get('shop_region');
-        $shopIdParam = Yii::$app->request->get('shop_id'); // อาจไม่มี ต้องดึงจาก response ภายหลัง
-
-        if ($error) {
-            Yii::$app->session->setFlash('error', 'TikTok authorization error: ' . $error);
-            return $this->redirect(['site/index']);
-        }
-
-        if (!$code) {
-            Yii::$app->session->setFlash('error', 'Missing authorization code from TikTok');
-            return $this->redirect(['site/index']);
-        }
-
-        // ✅ ตรวจสอบ state
         $sessionState = Yii::$app->session->get('tiktok_oauth_state');
-        if ($sessionState && $state && $sessionState !== $state) {
-            Yii::$app->session->setFlash('error', 'Invalid state parameter');
-            return $this->redirect(['site/index']);
+        if (!$sessionState || $state !== $sessionState) {
+            Yii::error("Invalid TikTok OAuth state", __METHOD__);
+            return $this->asJson(['error' => 'Invalid state. Please try connecting again.']);
         }
-        Yii::$app->session->remove('tiktok_oauth_state');
 
-        $appKey    = '6h9n461r774e1';
-        $appSecret = '1c45a0c25224293abd7de681049f90de3363389a';
+        $stateData = json_decode(base64_decode($state), true);
+        $shop_id = $stateData['shop_id'] ?? null;
 
+        if (!$shop_id) {
+            Yii::error("No shop_id in state", __METHOD__);
+            return $this->asJson(['error' => 'Cannot determine shop. Please reconnect TikTok.']);
+        }
+
+        // แลก code เป็น access_token
+        $client = new \GuzzleHttp\Client();
         try {
-            $client = new \GuzzleHttp\Client(['timeout' => 30]);
-            $url = 'https://open.tiktokapis.com/v2/oauth/token/';
-            $redirectUri = 'https://www.pjrichth.co/site/tiktok-callback';
-
-            $response = $client->post($url, [
+            $response = $client->post('https://open-api.tiktokglobalshop.com/api/v2/token/get', [
                 'form_params' => [
-                    'client_key'    => $appKey,
-                    'client_secret' => $appSecret,
-                    'code'          => $code,
-                    'grant_type'    => 'authorization_code',
-                    'redirect_uri'  => $redirectUri,
-                ],
+                    'app_key' => '6h9n461r774e1',
+                    'app_secret' => '1c45a0c25224293abd7de681049f90de3363389a',
+                    'auth_code' => $code,
+                    'grant_type' => 'authorization_code',
+                    'redirect_uri' => 'https://www.pjrichth.co/site/tiktok-callback',
+                ]
             ]);
 
-            $statusCode = $response->getStatusCode();
-            $raw        = (string)$response->getBody();
+            $data = json_decode((string)$response->getBody(), true);
 
-            Yii::info("TikTok Response status: {$statusCode}", __METHOD__);
-            Yii::info("TikTok raw response: " . $raw, __METHOD__);
-
-            if ($statusCode !== 200) {
-                throw new \Exception("HTTP Error: $statusCode - $raw");
-            }
-
-            $data = json_decode($raw, true);
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                throw new \Exception("JSON decode error: " . json_last_error_msg());
-            }
-
-            // ตรวจสอบ invalid_grant
-            if (isset($data['error']) && $data['error'] === 'invalid_grant') {
-                Yii::$app->session->setFlash('error', 'Authorization code หมดอายุ กรุณากดเชื่อมต่อ TikTok อีกครั้ง');
-                return $this->redirect(['site/index']);
-            }
-
-            // ✅ ตรวจสอบรูปแบบ response
-            $tokenData = [];
-            $shopId    = null;
-
-            if (isset($data['data']['access_token'])) {
-                // TikTok Shop API response
-                $tokenData = [
-                    'access_token'            => $data['data']['access_token'],
-                    'refresh_token'           => $data['data']['refresh_token'] ?? '',
-                    'access_token_expire_in'  => $data['data']['access_token_expire_in'] ?? $data['data']['expires_in'] ?? 86400,
-                    'refresh_token_expire_in' => $data['data']['refresh_token_expire_in'] ?? 2592000,
-                ];
-                $shopId = $data['data']['shop_id'] ?? $shopIdParam;
-            }
-
-            if (!empty($tokenData)) {
-                if ($shopId && $this->saveTikTokToken($shopId, $tokenData)) {
-                    Yii::$app->session->setFlash('success', 'เชื่อมต่อ TikTok สำเร็จ! Shop ID: ' . $shopId);
-                } else {
-                    Yii::$app->session->setFlash('warning', 'เชื่อมต่อสำเร็จ แต่ไม่พบ shop_id ใน response');
-                }
+            if (isset($data['access_token'])) {
+                $this->saveTikTokToken($shop_id, $data);
+                return $this->asJson(['success' => true, 'message' => 'Connected TikTok successfully']);
             } else {
-                $errorMsg  = $data['message'] ?? 'Unknown error';
-                $errorCode = $data['code'] ?? 'unknown';
-                Yii::$app->session->setFlash('error', "ไม่สามารถเชื่อมต่อ TikTok ได้: [$errorCode] $errorMsg");
-
                 Yii::error("Invalid TikTok token response: " . json_encode($data), __METHOD__);
+                return $this->asJson(['error' => 'Failed to get access_token.']);
             }
-
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             Yii::error('TikTok callback error: ' . $e->getMessage(), __METHOD__);
-            Yii::$app->session->setFlash('error', 'เกิดข้อผิดพลาด: ' . $e->getMessage());
+            return $this->asJson(['error' => 'Cannot connect TikTok: ' . $e->getMessage()]);
         }
-
-        return $this->redirect(['site/index']);
     }
 
+    /**
+     * ต่ออายุ TikTok token ด้วย refresh_token
+     */
+    public function refreshTikTokToken($shop_id)
+    {
+        $token = (new \yii\db\Query())
+            ->from('tiktok_token')
+            ->where(['shop_id' => $shop_id])
+            ->one();
+
+        if (!$token || empty($token['refresh_token'])) {
+            return false;
+        }
+
+        $client = new \GuzzleHttp\Client();
+        try {
+            $response = $client->post('https://open-api.tiktokglobalshop.com/api/v2/token/refresh', [
+                'form_params' => [
+                    'app_key' => '6h9n461r774e1',
+                    'app_secret' => '1c45a0c25224293abd7de681049f90de3363389a',
+                    'refresh_token' => $token['refresh_token'],
+                    'grant_type' => 'refresh_token',
+                ]
+            ]);
+
+            $data = json_decode((string)$response->getBody(), true);
+
+            if (isset($data['access_token'])) {
+                $this->saveTikTokToken($shop_id, $data);
+                return true;
+            }
+        } catch (\Throwable $e) {
+            Yii::error('TikTok refresh token error: ' . $e->getMessage(), __METHOD__);
+        }
+
+        return false;
+    }
 
 
 
@@ -762,6 +874,71 @@ class SiteController extends Controller
             return false;
         }
     }
+
+    /**
+     * ต่ออายุ TikTok access token โดยใช้ refresh token
+     *
+     * @param string $shopId หรือ open_id ของร้าน
+     * @return array|false คืนค่าข้อมูล token ใหม่ หรือ false ถ้าล้มเหลว
+     */
+//    public function refreshTikTokToken($shopId)
+//    {
+//        // ดึง refresh token เก่าจาก DB
+//        $tokenRecord = $this->getTikTokTokenByShopId($shopId); // ต้องสร้าง function ดึง token
+//        if (!$tokenRecord || empty($tokenRecord['refresh_token'])) {
+//            Yii::warning("ไม่พบ refresh token สำหรับ shopId: {$shopId}", __METHOD__);
+//            return false;
+//        }
+//
+//        $refreshToken = $tokenRecord['refresh_token'];
+//        $appKey    = '6h9n461r774e1';
+//        $appSecret = '1c45a0c25224293abd7de681049f90de3363389a';
+//
+//        $client = new \GuzzleHttp\Client(['timeout' => 30]);
+//
+//        try {
+//            $url = "https://open-api.tiktokglobalshop.com/api/v2/token/refresh";
+//
+//            $response = $client->post($url, [
+//                'form_params' => [
+//                    'app_key'      => $appKey,
+//                    'app_secret'   => $appSecret,
+//                    'grant_type'   => 'refresh_token',
+//                    'refresh_token'=> $refreshToken,
+//                ],
+//            ]);
+//
+//            $body = (string)$response->getBody();
+//            Yii::info("TikTok refresh token response: {$body}", __METHOD__);
+//
+//            $data = json_decode($body, true);
+//            if (!$data || !isset($data['data']['access_token'])) {
+//                Yii::error("Invalid TikTok token response: {$body}", __METHOD__);
+//                return false;
+//            }
+//
+//            // เก็บ token ใหม่ลง DB
+//            $tokenData = [
+//                'access_token' => $data['data']['access_token'],
+//                'refresh_token' => $data['data']['refresh_token'] ?? $refreshToken, // บางกรณีไม่ส่ง refresh_token ใหม่
+//                'access_token_expire_in' => $data['data']['access_token_expire_in'] ?? 86400,
+//                'refresh_token_expire_in' => $data['data']['refresh_token_expire_in'] ?? 2592000,
+//            ];
+//
+//            if ($this->saveTikTokToken($shopId, $tokenData)) {
+//                Yii::info("ต่ออายุ TikTok access token สำเร็จสำหรับ shopId: {$shopId}", __METHOD__);
+//                return $tokenData;
+//            } else {
+//                Yii::error("ไม่สามารถบันทึก token ใหม่ลง DB สำหรับ shopId: {$shopId}", __METHOD__);
+//                return false;
+//            }
+//
+//        } catch (\Exception $e) {
+//            Yii::error("TikTok refresh token error: " . $e->getMessage(), __METHOD__);
+//            return false;
+//        }
+//    }
+
 
     /**
      * เริ่มต้นการเชื่อมต่อ Shopee OAuth
@@ -987,116 +1164,6 @@ class SiteController extends Controller
         return $this->redirect(['site/index']);
     }
 
-    public function actionTestWithRealCode()
-    {
-        $code = '4a466f51734c697a6e654b4857757646'; // code จาก log
-        $shop_id = '816547426'; // shop_id จาก log
-        $partner_id = 2012399; // ✅ ใช้ค่าเดียวกับใน actionConnectShopee
-        $partner_key = 'shpk72476151525864414e4b6e475449626679624f695a696162696570417043'; // ✅ ใส่ partner_key เต็ม
-
-        $timestamp = time();
-
-        // ✅ สร้าง signature สำหรับ token exchange ตาม Shopee docs ที่ถูกต้อง
-        // Format: partner_id + path + timestamp (ไม่รวม code)
-        $path = "/api/v2/auth/token/get";
-        $base_string = $partner_id . $path . $timestamp;
-        $sign = hash_hmac('sha256', $base_string, $partner_key);
-        // ใช้โค้ดเดียวกับใน callback เพื่อทดสอบ
-        // ... (คัดลอกส่วน API call จาก callback)
-        try {
-            $client = new \GuzzleHttp\Client();
-
-            // ✅ แยก partner_id และ timestamp ไปเป็น query parameters
-            $queryParams = [
-                'partner_id' => $partner_id,
-                'timestamp' => $timestamp,
-                'sign' => $sign,
-            ];
-
-            $jsonPayload = [
-                'code' => $code,
-                'shop_id' => $shop_id,
-                'partner_id' => $partner_id,
-            ];
-
-            // ✅ Debug
-            Yii::info("Query params: " . json_encode($queryParams), __METHOD__);
-            Yii::info("JSON payload: " . json_encode($jsonPayload), __METHOD__);
-
-            $response = $client->post('https://partner.shopeemobile.com/api/v2/auth/token/get', [
-                'query' => $queryParams, // ✅ ส่งเป็น query parameters
-                'json' => $jsonPayload,   // ✅ ส่งเป็น JSON body (ไม่ใช่ form_params)
-                'timeout' => 30,
-                'headers' => [
-                    'Content-Type' => 'application/json',
-                    'Accept' => 'application/json',
-                    'User-Agent' => 'YourApp/1.0',
-                ],
-            ]);
-
-            $statusCode = $response->getStatusCode();
-            $body = $response->getBody()->getContents();
-
-            Yii::info("Response status: {$statusCode}", __METHOD__);
-            Yii::info("Response body: {$body}", __METHOD__);
-
-            // ✅ ตรวจสอบ response headers
-            $headers = $response->getHeaders();
-            Yii::info("Response headers: " . json_encode($headers), __METHOD__);
-
-            if ($statusCode !== 200) {
-                throw new \Exception("HTTP Error: $statusCode - $body");
-            }
-
-            $data = json_decode($body, true);
-
-            if (json_last_error() !== JSON_ERROR_NONE) {
-                throw new \Exception("JSON decode error: " . json_last_error_msg());
-            }
-
-            // ✅ ตรวจสอบว่า response มี error หรือไม่
-            if (isset($data['error'])) {
-                $errorDetail = isset($data['message']) ? $data['message'] : 'No error message';
-                throw new \Exception("API Error: {$data['error']} - {$errorDetail}");
-            }
-
-            if (isset($data['access_token'])) {
-                // บันทึกลงฐานข้อมูล
-                $this->saveShopeeToken($shop_id, $data);
-
-                Yii::$app->session->setFlash('success', 'เชื่อมต่อ Shopee สำเร็จ! Shop ID: ' . $shop_id);
-            } else {
-                $errorMsg = isset($data['message']) ? $data['message'] : 'Unknown error';
-                $errorCode = isset($data['error']) ? $data['error'] : 'unknown';
-
-                // ✅ Debug ข้อมูลที่ได้รับทั้งหมด
-                Yii::error("Complete API response: " . json_encode($data), __METHOD__);
-                Yii::error("Query params sent: " . json_encode($queryParams), __METHOD__);
-                Yii::error("JSON payload sent: " . json_encode($jsonPayload), __METHOD__);
-                Yii::error("Base string used: {$base_string}", __METHOD__);
-                Yii::error("Signature used: {$sign}", __METHOD__);
-
-                Yii::$app->session->setFlash('error', "ไม่สามารถเชื่อมต่อ Shopee ได้: [$errorCode] $errorMsg");
-            }
-
-        } catch (\GuzzleHttp\Exception\ClientException $e) {
-            $response = $e->getResponse();
-            $statusCode = $response->getStatusCode();
-            $errorBody = $response->getBody()->getContents();
-
-            Yii::error("HTTP Status: {$statusCode}", __METHOD__);
-            Yii::error("Error Body: {$errorBody}", __METHOD__);
-            Yii::error("Request URL: https://partner.shopeemobile.com/api/v2/auth/token/get", __METHOD__);
-
-            Yii::$app->session->setFlash('error', "HTTP Error {$statusCode}: {$errorBody}");
-
-        } catch (\Exception $e) {
-            Yii::error('Shopee callback error: ' . $e->getMessage(), __METHOD__);
-            Yii::$app->session->setFlash('error', 'เกิดข้อผิดพลาด: ' . $e->getMessage());
-        }
-
-        return $this->redirect(['site/index']);
-    }
 
     /**
      * ฟังก์ชันสำหรับบันทึก Shopee Token (ปรับให้ตรงกับตารางจริง)
@@ -1154,198 +1221,5 @@ class SiteController extends Controller
      */
 
 
-
-
-
-    public function actionTestShopeeSignature()
-    {
-        $partner_id = 2012399;
-        $partner_key = 'shpk72476151525864414e4b6e475449626679624f695a696162696570417043';
-        $redirect_url = 'https://www.pjrichth.co/site/shopee-callback';
-        $code = 'sample-code';
-        $timestamp = 1672531200; // ใช้ timestamp คงที่เพื่อทดสอบ
-
-        // ทดสอบ signature สำหรับ authorization
-        $auth_path = "/api/v2/shop/auth_partner";
-        $auth_base_string = $partner_id . $auth_path . $timestamp;
-        $auth_sign = hash_hmac('sha256', $auth_base_string, $partner_key);
-
-        // ทดสอบ signature สำหรับ token exchange
-        $token_base_string = $partner_id . $redirect_url . $timestamp . $code;
-        $token_sign = hash_hmac('sha256', $token_base_string, $partner_key);
-
-        return $this->asJson([
-            'partner_id' => $partner_id,
-            'partner_key_length' => strlen($partner_key),
-            'partner_key_preview' => substr($partner_key, 0, 10) . '...',
-            'redirect_url' => $redirect_url,
-            'code' => $code,
-            'timestamp' => $timestamp,
-            'auth' => [
-                'path' => $auth_path,
-                'base_string' => $auth_base_string,
-                'signature' => $auth_sign,
-            ],
-            'token_exchange' => [
-                'base_string' => $token_base_string,
-                'signature' => $token_sign,
-            ]
-        ]);
-    }
-
-    /**
-     * ✅ ฟังก์ชันทดสอบการส่ง token exchange request
-     */
-//    public function actionTestShopeeTokenExchange()
-//    {
-////        // ใช้ข้อมูลจริง
-//        $partner_id = 2012399; // ✅ ใช้ partner_id จริง
-//        $partner_key = 'shpk72476151525864414e4b6e475449626679624f695a696162696570417043'; // ✅ ใส่ partner_key เต็ม
-//        $redirect_url = 'https://www.pjrichth.co/site/shopee-callback';
-//  //      $code = 'test-code'; // ใส่ code จริงจากการทดสอบ
-////        $timestamp = time();
-////
-////        // ✅ สร้าง signature แบบถูกต้อง (รวม path)
-////        $path = "/api/v2/auth/token/get";
-////        $base_string = $partner_id . $path . $timestamp . $code;
-////        $sign = hash_hmac('sha256', $base_string, $partner_key);
-////
-////        // ✅ แยก parameters ตาม Shopee API format
-////        $queryParams = [
-////            'partner_id' => $partner_id,
-////            'timestamp' => $timestamp,
-////            'sign' => $sign,
-////        ];
-////
-////        $postData = [
-////            'code' => $code,
-////            'redirect_uri' => $redirect_url,
-////        ];
-////
-////        try {
-////            $client = new \GuzzleHttp\Client();
-////
-////            // ✅ ทดสอบส่ง request แบบใหม่
-////            $response = $client->post('https://partner.shopeemobile.com/api/v2/auth/token/get', [
-////                'query' => $queryParams, // ✅ ส่งเป็น query parameters
-////                'form_params' => $postData, // ✅ ส่งเป็น POST body
-////                'timeout' => 30,
-////                'debug' => false, // เปลี่ยนเป็น true เพื่อดู detail
-////            ]);
-////
-////            $statusCode = $response->getStatusCode();
-////            $body = $response->getBody()->getContents();
-////
-////            return $this->asJson([
-////                'success' => true,
-////                'status_code' => $statusCode,
-////                'query_params' => $queryParams,
-////                'post_data' => $postData,
-////                'base_string' => $base_string,
-////                'signature' => $sign,
-////                'response_body' => json_decode($body, true),
-////                'response_raw' => $body,
-////            ]);
-////
-////        } catch (\GuzzleHttp\Exception\ClientException $e) {
-////            // ✅ จับ error จาก HTTP client
-////            $response = $e->getResponse();
-////            $statusCode = $response->getStatusCode();
-////            $body = $response->getBody()->getContents();
-////
-////            return $this->asJson([
-////                'success' => false,
-////                'error_type' => 'ClientException',
-////                'status_code' => $statusCode,
-////                'query_params' => $queryParams,
-////                'post_data' => $postData,
-////                'base_string' => $base_string,
-////                'signature' => $sign,
-////                'error_body' => $body,
-////                'error_decoded' => json_decode($body, true),
-////            ]);
-////
-////        } catch (\Exception $e) {
-////            return $this->asJson([
-////                'success' => false,
-////                'error_type' => 'Exception',
-////                'error_message' => $e->getMessage(),
-////                'query_params' => $queryParams,
-////                'post_data' => $postData,
-////                'base_string' => $base_string,
-////                'signature' => $sign,
-////            ]);
-////        }
-//        $code = 'sample-code';
-//        $timestamp = 1672531200; // ใช้ timestamp คงที่เพื่อทดสอบ
-//
-//        // ทดสอบ signature สำหรับ authorization
-//        $auth_path = "/api/v2/shop/auth_partner";
-//        $auth_base_string = $partner_id . $auth_path . $timestamp;
-//        $auth_sign = hash_hmac('sha256', $auth_base_string, $partner_key);
-//
-//        // ทดสอบ signature สำหรับ token exchange (รวม path)
-//        $token_path = "/api/v2/auth/token/get";
-//        $token_base_string = $partner_id . $token_path . $timestamp . $code;
-//        $token_sign = hash_hmac('sha256', $token_base_string, $partner_key);
-//
-//        return $this->asJson([
-//            'partner_id' => $partner_id,
-//            'partner_key_length' => strlen($partner_key),
-//            'partner_key_preview' => substr($partner_key, 0, 10) . '...',
-//            'redirect_url' => $redirect_url,
-//            'code' => $code,
-//            'timestamp' => $timestamp,
-//            'auth' => [
-//                'path' => $auth_path,
-//                'base_string' => $auth_base_string,
-//                'signature' => $auth_sign,
-//            ],
-//            'token_exchange' => [
-//                'path' => $token_path,
-//                'base_string' => $token_base_string,
-//                'signature' => $token_sign,
-//            ]
-//        ]);
-//    }
-
-    public function actionTestShopeeTokenExchange()
-    {
-        $partner_id = 2012399;
-        $partner_key = 'shpk72476151525864414e4b6e475449626679624f695a696162696570417043';
-        $redirect_url = 'https://www.pjrichth.co/site/shopee-callback';
-        $code = 'sample-code';
-        $timestamp = 1672531200;
-
-        // Authorization signature (ถูกต้อง)
-        $auth_path = "/api/v2/shop/auth_partner";
-        $auth_base_string = $partner_id . $auth_path . $timestamp;
-        $auth_sign = hash_hmac('sha256', $auth_base_string, $partner_key);
-
-        // Token exchange signature (แก้ไขแล้ว - ไม่รวม code)
-        $token_path = "/api/v2/auth/token/get";
-        $token_base_string = $partner_id . $token_path . $timestamp; // ✅ ลบ $code ออก
-        $token_sign = hash_hmac('sha256', $token_base_string, $partner_key);
-
-        return $this->asJson([
-            'partner_id' => $partner_id,
-            'partner_key_length' => strlen($partner_key),
-            'partner_key_preview' => substr($partner_key, 0, 10) . '...',
-            'redirect_url' => $redirect_url,
-            'code' => $code,
-            'timestamp' => $timestamp,
-            'auth' => [
-                'path' => $auth_path,
-                'base_string' => $auth_base_string,
-                'signature' => $auth_sign,
-            ],
-            'token_exchange' => [
-                'path' => $token_path,
-                'base_string' => $token_base_string,
-                'signature' => $token_sign,
-                'note' => 'Code is sent in JSON payload, not in signature'
-            ]
-        ]);
-    }
 
 }
