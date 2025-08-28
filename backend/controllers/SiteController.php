@@ -708,7 +708,7 @@ class SiteController extends Controller
 //    }
 //
 
-    public function actionConnectTiktok($shop_id)
+    public function actionConnectTiktok($shop_id=1)
     {
         Yii::$app->session->open();
 
@@ -785,7 +785,7 @@ class SiteController extends Controller
     /**
      * ต่ออายุ TikTok token ด้วย refresh_token
      */
-    public function refreshTikTokToken($shop_id=1)
+    public function refreshTikTokToken($shop_id)
     {
         $token = (new \yii\db\Query())
             ->from('tiktok_token')
