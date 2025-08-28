@@ -757,7 +757,7 @@ class SiteController extends Controller
         // แลก code เป็น access_token
         $client = new \GuzzleHttp\Client();
         try {
-            $response = $client->post('https://open-api.tiktokglobalshop.com/api/v2/token/get', [
+            $response = $client->post('open-api.tiktokglobalshop.com/api/v1/token/get', [
                 'form_params' => [
                     'app_key' => '6h9n461r774e1',
                     'app_secret' => '1c45a0c25224293abd7de681049f90de3363389a',
