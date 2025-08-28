@@ -607,7 +607,7 @@ class SiteController extends Controller
 
         Yii::$app->session->open();
 
-        $code = Yii::$app->request->get('code');
+        $code  = Yii::$app->request->get('code');
         $state = Yii::$app->request->get('state');
         $error = Yii::$app->request->get('error');
 
@@ -629,29 +629,55 @@ class SiteController extends Controller
         }
         Yii::$app->session->remove('tiktok_oauth_state');
 
-        $appKey = '6h9n461r774e1';
-        $appSecret = '1c45a0c25224293abd7de681049f90de3363389a';
-        $url = "https://auth.tiktok-shops.com/api/v2/token/get";
+        $appKey     = '6h9n461r774e1';
+        $appSecret  = '1c45a0c25224293abd7de681049f90de3363389a';
+        $redirectUri = Url::to(['site/tiktok-callback'], true);
 
         try {
-            $client = new \GuzzleHttp\Client();
+            $client = new \GuzzleHttp\Client(['timeout' => 30]);
 
-            $postData = [
-                'app_key' => $appKey,
+            // ✅ Endpoint TikTok OAuth v2 (มาตรฐาน)
+            $endpointOauth = "https://open.tiktokapis.com/v2/oauth/token/";
+            // ✅ Endpoint TikTok Shop (บางกรณี)
+            $endpointShop = "https://auth.tiktok-shops.com/api/v2/token/get";
+
+            // เตรียมข้อมูลสำหรับ OAuth v2
+            $postDataOauth = [
+                'client_key'    => $appKey,
+                'client_secret' => $appSecret,
+                'code'          => $code,
+                'grant_type'    => 'authorization_code',
+                'redirect_uri'  => $redirectUri,
+            ];
+
+            // เตรียมข้อมูลสำหรับ Shop API
+            $postDataShop = [
+                'app_key'    => $appKey,
                 'app_secret' => $appSecret,
-                'code' => $code,
+                'code'       => $code,
                 'grant_type' => 'authorized_code',
             ];
 
-            Yii::info("TikTok Post data: " . json_encode($postData), __METHOD__);
+            $response = null;
+            $data = null;
 
-            $response = $client->post($url, [
-                'form_params' => $postData,
-                'timeout' => 30,
-                'headers' => [
-                    'Content-Type' => 'application/x-www-form-urlencoded',
-                ]
-            ]);
+            try {
+                // 🔹 ลองเรียก OAuth v2 ก่อน
+                $response = $client->post($endpointOauth, [
+                    'form_params' => $postDataOauth,
+                    'headers' => ['Content-Type' => 'application/x-www-form-urlencoded'],
+                ]);
+                Yii::info("TikTok Used endpoint: {$endpointOauth}", __METHOD__);
+            } catch (\Exception $e) {
+                Yii::warning("OAuth v2 failed, fallback to Shop API: " . $e->getMessage(), __METHOD__);
+
+                // 🔹 ถ้า fail ให้ลอง Shop API
+                $response = $client->post($endpointShop, [
+                    'form_params' => $postDataShop,
+                    'headers' => ['Content-Type' => 'application/x-www-form-urlencoded'],
+                ]);
+                Yii::info("TikTok Used endpoint: {$endpointShop}", __METHOD__);
+            }
 
             $statusCode = $response->getStatusCode();
             $body = $response->getBody()->getContents();
@@ -668,28 +694,40 @@ class SiteController extends Controller
                 throw new \Exception("JSON decode error: " . json_last_error_msg());
             }
 
-            if (isset($data['data']['access_token'])) {
-                // ✅ เอา shop_id มาจาก response
-                $shopId = $data['data']['shop_id'] ?? null;
+            // ✅ ตรวจสอบรูปแบบ response
+            $tokenData = [];
+            $shopId = null;
 
+            if (isset($data['data']['access_token'])) {
+                // TikTok Shop API response
                 $tokenData = [
                     'access_token' => $data['data']['access_token'],
                     'refresh_token' => $data['data']['refresh_token'] ?? '',
-                    'access_token_expire_in' => $data['data']['access_token_expire_in'] ?? 86400,
+                    'access_token_expire_in' => $data['data']['access_token_expire_in'] ?? $data['data']['expires_in'] ?? 86400,
                     'refresh_token_expire_in' => $data['data']['refresh_token_expire_in'] ?? 2592000,
                 ];
+                $shopId = $data['data']['shop_id'] ?? null;
+            } elseif (isset($data['access_token'])) {
+                // TikTok OAuth v2 response
+                $tokenData = [
+                    'access_token' => $data['access_token'],
+                    'refresh_token' => $data['refresh_token'] ?? '',
+                    'access_token_expire_in' => $data['expires_in'] ?? 86400,
+                    'refresh_token_expire_in' => $data['refresh_expires_in'] ?? 2592000,
+                ];
+                $shopId = $data['open_id'] ?? null; // อาจใช้ open_id แทน shop_id ในกรณี OAuth v2
+            }
 
+            if (!empty($tokenData)) {
                 if ($shopId && $this->saveTikTokToken($shopId, $tokenData)) {
-                    Yii::$app->session->setFlash('success', 'เชื่อมต่อ TikTok สำเร็จ! Shop ID: ' . $shopId);
+                    Yii::$app->session->setFlash('success', 'เชื่อมต่อ TikTok สำเร็จ! Shop/Open ID: ' . $shopId);
                 } else {
-                    Yii::$app->session->setFlash('error', 'ไม่สามารถบันทึกข้อมูล token ได้ (shop_id not found)');
+                    Yii::$app->session->setFlash('warning', 'เชื่อมต่อสำเร็จ แต่ไม่พบ shop_id/open_id ใน response');
                 }
             } else {
                 $errorMsg = $data['message'] ?? 'Unknown error';
                 $errorCode = $data['code'] ?? 'unknown';
                 Yii::$app->session->setFlash('error', "ไม่สามารถเชื่อมต่อ TikTok ได้: [$errorCode] $errorMsg");
-
-                Yii::error("Invalid TikTok token response: " . json_encode($data), __METHOD__);
             }
 
         } catch (\Exception $e) {
@@ -699,6 +737,7 @@ class SiteController extends Controller
 
         return $this->redirect(['site/index']);
     }
+
 
 
     /**
