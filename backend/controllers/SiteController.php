@@ -729,27 +729,27 @@ class SiteController extends Controller
 
         // URL patterns ที่เป็นไปได้สำหรับ TikTok Shop Thailand
         $urlPatterns = [
+//            1 => [
+//                'name' => 'TikTok Shop Services (service_id)',
+//                'url' => 'https://services.tiktokshop.com/open/authorize',
+//                'params' => ['service_id' => $appKey, 'state' => $state]
+//            ],
             1 => [
-                'name' => 'TikTok Shop Services (service_id)',
-                'url' => 'https://services.tiktokshop.com/open/authorize',
-                'params' => ['service_id' => $appKey, 'state' => $state]
-            ],
-            2 => [
                 'name' => 'TikTok Shop Auth (app_key)',
                 'url' => 'https://auth.tiktok-shops.com/oauth/authorize',
                 'params' => ['app_key' => $appKey, 'state' => $state, 'response_type' => 'code']
             ],
-            3 => [
+            2 => [
                 'name' => 'TikTok Shop Partner (service_id)',
                 'url' => 'https://partner.tiktokshop.com/authorize',
                 'params' => ['service_id' => $appKey, 'state' => $state]
             ],
-            4 => [
+            3 => [
                 'name' => 'TikTok Global Shop (app_key)',
                 'url' => 'https://open-api.tiktokglobalshop.com/authorization',
                 'params' => ['app_key' => $appKey, 'state' => $state, 'response_type' => 'code']
             ],
-            5 => [
+            4 => [
                 'name' => 'TikTok Standard OAuth',
                 'url' => 'https://www.tiktok.com/v2/auth/authorize',
                 'params' => [
