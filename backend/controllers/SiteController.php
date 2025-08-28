@@ -599,25 +599,18 @@ class SiteController extends Controller
 
     public function actionTiktokCallback()
     {
-        // Debug URL ที่ TikTok redirect กลับมา
         $fullUrl = Yii::$app->request->getAbsoluteUrl();
         Yii::info("TikTok Callback full URL: {$fullUrl}", __METHOD__);
 
-        // Debug ทุก parameter ที่ได้รับ
         $allParams = Yii::$app->request->get();
         Yii::info('TikTok All callback parameters: ' . json_encode($allParams), __METHOD__);
-        // ✅ เปิด session
+
         Yii::$app->session->open();
 
         $code = Yii::$app->request->get('code');
-        $shop_id = Yii::$app->request->get('shop_id');
         $state = Yii::$app->request->get('state');
         $error = Yii::$app->request->get('error');
 
-        // ✅ Debug: ตรวจสอบ parameters ทั้งหมดที่ได้รับ
-        Yii::info('TikTok All GET parameters: ' . json_encode($_GET), __METHOD__);
-
-        // ตรวจสอบข้อผิดพลาด
         if ($error) {
             Yii::$app->session->setFlash('error', 'TikTok authorization error: ' . $error);
             return $this->redirect(['site/index']);
@@ -628,22 +621,12 @@ class SiteController extends Controller
             return $this->redirect(['site/index']);
         }
 
-        if (!$shop_id) {
-            Yii::$app->session->setFlash('error', 'Missing shop_id from TikTok');
-            return $this->redirect(['site/index']);
-        }
-
-        // ✅ ปรับปรุงการตรวจสอบ state (ให้ยืดหยุ่นเหมือน Shopee)
+        // ✅ ตรวจสอบ state
         $sessionState = Yii::$app->session->get('tiktok_oauth_state');
-        Yii::info('TikTok Session state: ' . ($sessionState ?: 'NOT_FOUND'), __METHOD__);
-        Yii::info('TikTok Received state: ' . ($state ?: 'EMPTY'), __METHOD__);
-
-        if ($sessionState && !empty($state) && $sessionState !== $state) {
+        if ($sessionState && $state && $sessionState !== $state) {
             Yii::$app->session->setFlash('error', 'Invalid state parameter');
             return $this->redirect(['site/index']);
         }
-
-        // ลบ state จาก session
         Yii::$app->session->remove('tiktok_oauth_state');
 
         $appKey = '6h9n461r774e1';
@@ -660,7 +643,6 @@ class SiteController extends Controller
                 'grant_type' => 'authorized_code',
             ];
 
-            // ✅ Debug post data
             Yii::info("TikTok Post data: " . json_encode($postData), __METHOD__);
 
             $response = $client->post($url, [
@@ -682,30 +664,31 @@ class SiteController extends Controller
             }
 
             $data = json_decode($body, true);
-
             if (json_last_error() !== JSON_ERROR_NONE) {
                 throw new \Exception("JSON decode error: " . json_last_error_msg());
             }
 
             if (isset($data['data']['access_token'])) {
-                // ✅ ใช้ฟังก์ชัน saveTikTokToken ที่สร้างไว้แล้ว
+                // ✅ เอา shop_id มาจาก response
+                $shopId = $data['data']['shop_id'] ?? null;
+
                 $tokenData = [
                     'access_token' => $data['data']['access_token'],
                     'refresh_token' => $data['data']['refresh_token'] ?? '',
-                    'access_token_expire_in' => $data['data']['expires_in'] ?? 86400, // TikTok ใช้ expires_in
+                    'access_token_expire_in' => $data['data']['access_token_expire_in'] ?? 86400,
+                    'refresh_token_expire_in' => $data['data']['refresh_token_expire_in'] ?? 2592000,
                 ];
 
-                if ($this->saveTikTokToken($shop_id, $tokenData)) {
-                    Yii::$app->session->setFlash('success', 'เชื่อมต่อ TikTok สำเร็จ! Shop ID: ' . $shop_id);
+                if ($shopId && $this->saveTikTokToken($shopId, $tokenData)) {
+                    Yii::$app->session->setFlash('success', 'เชื่อมต่อ TikTok สำเร็จ! Shop ID: ' . $shopId);
                 } else {
-                    Yii::$app->session->setFlash('error', 'ไม่สามารถบันทึกข้อมูล token ได้');
+                    Yii::$app->session->setFlash('error', 'ไม่สามารถบันทึกข้อมูล token ได้ (shop_id not found)');
                 }
             } else {
-                $errorMsg = isset($data['message']) ? $data['message'] : 'Unknown error';
-                $errorCode = isset($data['code']) ? $data['code'] : 'unknown';
+                $errorMsg = $data['message'] ?? 'Unknown error';
+                $errorCode = $data['code'] ?? 'unknown';
                 Yii::$app->session->setFlash('error', "ไม่สามารถเชื่อมต่อ TikTok ได้: [$errorCode] $errorMsg");
 
-                // ✅ Debug response ที่ไม่ถูกต้อง
                 Yii::error("Invalid TikTok token response: " . json_encode($data), __METHOD__);
             }
 
@@ -716,6 +699,7 @@ class SiteController extends Controller
 
         return $this->redirect(['site/index']);
     }
+
 
     /**
      * ✅ ฟังก์ชันบันทึก TikTok Token (ปรับให้ตรงกับตารางจริง)
