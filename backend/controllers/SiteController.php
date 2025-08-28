@@ -646,8 +646,8 @@ class SiteController extends Controller
 
             $response = $client->post($url, [
                 'form_params' => [
-                    'app_key'    => $appKey,
-                    'app_secret' => $appSecret,
+                    'client_key'    => $appKey,
+                    'client_secret' => $appSecret,
                     'code'          => $code,
                     'grant_type'    => 'authorization_code',
                     'redirect_uri'  => $redirectUri,
