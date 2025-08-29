@@ -84,12 +84,12 @@ $this->params['breadcrumbs'][] = $this->title;
                 'name',
                 'description',
                 // 'product_type_id',
-                [
-                    'attribute' => 'product_group_id',
-                    'value' => function ($data) {
-                        return \backend\models\Productgroup::findName($data->product_group_id);
-                    }
-                ],
+//                [
+//                    'attribute' => 'product_group_id',
+//                    'value' => function ($data) {
+//                        return \backend\models\Productgroup::findName($data->product_group_id);
+//                    }
+//                ],
 
                 //'status',
                 //'last_price',
@@ -106,16 +106,6 @@ $this->params['breadcrumbs'][] = $this->title;
                         } else {
                             return '<div class="badge badge-pill badge-secondary" style="padding: 10px;">ไม่ใช้งาน</div>';
                         }
-                    }
-                ],
-                [
-                    'attribute' => 'stock_qty',
-                    'label' => 'คงเหลือ',
-                    'headerOptions' => ['style' => 'text-align: right'],
-                    'contentOptions' => ['style' => 'text-align: right'],
-                    'value' => function ($data) {
-                        // $qty = \backend\models\Product::getTotalQty($data->id);
-                        return number_format($data->stock_qty, 0);
                     }
                 ],
 
