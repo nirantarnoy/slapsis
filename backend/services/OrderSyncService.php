@@ -298,6 +298,8 @@ class OrderSyncService
                 $order->sku = $item['model_sku'] ?? $item['item_sku'] ?? 'UNKNOWN_SKU';
                 $order->product_name = $item['item_name'];
 
+                $this->checkSaveNewProduct($order->sku,$order->product_name); // check has already product
+
                 // ✅ เช็คและปรับค่า quantity
                 $quantity = $item['model_quantity_purchased']
                     ?? $item['quantity_purchased']
@@ -342,6 +344,17 @@ class OrderSyncService
         }
 
         return $count;
+    }
+
+    private function checkSaveNewProduct($sku,$name){
+        $model = \backend\models\Product::find()->where(['sku'=>trim($sku),'name'=>trim($name)])->one();
+        if(!$model){
+            $model_new = new \backend\models\Product();
+            $model_new->sku = trim($sku);
+            $model_new->name = trim($name);
+            $model_new->status = 1;
+            $model_new->save(false);
+        }
     }
 
     /**
