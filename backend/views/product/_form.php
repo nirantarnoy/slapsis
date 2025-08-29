@@ -52,62 +52,7 @@ $model_warehouse_product = null;
             </div>
         </div>
         <br/>
-        <div class="row">
-            <div class="col-lg-6">
-                <label for="">รูปภาพ</label>
-                <?php if ($model->isNewRecord): ?>
-                    <table style="width: 100%">
-                        <tr>
-                            <td style="border: 1px dashed grey;height: 250px;text-align: center;">
-                                <i class="fa fa-ban fa-lg" style="color: grey"></i>
-                                <span style="color: lightgrey">ไม่พบไฟล์แนบ</span>
-                            </td>
-                        </tr>
-                    </table>
-                <?php else: ?>
-                    <table style="width: 100%">
-                        <tr>
-                            <?php if ($model->photo != ''): ?>
-                                <td style="border: 1px dashed grey;height: 250px;text-align: center;">
-                                    <a href="<?= \Yii::$app->getUrlManager()->baseUrl . '/uploads/product_photo/' . $model->photo ?>"
-                                       target="_blank"><img
-                                                src="<?= \Yii::$app->getUrlManager()->baseUrl . '/uploads/product_photo/' . $model->photo ?>"
-                                                style="max-width: 130px;margin-top: 5px;" alt=""></a>
-                                </td>
-                            <?php else: ?>
-                                <td style="border: 1px dashed grey;height: 250px;text-align: center;">
-                                    <i class="fa fa-ban fa-lg" style="color: grey"></i>
-                                    <span style="color: lightgrey">ไม่พบไฟล์แนบ</span>
-                                </td>
-                            <?php endif; ?>
-                        </tr>
-                    </table>
-                <?php endif; ?>
-                <input type="file" name="product_photo" class="form-control">
-            </div>
-            <div class="col-lg-6">
-                <label for="">สินค้าคงเหลือ</label>
-                <table class="table table-bordered table-striped">
-                    <thead>
-                    <tr>
-                        <td>คลังจัดเก็บ</td>
-                        <td>จำนวน</td>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    <?php if ($model_warehouse_product != null): ?>
-                        <?php for ($i = 0; $i <= count($model_warehouse_product) - 1; $i++): ?>
-                            <tr>
-                                <td><?= $model_warehouse_product[$i]['warehouse_name'] ?></td>
-                                <td><?= number_format($model_warehouse_product[$i]['qty'], 0) ?></td>
-                            </tr>
-                        <?php endfor; ?>
-                    <?php endif; ?>
-                    </tbody>
-                </table>
-            </div>
 
-        </div>
         <br/>
         <div class="form-group">
             <?= Html::submitButton('Save', ['class' => 'btn btn-success']) ?>

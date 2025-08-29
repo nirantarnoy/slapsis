@@ -189,122 +189,10 @@ class ProductController extends Controller
     public function actionUpdate($id)
     {
         $model = $this->findModel($id);
-        $model_line = \common\models\StockSum::find()->where(['product_id'=>$id])->all();
-        $model_customer_line = \common\models\CustomerProductPrice::find()->where(['product_id'=>$id])->all();
-        $work_photo = '';
         if ($this->request->isPost && $model->load($this->request->post())) {
-
-            $line_warehouse = \Yii::$app->request->post('warehouse_id');
-            $line_qty = \Yii::$app->request->post('line_qty');
-            $line_exp_date = \Yii::$app->request->post('line_exp_date');
-
-            $uploaded = UploadedFile::getInstanceByName('product_photo');
-            $uploaded2 = UploadedFile::getInstanceByName('product_photo_2');
-
-            $line_rec_id = \Yii::$app->request->post('line_rec_id');
-            $removelist = \Yii::$app->request->post('remove_list');
-
-
-
-            /// customer price
-
-            $line_customer_rec_id = \Yii::$app->request->post('line_customer_rec_id');
-            $line_product_customer_id = \Yii::$app->request->post('line_product_customer_id');
-            $line_customer_price = \Yii::$app->request->post('line_customer_price');
-            $line_include_vat = \Yii::$app->request->post('line_include_vat');
-            $removecustomerlist = \Yii::$app->request->post('remove_customer_list');
-
-            //  print_r($line_customer_rec_id);return;
             $model->code = $model->sku;
             if ($model->save(false)) {
-                if (!empty($uploaded)) {
-                    $upfiles = "photo_" . time() . "." . $uploaded->getExtension();
-                    if ($uploaded->saveAs('uploads/product_photo/' . $upfiles)) {
-                        \backend\models\Product::updateAll(['photo' => $upfiles], ['id' => $model->id]);
-                    }
 
-                }
-                if (!empty($uploaded2)) {
-                    $upfiles2 = "photo_" . time() . "." . $uploaded2->getExtension();
-                    if ($uploaded2->saveAs('uploads/product_photo/' . $upfiles2)) {
-                        \backend\models\Product::updateAll(['photo_2' => $upfiles2], ['id' => $model->id]);
-                    }
-
-                }
-                for($i=0;$i<count($line_warehouse);$i++){
-                    if($line_qty[$i] == 0){
-                        continue;
-                    }
-
-                    $model_trans = new \backend\models\Stocktrans();
-                    $model_trans->product_id = $model->id;
-                    $model_trans->trans_date = date('Y-m-d H:i:s');
-                    $model_trans->activity_type_id = 1; // 1 ปรับสต๊อก 2 เบิก 3 คำสั่งซื้อ
-                    $model_trans->qty = $line_qty[$i];
-                    $model_trans->status = 1;
-                    if($model_trans->save(false)){
-                  //      $model_sum = \backend\models\Stocksum::find()->where(['product_id'=>$model->id,'warehouse_id'=>$line_warehouse[$i],'expired_date'=>date('Y-m-d',strtotime($exp_date))])->one();
-                       if($line_rec_id[$i] != 0){
-
-                           $model_sum = \backend\models\Stocksum::find()->where(['product_id'=>$model->id,'id'=>$line_rec_id[$i]])->one();
-                           if($model_sum){
-                               $model_sum->warehouse_id = $line_warehouse[$i];
-                               $model_sum->qty = $line_qty[$i];
-                               $model_sum->save(false);
-                           }
-                       }else{
-                           $model_sum_new = new \backend\models\Stocksum();
-                           $model_sum_new->product_id = $model->id;
-                           $model_sum_new->warehouse_id = $line_warehouse[$i];
-                           $model_sum_new->qty = $line_qty[$i];
-                           $model_sum_new->save(false);
-                       }
-
-                    }
-                }
-
-
-                if($line_product_customer_id!=null){
-
-                    for($i=0;$i<count($line_product_customer_id);$i++){
-                        if($line_customer_price[$i] == 0){
-                            continue;
-                        }
-                       // echo "ok";return;
-                        $model_check = \common\models\CustomerProductPrice::find()->where(['id'=>$line_customer_rec_id[$i]])->one();
-                        if($model_check){
-                            $model_check->customer_id = $line_product_customer_id[$i];
-                            $model_check->sale_price = $line_customer_price[$i];
-                            $model_check->include_vat = $line_include_vat[$i];
-                            $model_check->save(false);
-                        }else{
-                            $model_customer = new \common\models\CustomerProductPrice();
-                            $model_customer->product_id = $model->id;
-                            $model_customer->customer_id = $line_product_customer_id[$i];
-                            $model_customer->sale_price = $line_customer_price[$i];
-                            $model_customer->include_vat = $line_include_vat[$i];
-                            $model_customer->status = 0;
-                            $model_customer->price_date = date('Y-m-d H:i:s');
-                            $model_customer->save(false);
-                        }
-
-                    }
-                }
-
-
-                if($removelist!=null){
-                    $xdel = explode(',', $removelist);
-                    for($i=0;$i<count($xdel);$i++){
-                        \backend\models\Stocksum::deleteAll(['id'=>$xdel[$i]]);
-                    }
-                }
-
-                if($removecustomerlist!=null){
-                    $xdel2 = explode(',', $removecustomerlist);
-                    for($i=0;$i<count($xdel2);$i++){
-                        \common\models\CustomerProductPrice::deleteAll(['id'=>$xdel2[$i]]);
-                    }
-                }
             }
 
             return $this->redirect(['view', 'id' => $model->id]);
@@ -312,9 +200,6 @@ class ProductController extends Controller
 
         return $this->render('update', [
             'model' => $model,
-            'work_photo' => $work_photo,
-            'model_line' => $model_line,
-            'model_customer_line'=>$model_customer_line,
         ]);
     }
 
