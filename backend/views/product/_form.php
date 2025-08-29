@@ -7,12 +7,6 @@ use yii\widgets\ActiveForm;
 /** @var yii\web\View $this */
 /** @var backend\models\Product $model */
 /** @var yii\widgets\ActiveForm $form */
-$data_warehouse = null;
-
-$yesno = [['id' => 1, 'YES'], ['id' => 0, 'NO']];
-
-$model_warehouse_product = null;
-
 
 ?>
 
@@ -46,13 +40,6 @@ $model_warehouse_product = null;
             </div>
 
         </div>
-        <div class="row">
-            <div class="col-lg-3">
-                <input type="hidden" name="old_photo" value="<?= $model->photo ?>">
-            </div>
-        </div>
-        <br/>
-
         <br/>
         <div class="form-group">
             <?= Html::submitButton('Save', ['class' => 'btn btn-success']) ?>
@@ -61,13 +48,7 @@ $model_warehouse_product = null;
         <?php ActiveForm::end(); ?>
 
     </div>
-    <div class="row">
-        <form action="<?= \yii\helpers\Url::to(['product/importproduct'], true) ?>" method="post"
-              enctype="multipart/form-data">
-            <input type="file" name="file_product" class="form-control">
-            <button class="btn btn-success">Import</button>
-        </form>
-    </div>
+
 <?php
 $js = <<<JS
 var removelist = [];
