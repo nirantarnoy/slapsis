@@ -67,22 +67,24 @@ $this->params['breadcrumbs'][] = $this->title;
                     'headerOptions' => ['style' => 'text-align:center;'],
                     'contentOptions' => ['style' => 'text-align: center'],
                 ],
-                [
-                    'attribute' => 'photo',
-                    'headerOptions' => ['style' => 'text-align: center'],
-                    'contentOptions' => ['style' => 'text-align: center'],
-                    'format' => 'raw',
-                    'value' => function ($data) {
-                        $url = Yii::$app->request->hostInfo . Yii::$app->request->baseUrl . '/uploads/product_photo/' . $data->photo;
-                        return Html::a(
-                            Html::img($url, ['style' => 'max-width:50px']),
-                            $url,
-                            ['target' => '_blank']
-                        );
-                    }
-                ],
+//                [
+//                    'attribute' => 'photo',
+//                    'headerOptions' => ['style' => 'text-align: center'],
+//                    'contentOptions' => ['style' => 'text-align: center'],
+//                    'format' => 'raw',
+//                    'value' => function ($data) {
+//                        $url = Yii::$app->request->hostInfo . Yii::$app->request->baseUrl . '/uploads/product_photo/' . $data->photo;
+//                        return Html::a(
+//                            Html::img($url, ['style' => 'max-width:50px']),
+//                            $url,
+//                            ['target' => '_blank']
+//                        );
+//                    }
+//                ],
+                'sku',
                 'name',
-                'description',
+                'cost_price',
+                //  'description',
                 // 'product_type_id',
 //                [
 //                    'attribute' => 'product_group_id',
