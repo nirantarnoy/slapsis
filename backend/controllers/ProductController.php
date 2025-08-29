@@ -475,6 +475,7 @@ class ProductController extends Controller
                     $model_new = new \backend\models\Product();
                     $model_new->sku = trim($value->sku);
                     $model_new->name = trim($value->product_name);
+                    $model_new->product_group_id = 0;
                     $model_new->save(false);
                 }
             }
