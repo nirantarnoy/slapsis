@@ -33,10 +33,10 @@ $this->params['breadcrumbs'][] = $this->title;
                 return \backend\models\Productgroup::findName($data->product_group_id);
             }
         ],
-        'attribute' => 'cost_price',
+        ['attribute' => 'cost_price',
         'value' => function ($model) {
             return number_format($model->cost_price, 2);
-        },
+        }],
 
         [
             'attribute' => 'status',
