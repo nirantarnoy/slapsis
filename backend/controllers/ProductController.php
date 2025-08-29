@@ -190,7 +190,6 @@ class ProductController extends Controller
     {
         $model = $this->findModel($id);
         if ($this->request->isPost && $model->load($this->request->post())) {
-            $model->code = $model->sku;
             if ($model->save(false)) {
 
             }
