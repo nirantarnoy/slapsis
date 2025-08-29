@@ -17,18 +17,21 @@ use yii\widgets\ActiveForm;
         <input type="hidden" class="remove-customer-list" name="remove_customer_list" value="">
         <div class="row">
             <div class="col-lg-3">
+                <?= $form->field($model, 'sku')->textInput(['maxlength' => true]) ?>
+            </div>
+            <div class="col-lg-3">
                 <?= $form->field($model, 'name')->textInput(['maxlength' => true]) ?>
             </div>
             <div class="col-lg-3">
                 <?= $form->field($model, 'product_group_id')->widget(\kartik\select2\Select2::className(), [
-                    'data' => \yii\helpers\ArrayHelper::map(\backend\models\Productgroup::find()->all(), 'id', 'name'),
+                    'data' => \yii\helpers\ArrayHelper::map(\backend\models\Productgroup::find()->where(['status' => 1])->all(), 'id', 'name'),
                     'options' => [
 
                     ],
                     'pluginOptions' => [
                         'allowClear' => true,
                     ]
-                ]) ?>
+                ])->label('กลุ่มสินค้า') ?>
             </div>
             <div class="col-lg-3">
                 <?php echo $form->field($model, 'status')->widget(\toxor88\switchery\Switchery::className(), ['options' => ['label' => '', 'class' => 'form-control']])->label() ?>
