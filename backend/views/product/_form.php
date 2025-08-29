@@ -34,14 +34,18 @@ use yii\widgets\ActiveForm;
                 ])->label('กลุ่มสินค้า') ?>
             </div>
             <div class="col-lg-3">
-                <?php echo $form->field($model, 'status')->widget(\toxor88\switchery\Switchery::className(), ['options' => ['label' => '', 'class' => 'form-control']])->label() ?>
+                <?php echo $form->field($model, 'cost_price')->textInput([
+                        'type' => 'number',
+                ])->label() ?>
             </div>
         </div>
         <div class="row">
             <div class="col-lg-6">
                 <?= $form->field($model, 'description')->textarea(['maxlength' => true]) ?>
             </div>
-
+            <div class="col-lg-3">
+                <?php echo $form->field($model, 'status')->widget(\toxor88\switchery\Switchery::className(), ['options' => ['label' => '', 'class' => 'form-control']])->label() ?>
+            </div>
         </div>
         <br/>
         <div class="form-group">
