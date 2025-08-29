@@ -465,4 +465,19 @@ class ProductController extends Controller
     function getProductOnhand($product_id){
         return \common\models\StockSum::find()->where(['product_id' => $product_id])->sum('qty');
     }
+
+    public function actionPullproductorder(){
+        $model = \backend\models\Order::find()->distinct('sku')->all();
+        if($model){
+            foreach($model as $value){
+                $product = \backend\models\Product::find()->where(['sku'=>trim($value->sku)])->one();
+                if(!$product){
+                    $model_new = new \backend\models\Product();
+                    $model_new->sku = trim($value->sku);
+                    $model_new->name = trim($value->product_name);
+                    $model_new->save(false);
+                }
+            }
+        }
+    }
 }
