@@ -16,17 +16,7 @@
                 data-accordion="false">
                 <!-- Add icons to the links using the .nav-icon class
                      with font-awesome or any other icon font library -->
-                <?php //if(\Yii::$app->user->can('site/index')):?>
-                <li class="nav-item">
-                    <a href="<?=\Yii\helpers\Url::to(['site/index',true])?>" class="nav-link site">
-                        <i class="nav-icon fas fa-tachometer-alt"></i>
-                        <p>
-                            ภาพรวมระบบ
-                            <!--                                <i class="right fas fa-angle-left"></i>-->
-                        </p>
-                    </a>
-                </li>
-                <?php //endif;?>
+
                 <li class="nav-item has-treeview has-sub">
                     <a href="#" class="nav-link">
                         <i class="nav-icon fas fa-cog"></i>
@@ -85,6 +75,18 @@
                         <?php //endif; ?>
                     </ul>
                 </li>
+
+                <?php //if(\Yii::$app->user->can('site/index')):?>
+                <li class="nav-item">
+                    <a href="<?=\Yii\helpers\Url::to(['expense/index',true])?>" class="nav-link expense">
+                        <i class="nav-icon fas fa-money-check"></i>
+                        <p>
+                            บันทึกค่าใช้จ่าย
+                            <!--                                <i class="right fas fa-angle-left"></i>-->
+                        </p>
+                    </a>
+                </li>
+                <?php //endif;?>
 
                 <?php if(\Yii::$app->user->can('department/index') || \Yii::$app->user->can('position/index') || \Yii::$app->user->can('employee/index')):?>
                 <li class="nav-item has-treeview has-sub">

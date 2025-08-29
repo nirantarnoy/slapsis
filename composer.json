@@ -36,7 +36,8 @@
         "ext-json": "*",
         "ext-intl": "*",
         "phpoffice/phpspreadsheet": "^1.24",
-        "guzzlehttp/guzzle": "^7.0"
+        "guzzlehttp/guzzle": "^7.0",
+        "kartik-v/yii2-widget-fileinput": "dev-master"
 
     },
     "require-dev": {
