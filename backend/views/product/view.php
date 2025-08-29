@@ -6,7 +6,7 @@ use yii\widgets\DetailView;
 /** @var yii\web\View $this */
 /** @var backend\models\Product $model */
 
-$this->title = $model->name;
+$this->title = $model->sku;
 $this->params['breadcrumbs'][] = ['label' => 'สินค้า', 'url' => ['index']];
 $this->params['breadcrumbs'][] = $this->title;
 \yii\web\YiiAsset::register($this);
@@ -31,12 +31,6 @@ $this->params['breadcrumbs'][] = $this->title;
             'attribute' => 'product_group_id',
             'value' => function ($data) {
                 return \backend\models\Productgroup::findName($data->product_group_id);
-            }
-        ],
-        [
-            'attribute' => 'brand_id',
-            'value' => function ($data) {
-                return \backend\models\Productbrand::findName($data->brand_id);
             }
         ],
 
@@ -70,20 +64,6 @@ $this->params['breadcrumbs'][] = $this->title;
         ],
     ];
 
-    $attributes2 = [
-        [
-            'attribute' => 'product_type_id',
-            'value' => function ($data) {
-                return \backend\helpers\ProductType::getTypeById($data->product_type_id);
-            }
-        ],
-        [
-            'attribute' => 'type_id',
-            'value' => function ($data) {
-                return \backend\helpers\CatType::getTypeById($data->type_id);
-            }
-        ],
-    ];
     if (\Yii::$app->user->can('ViewCostPrice')) {
         $attributes2[] = [
             'attribute' => 'cost_price',
@@ -92,14 +72,7 @@ $this->params['breadcrumbs'][] = $this->title;
             }
         ];
     }
-    if (\Yii::$app->user->can('ViewSalePrice')) {
-        $attributes2[] = [
-            'attribute' => 'sale_price',
-            'value' => function ($model) {
-                return number_format($model->sale_price, 2);
-            }
-        ];
-    }
+
 
     ?>
     <div class="row">
@@ -108,8 +81,7 @@ $this->params['breadcrumbs'][] = $this->title;
                 'attributes' => $attributes,]) ?>
         </div>
         <div class="col-lg-6">
-            <?= DetailView::widget(['model' => $model,
-                'attributes' => $attributes2,]) ?>
+
         </div>
     </div>
 
