@@ -682,38 +682,88 @@ class SiteController extends Controller
                 'connect_timeout' => 10,
             ]);
 
-            // ✅ TikTok Shop Open Platform Token Endpoint
-            $url = 'https://open-api.tiktokglobalshop.com/authorization/202309/token';
-
-            // ✅ ใช้ signature-based authentication
-            $timestamp = time();
-            $requestParams = [
-                'app_key' => $appKey,
-                'timestamp' => $timestamp,
-                'auth_code' => $code,
-                'grant_type' => 'authorization_code'
+            // ✅ ลองหลาย endpoint ที่เป็นไปได้
+            $endpoints = [
+                'https://open-api.tiktokglobalshop.com/api/token/get',
+                'https://open-api.tiktokglobalshop.com/token',
+                'https://open-api.tiktokglobalshop.com/oauth/token',
+                'https://open-api.tiktokglobalshop.com/authorization/token',
+                'https://open-api.tiktokglobalshop.com/v1/token',
+                'https://open-api.tiktokglobalshop.com/auth/token',
             ];
 
-            // ✅ สร้าง signature (สำคัญมาก!)
-            $signature = $this->generateTikTokSignature($requestParams, $appSecret);
-            $requestParams['sign'] = $signature;
+            $success = false;
+            $lastError = null;
 
-            $response = $client->post($url, [
-                'json' => $requestParams,
-                'headers' => [
-                    'Content-Type' => 'application/json',
-                    'User-Agent' => 'YourApp/1.0',
-                ]
-            ]);
+            foreach ($endpoints as $url) {
+                try {
+                    Yii::info("Trying endpoint: {$url}", __METHOD__);
 
-            $statusCode = $response->getStatusCode();
-            $raw = (string)$response->getBody();
+                    // ✅ ใช้ signature-based authentication
+                    $timestamp = time();
+                    $requestParams = [
+                        'app_key' => $appKey,
+                        'timestamp' => $timestamp,
+                        'auth_code' => $code,
+                        'grant_type' => 'authorization_code'
+                    ];
 
-            Yii::info("TikTok Response status: {$statusCode}", __METHOD__);
-            Yii::info("TikTok raw response: " . $raw, __METHOD__);
+                    // ✅ สร้าง signature (สำคัญมาก!)
+                    $signature = $this->generateTikTokSignature($requestParams, $appSecret);
+                    $requestParams['sign'] = $signature;
 
-            if ($statusCode !== 200) {
-                throw new \Exception("HTTP Error: $statusCode - $raw");
+                    // Debug signature process
+                    Yii::info('Request params before sign: ' . json_encode($requestParams), __METHOD__);
+                    Yii::info('Generated signature: ' . $signature, __METHOD__);
+
+                    $response = $client->post($url, [
+                        'json' => $requestParams,
+                        'headers' => [
+                            'Content-Type' => 'application/json',
+                            'User-Agent' => 'YourApp/1.0',
+                        ]
+                    ]);
+
+                    $statusCode = $response->getStatusCode();
+                    $raw = (string)$response->getBody();
+
+                    Yii::info("Response status: {$statusCode}", __METHOD__);
+                    Yii::info("Raw response: " . $raw, __METHOD__);
+
+                    if ($statusCode === 200) {
+                        $data = json_decode($raw, true);
+                        if (json_last_error() === JSON_ERROR_NONE) {
+                            $success = true;
+                            break; // สำเร็จแล้ว ออกจาก loop
+                        }
+                    }
+
+                } catch (\GuzzleHttp\Exception\ClientException $e) {
+                    $statusCode = $e->getResponse() ? $e->getResponse()->getStatusCode() : 0;
+                    $errorBody = $e->getResponse() ? $e->getResponse()->getBody()->getContents() : 'No response';
+
+                    Yii::info("Endpoint failed [{$statusCode}]: {$errorBody}", __METHOD__);
+                    $lastError = ['status' => $statusCode, 'body' => $errorBody, 'url' => $url];
+
+                    // ถ้าไม่ใช่ 404 แสดงว่าเจอ endpoint ที่ถูก แต่มีปัญหาอื่น
+                    if ($statusCode !== 404) {
+                        break;
+                    }
+                    continue;
+                } catch (\Exception $e) {
+                    Yii::info("Endpoint error: " . $e->getMessage(), __METHOD__);
+                    $lastError = ['error' => $e->getMessage(), 'url' => $url];
+                    continue;
+                }
+            }
+
+            // ถ้าทุก endpoint ล้มเหลว
+            if (!$success) {
+                if ($lastError) {
+                    $errorMsg = isset($lastError['body']) ? $lastError['body'] : $lastError['error'];
+                    throw new \Exception("All endpoints failed. Last error: " . $errorMsg);
+                }
+                throw new \Exception("All endpoints failed with no specific error");
             }
 
             $data = json_decode($raw, true);
@@ -800,6 +850,12 @@ class SiteController extends Controller
         // สร้าง signature: HMAC-SHA256(secret + query_string + secret)
         $stringToSign = $appSecret . $queryString . $appSecret;
         $signature = hash_hmac('sha256', $stringToSign, $appSecret);
+
+        // Debug logging
+        Yii::info("Signature params: " . json_encode($params), __METHOD__);
+        Yii::info("Query string: " . $queryString, __METHOD__);
+        Yii::info("String to sign: " . $stringToSign, __METHOD__);
+        Yii::info("Final signature: " . $signature, __METHOD__);
 
         return $signature;
     }
