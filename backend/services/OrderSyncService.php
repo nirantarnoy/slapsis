@@ -393,13 +393,13 @@ class OrderSyncService
         $params = [
             'app_key'   => $appKey,
             'timestamp' => $timestamp,
-            'access_token' => $tokenModel->access_token, // ถ้าต้องใช้ใน endpoint
+         //   'access_token' => $tokenModel->access_token, // ถ้าต้องใช้ใน endpoint
         ];
 
         // ✅ สร้าง sign ถูกต้องตาม TikTok
 
        // $sign = strtolower(hash('sha256', $appSecret . $path . $signString . $appSecret));
-        $sign = $this->generateSign($appKey,$params);
+        $sign = $this->generateSign($appSecret,$params);
 
         $url = 'https://open-api.tiktokglobalshop.com' . $path . '?' . http_build_query(array_merge($params, ['sign' => $sign]));
 
