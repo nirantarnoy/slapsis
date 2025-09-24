@@ -385,6 +385,7 @@ class OrderSyncService
 
     private function fetchShopCipher($tokenModel)
     {
+        Yii::info("NIRAN access token is: $tokenModel->access_token");
         $appKey     = '6h9n461r774e1';
         $appSecret  = '1c45a0c25224293abd7de681049f90de3363389a';
         $timestamp  = time();
