@@ -54,7 +54,7 @@ class OrderSyncService
             try {
                 switch ($channel->name) {
                     case 'Tiktok':
-                        $totalSynced = 100; // += $this->syncTikTokOrders($channel);
+                        $totalSynced += $this->syncTikTokOrders($channel);
                         break;
                     case 'Shopee':
                         $totalSynced += $this->syncShopeeOrders($channel);
