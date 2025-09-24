@@ -18,14 +18,14 @@ use yii\db\Query;
  */
 class SiteController extends Controller
 {
-    private $tiktokConfig = [
-        'app_key' => '6h9n461r774e1',
-        'app_secret' => '1c45a0c25224293abd7de681049f90de3363389a',
-        'service_id' => '7542630137068013332',
-        'shop_id' => '7494116339165529659', // Shop ID จริงที่ได้จาก API
-        'api_base_url' => 'https://open-api.tiktokglobalshop.com',
-        'version' => '202212'
-    ];
+//    private $tiktokConfig = [
+//        'app_key' => '6h9n461r774e1',
+//        'app_secret' => '1c45a0c25224293abd7de681049f90de3363389a',
+//        'service_id' => '7542630137068013332',
+//        'shop_id' => '7494116339165529659', // Shop ID จริงที่ได้จาก API
+//        'api_base_url' => 'https://open-api.tiktokglobalshop.com',
+//        'version' => '202212'
+//    ];
     /**
      * {@inheritdoc}
      */

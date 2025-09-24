@@ -370,10 +370,10 @@ class OrderSyncService
             ->orderBy(['created_at' => SORT_DESC])
             ->one();
 
-        if (!$tokenModel) {
-            Yii::warning('No active TikTok token found for channel: ' . $channel->id, __METHOD__);
-            return $this->syncTikTokSampleOrders($channel);
-        }
+//        if (!$tokenModel) {
+//            Yii::warning('No active TikTok token found for channel: ' . $channel->id, __METHOD__);
+//            return $this->syncTikTokSampleOrders($channel);
+//        }
 
         // ตรวจสอบว่า token หมดอายุหรือไม่
         if ($tokenModel->expires_at && $tokenModel->expires_at < time()) {
@@ -383,8 +383,8 @@ class OrderSyncService
             }
         }
 
-        $app_key = 'your-tiktok-app-key'; // ใส่ app_key จริง
-        $app_secret = 'your-tiktok-app-secret'; // ใส่ app_secret จริง
+        $app_key = '6h9n461r774e1'; // ใส่ app_key จริง
+        $app_secret = '1c45a0c25224293abd7de681049f90de3363389a'; // ใส่ app_secret จริง
         $access_token = $tokenModel->access_token;
         $shop_id = $tokenModel->shop_id;
 
@@ -592,38 +592,39 @@ class OrderSyncService
     private function refreshTikTokToken($tokenModel)
     {
         try {
-            $app_key = 'your-tiktok-app-key';
-            $app_secret = 'your-tiktok-app-secret';
-            $refresh_token = $tokenModel->refresh_token;
+            $appKey = '6h9n461r774e1';
+            $appSecret = '1c45a0c25224293abd7de681049f90de3363389a';
+            $refreshToken = $tokenModel->refresh_token;
 
-            $timestamp = time();
-            $path = "/authorization/202309/refresh_token";
-
+            // Parameters ตาม API document
             $params = [
-                'app_key' => $app_key,
-                'timestamp' => $timestamp,
-                'refresh_token' => $refresh_token,
+                'app_key' => $appKey,
+                'app_secret' => $appSecret,
+                'refresh_token' => $refreshToken,
+                'grant_type' => 'refresh_token',
             ];
 
-            ksort($params);
-            $query_string = http_build_query($params);
-            $sign_string = $path . '?' . $query_string . $app_secret;
-            $sign = hash_hmac('sha256', $sign_string, $app_secret);
+            // ใช้ GET request ตาม API document
+            $url = 'https://auth.tiktok-shops.com/api/v2/token/refresh';
+            $getUrl = $url . '?' . http_build_query($params);
 
-            $params['sign'] = $sign;
+            $client = new \GuzzleHttp\Client(['timeout' => 30]);
 
-            $response = $this->httpClient->post('https://open-api.tiktokglobalshop.com' . $path, [
-                'form_params' => $params
+            $response = $client->get($getUrl, [
+                'headers' => [
+                    'User-Agent' => 'YourApp/1.0',
+                    'Accept' => 'application/json',
+                ]
             ]);
 
             $body = $response->getBody()->getContents();
-            $data = Json::decode($body);
+            $data = json_decode($body, true);
 
             if (isset($data['data']['access_token'])) {
                 $tokenModel->access_token = $data['data']['access_token'];
                 $tokenModel->refresh_token = $data['data']['refresh_token'];
-                $tokenModel->expires_at = time() + $data['data']['access_token_expire_in'];
-                $tokenModel->updated_at = time();
+                $tokenModel->expires_at = date('Y-m-d H:i:s', time() + $data['data']['access_token_expire_in']);
+                $tokenModel->updated_at = date('Y-m-d H:i:s');
 
                 return $tokenModel->save();
             }
@@ -634,6 +635,8 @@ class OrderSyncService
 
         return false;
     }
+
+
 
     /**
      * Sample TikTok orders for demo
