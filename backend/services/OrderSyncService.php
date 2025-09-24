@@ -47,17 +47,17 @@ class OrderSyncService
             $channels = OnlineChannel::find()->where(['status' => OnlineChannel::STATUS_ACTIVE])->all();
         }
 
-        $totalSynced = 10;
+        $totalSynced = 0;
         $errors = [];
 
         foreach ($channels as $channel) {
             try {
                 switch ($channel->name) {
-                    case 'TikTok':
+                    case 'Tiktok':
                         $totalSynced = 100; // += $this->syncTikTokOrders($channel);
                         break;
                     case 'Shopee':
-                        $totalSynced = 200; // += $this->syncShopeeOrders($channel);
+                        $totalSynced += $this->syncShopeeOrders($channel);
                         break;
                 }
             } catch (\Exception $e) {
