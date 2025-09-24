@@ -429,9 +429,11 @@ class OrderSyncService
                 $shopCipher = $result['data']['shops'][0]['cipher'];
                 $shopName   = $result['data']['shops'][0]['name'] ?? '';
 
+                $now = date('Y-m-d H:i:s');
+
                 $tokenModel->shop_cipher = $shopCipher;
                 $tokenModel->shop_name   = $shopName;
-                $tokenModel->updated_at = date('Y-m-d H:i:s');
+                $tokenModel->updated_at = $now;
                 $tokenModel->save(false);
 
                 Yii::info("✅ Shop cipher updated: {$shopCipher}", __METHOD__);
