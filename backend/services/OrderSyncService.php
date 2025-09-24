@@ -373,15 +373,17 @@ class OrderSyncService
         return strtolower(hash('sha256', $raw));
     }
 
-    function generateSign($appSecret, $params) {
-        ksort($params); // ต้องเรียง key ตามตัวอักษรก่อน
-        $signString = $appSecret;
+    function generateSign($appSecret, $params, $path) {
+        ksort($params); // เรียง key
+        $stringToSign = $appSecret . $path;
         foreach ($params as $key => $value) {
-            $signString .= $key . $value;
+            $stringToSign .= $key . $value;
         }
-        $signString .= $appSecret;
-        return hash_hmac('sha256', $signString, $appSecret);
+        $stringToSign .= $appSecret;
+
+        return hash_hmac('sha256', $stringToSign, $appSecret); // HMAC-SHA256
     }
+
 
     private function fetchShopCipher($tokenModel)
     {
@@ -400,7 +402,7 @@ class OrderSyncService
         // ✅ สร้าง sign ถูกต้องตาม TikTok
 
        // $sign = strtolower(hash('sha256', $appSecret . $path . $signString . $appSecret));
-        $sign = $this->generateSign($appSecret, $params);
+        $sign = $this->generateSign($appSecret, $params, $path);
 
         $url = 'https://open-api.tiktokglobalshop.com/authorization/202309/shops?' . http_build_query($params) . '&sign=' . $sign;
 
