@@ -399,6 +399,14 @@ class OrderSyncService
 
             $result = json_decode($response->getBody(), true);
 
+            Yii::info('Shop API raw result: ' . json_encode($result), __METHOD__);
+
+            if (!isset($result['data']['shops'][0]['cipher'])) {
+                Yii::warning('No shop_cipher returned by TikTok API', __METHOD__);
+                return null;
+            }
+
+
             if (isset($result['code']) && $result['code'] !== 0) {
                 throw new \Exception("TikTok API error [{$result['code']}] {$result['message']}");
             }
