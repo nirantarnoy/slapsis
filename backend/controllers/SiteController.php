@@ -779,12 +779,13 @@ class SiteController extends Controller
                 // ถ้าไม่มี shop_id ให้ลองดึงจากการเรียก API อื่น
                 if (!$finalShopId) {
                     Yii::info("No shop_id found, trying to get from shop info API", __METHOD__);
-                    $shopInfo = $this->getShopInfoFromToken($tokenData['access_token']);
-                    if ($shopInfo && isset($shopInfo['data']['shops'][0]['shop_id'])) {
-                        $finalShopId = $shopInfo['data']['shops'][0]['shop_id'];
-                        $tokenData['shop_id'] = $finalShopId;
-                        $tokenData['shop_name'] = $shopInfo['data']['shops'][0]['shop_name'] ?? '';
-                    }
+                    // Comment out ชั่วคราวเพื่อไม่ให้ error
+                    // $shopInfo = $this->getShopInfoFromToken($tokenData['access_token']);
+                    // if ($shopInfo && isset($shopInfo['data']['shops'][0]['shop_id'])) {
+                    //     $finalShopId = $shopInfo['data']['shops'][0]['shop_id'];
+                    //     $tokenData['shop_id'] = $finalShopId;
+                    //     $tokenData['shop_name'] = $shopInfo['data']['shops'][0]['shop_name'] ?? '';
+                    // }
                 }
 
                 if ($finalShopId) {
@@ -887,12 +888,55 @@ class SiteController extends Controller
     }
 
     /**
-     * ✅ ดึงข้อมูล Shop
+     * ✅ ดึงข้อมูล Shop จาก token
      */
-    public function getShopInfo($accessToken)
+    public function getShopInfoFromToken($accessToken)
     {
-        $endpoint = '/seller/202309/shops';
-        return $this->callTikTokShopAPI($endpoint, [], $accessToken);
+        try {
+            $client = new \GuzzleHttp\Client(['timeout' => 30]);
+
+            // ลอง endpoint หลายตัว
+            $endpoints = [
+                'https://open-api.tiktokglobalshop.com/seller/202309/shops',
+                'https://open-api.tiktokglobalshop.com/api/shops/get_authorized_shop',
+                'https://open-api.tiktokglobalshop.com/shop/get',
+            ];
+
+            foreach ($endpoints as $url) {
+                try {
+                    $requestParams = [
+                        'app_key' => '6h9n461r774e1',
+                        'timestamp' => time(),
+                        'access_token' => $accessToken,
+                    ];
+
+                    $signature = $this->generateTikTokShopSignature($requestParams, '1c45a0c25224293abd7de681049f90de3363389a');
+                    $requestParams['sign'] = $signature;
+
+                    $response = $client->post($url, [
+                        'json' => $requestParams,
+                        'headers' => [
+                            'Content-Type' => 'application/json',
+                        ]
+                    ]);
+
+                    $data = json_decode($response->getBody(), true);
+                    if ($data && (!isset($data['code']) || $data['code'] === 0)) {
+                        return $data;
+                    }
+
+                } catch (\Exception $e) {
+                    Yii::info("Shop info endpoint failed: {$url} - " . $e->getMessage(), __METHOD__);
+                    continue;
+                }
+            }
+
+            return null;
+
+        } catch (\Exception $e) {
+            Yii::error('Get shop info error: ' . $e->getMessage(), __METHOD__);
+            return null;
+        }
     }
 
     /**
@@ -911,6 +955,19 @@ class SiteController extends Controller
 
         return $this->callTikTokShopAPI($endpoint, $params, $accessToken);
     }
+    /**
+     * ✅ ดึงข้อมูล Shop
+     */
+    public function getShopInfo($accessToken)
+    {
+        $endpoint = '/seller/202309/shops';
+        return $this->callTikTokShopAPI($endpoint, [], $accessToken);
+    }
+
+    /**
+     * ✅ ดึงรายการสินค้า
+     */
+
 
     public function actionTiktokCallbackOrigin()
     {
