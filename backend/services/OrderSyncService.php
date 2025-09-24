@@ -364,67 +364,64 @@ class OrderSyncService
      */
     private function syncTikTokOrders($channel)
     {
-        // ดึง token ล่าสุด
         $tokenModel = TiktokToken::find()
             ->where(['status' => 'active'])
             ->orderBy(['created_at' => SORT_DESC])
             ->one();
 
         if (!$tokenModel) {
-            Yii::warning('No active TikTok token found for channel: ' . $channel->id, __METHOD__);
+            Yii::warning('No active TikTok token found', __METHOD__);
             return $this->syncTikTokSampleOrders($channel);
         }
 
-        // ตรวจสอบ token หมดอายุ
         if ($tokenModel->expires_at && strtotime($tokenModel->expires_at) < time()) {
             Yii::info('Token expired, attempting refresh...', __METHOD__);
             if (!$this->refreshTikTokToken($tokenModel)) {
-                Yii::warning('Failed to refresh TikTok token for channel: ' . $channel->id, __METHOD__);
+                Yii::warning('Failed to refresh TikTok token', __METHOD__);
                 return $this->syncTikTokSampleOrders($channel);
             }
-            Yii::info('Token refreshed successfully', __METHOD__);
         }
 
         $appKey      = '6h9n461r774e1';
         $appSecret   = '1c45a0c25224293abd7de681049f90de3363389a';
         $accessToken = $tokenModel->access_token;
-        $shopId      = (string)$tokenModel->shop_id; // ✅ ต้องเป็น string
+        $shopId      = (string)$tokenModel->shop_id;
 
-        $count     = 0;
-        $pageSize  = 50;
+        $count = 0;
+        $pageSize = 50;
         $pageToken = '';
         $pageCount = 0;
+        $path = "/order/202309/orders/search";
 
         try {
             do {
                 $pageCount++;
                 $timestamp = time();
-                $path = "/order/202309/orders/search";
 
-                // ✅ เตรียมพารามิเตอร์สำหรับการสร้าง sign (ไม่ใส่ access_token)
+                // ✅ รวม parameters ทั้งหมดที่ใช้ในการ sign (query + body) ยกเว้น access_token
                 $signParams = [
-                    'app_key'           => $appKey,
-                    'shop_id'           => $shopId,
-                    'timestamp'         => $timestamp,
-                    'page_size'         => $pageSize,
-                    'create_time_from'  => strtotime(gmdate('Y-m-d H:i:s', strtotime('-7 days'))),
-                    'create_time_to'    => strtotime(gmdate('Y-m-d H:i:s')),
+                    'app_key'          => $appKey,
+                    'shop_id'          => $shopId,
+                    'timestamp'        => $timestamp,
+                    'page_size'        => $pageSize,
+                    'create_time_from' => strtotime(gmdate('Y-m-d H:i:s', strtotime('-7 days'))),
+                    'create_time_to'   => strtotime(gmdate('Y-m-d H:i:s')),
                 ];
 
                 if (!empty($pageToken)) {
                     $signParams['page_token'] = $pageToken;
                 }
 
-                // ✅ สร้าง signature
+                // ✅ สร้าง sign ที่ถูกต้อง
                 ksort($signParams);
                 $signStr = '';
                 foreach ($signParams as $k => $v) {
                     $signStr .= $k . $v;
                 }
-                $signSource = $appSecret . $path . $signStr . $appSecret;
-                $sign = strtoupper(hash_hmac('sha256', $signSource, $appSecret));
+                $stringToSign = $appSecret . $path . $signStr . $appSecret;
+                $sign = strtoupper(hash_hmac('sha256', $stringToSign, $appSecret));
 
-                // ✅ query string (ใส่ access_token ตรงนี้)
+                // ✅ query params (access_token ใส่ที่นี่เท่านั้น)
                 $queryParams = [
                     'app_key'      => $appKey,
                     'timestamp'    => $timestamp,
@@ -432,45 +429,42 @@ class OrderSyncService
                     'sign'         => $sign,
                 ];
 
-                // ✅ body ใช้ params เดิม
+                // ✅ body params ต้องตรงกับ signParams
                 $bodyParams = $signParams;
 
-                // ✅ Log สำคัญ
-                Yii::info("=== TikTok Orders Sync Page {$pageCount} ===", __METHOD__);
-                Yii::info('Final URL: ' . 'https://open-api.tiktokglobalshop.com' . $path . '?' . http_build_query($queryParams), __METHOD__);
-                Yii::info('Final Body: ' . Json::encode($bodyParams), __METHOD__);
-                Yii::info('String to Sign: ' . $signSource, __METHOD__);
+                $url = 'https://open-api.tiktokglobalshop.com' . $path;
+
+                Yii::info("Sending request to: {$url}", __METHOD__);
+                Yii::info('Query: ' . json_encode($queryParams), __METHOD__);
+                Yii::info('Body: ' . json_encode($bodyParams), __METHOD__);
+                Yii::info('StringToSign: ' . $stringToSign, __METHOD__);
                 Yii::info('Signature: ' . $sign, __METHOD__);
 
-                // ✅ ส่ง request
-                $url = 'https://open-api.tiktokglobalshop.com' . $path;
                 $response = $this->httpClient->post($url, [
-                    'query'   => $queryParams,
-                    'json'    => $bodyParams,
+                    'query' => $queryParams,
+                    'json' => $bodyParams,
                     'headers' => [
                         'Content-Type' => 'application/json',
-                        'User-Agent'   => 'YourApp/1.0',
+                        'User-Agent' => 'YourApp/1.0',
                     ]
                 ]);
 
                 $statusCode = $response->getStatusCode();
-                $body       = $response->getBody()->getContents();
+                $body = $response->getBody()->getContents();
 
-                Yii::info("Status Code: {$statusCode}", __METHOD__);
-                Yii::info("Response: " . substr($body, 0, 1000), __METHOD__);
+                Yii::info("Status: {$statusCode}", __METHOD__);
+                Yii::info("Response: " . substr($body, 0, 500), __METHOD__);
 
                 $data = Json::decode($body);
-
                 if (isset($data['code']) && $data['code'] !== 0) {
                     throw new \Exception("TikTok API Error [{$data['code']}]: " . ($data['message'] ?? 'Unknown error'));
                 }
 
                 if (!isset($data['data']['orders'])) {
-                    Yii::info("No orders found, break loop.", __METHOD__);
+                    Yii::info("No orders found, breaking.", __METHOD__);
                     break;
                 }
 
-                // ✅ ประมวลผล orders
                 foreach ($data['data']['orders'] as $orderData) {
                     try {
                         $count += $this->processTikTokOrder($channel, $orderData);
@@ -482,15 +476,15 @@ class OrderSyncService
                 $pageToken = $data['data']['next_page_token'] ?? '';
 
                 if ($pageCount >= 5) {
-                    Yii::warning("Reached max page limit (5), stopping sync.", __METHOD__);
+                    Yii::warning("Max page limit reached", __METHOD__);
                     break;
                 }
 
             } while (!empty($pageToken));
 
         } catch (\GuzzleHttp\Exception\ClientException $e) {
-            $response = $e->getResponse();
-            Yii::error("HTTP Error: " . $response->getBody()->getContents(), __METHOD__);
+            $resp = $e->getResponse();
+            Yii::error("TikTok 400 Error: " . ($resp ? $resp->getBody()->getContents() : 'No response'), __METHOD__);
             throw $e;
 
         } catch (\Exception $e) {
@@ -498,13 +492,10 @@ class OrderSyncService
             throw $e;
         }
 
-        Yii::info("=== SYNC COMPLETED ===", __METHOD__);
-        Yii::info("Total pages processed: {$pageCount}", __METHOD__);
-        Yii::info("Total orders synced: {$count}", __METHOD__);
-        Yii::info("Channel ID: " . $channel->id, __METHOD__);
-
+        Yii::info("✅ Sync complete: {$count} orders synced.", __METHOD__);
         return $count;
     }
+
 
 
     /**
