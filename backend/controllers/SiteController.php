@@ -722,47 +722,91 @@ class SiteController extends Controller
             }
 
             // ✅ ตรวจสอบ response จาก TikTok Shop
+            Yii::info("Raw data structure: " . print_r($data, true), __METHOD__);
+
             if (isset($data['code']) && $data['code'] !== 0) {
                 $errorMsg = $data['message'] ?? 'Unknown API error';
                 Yii::$app->session->setFlash('error', "TikTok API Error [{$data['code']}]: $errorMsg");
                 return $this->redirect(['site/index']);
             }
 
-            // ✅ ดึงข้อมูล token
+            // ✅ ดึงข้อมูล token - ลองหลายรูปแบบ response structure
             $tokenData = [];
+            $finalShopId = null;
+
+            // Case 1: Standard structure
             if (isset($data['data']) && isset($data['data']['access_token'])) {
                 $responseData = $data['data'];
+                Yii::info("Found token in data structure", __METHOD__);
 
+                // Case 2: Direct structure
+            } elseif (isset($data['access_token'])) {
+                $responseData = $data;
+                Yii::info("Found token in direct structure", __METHOD__);
+
+                // Case 3: Result structure
+            } elseif (isset($data['result']) && isset($data['result']['access_token'])) {
+                $responseData = $data['result'];
+                Yii::info("Found token in result structure", __METHOD__);
+
+            } else {
+                Yii::error("Unknown response structure: " . json_encode($data), __METHOD__);
+                throw new \Exception('Cannot find access_token in response: ' . json_encode($data));
+            }
+
+            if (isset($responseData)) {
                 $tokenData = [
-                    'access_token' => $responseData['access_token'],
+                    'access_token' => $responseData['access_token'] ?? '',
                     'refresh_token' => $responseData['refresh_token'] ?? '',
-                    'access_token_expire_in' => $responseData['access_token_expire_in'] ?? 86400,
+                    'access_token_expire_in' => $responseData['access_token_expire_in'] ?? $responseData['expires_in'] ?? 86400,
                     'refresh_token_expire_in' => $responseData['refresh_token_expire_in'] ?? 2592000,
                     'seller_name' => $responseData['seller_name'] ?? '',
                     'seller_base_region' => $responseData['seller_base_region'] ?? '',
-                    'shop_id' => $responseData['shop_id'] ?? $shopId,
+                    'shop_id' => $responseData['shop_id'] ?? $shopId ?? '',
                     'shop_name' => $responseData['shop_name'] ?? '',
                     'shop_cipher' => $responseData['shop_cipher'] ?? '',
+                    'scope' => $responseData['scope'] ?? '',
                 ];
 
                 $finalShopId = $tokenData['shop_id'];
 
-                Yii::info('TikTok Token Data: ' . json_encode($tokenData), __METHOD__);
-                Yii::info('TikTok Final Shop ID: ' . $finalShopId, __METHOD__);
-            } else {
-                throw new \Exception('Invalid response structure: ' . json_encode($data));
+                Yii::info('Extracted Token Data: ' . json_encode($tokenData), __METHOD__);
+                Yii::info('Final Shop ID: ' . $finalShopId, __METHOD__);
             }
 
             // บันทึก token
-            if (!empty($tokenData) && $finalShopId) {
-                if ($this->saveTikTokToken($finalShopId, $tokenData)) {
-                    $shopName = $tokenData['shop_name'] ?: $finalShopId;
-                    Yii::$app->session->setFlash('success', "เชื่อมต่อ TikTok Shop สำเร็จ! Shop: {$shopName}");
+            if (!empty($tokenData) && !empty($tokenData['access_token'])) {
+                // ถ้าไม่มี shop_id ให้ลองดึงจากการเรียก API อื่น
+                if (!$finalShopId) {
+                    Yii::info("No shop_id found, trying to get from shop info API", __METHOD__);
+                    $shopInfo = $this->getShopInfoFromToken($tokenData['access_token']);
+                    if ($shopInfo && isset($shopInfo['data']['shops'][0]['shop_id'])) {
+                        $finalShopId = $shopInfo['data']['shops'][0]['shop_id'];
+                        $tokenData['shop_id'] = $finalShopId;
+                        $tokenData['shop_name'] = $shopInfo['data']['shops'][0]['shop_name'] ?? '';
+                    }
+                }
+
+                if ($finalShopId) {
+                    if ($this->saveTikTokToken($finalShopId, $tokenData)) {
+                        $shopName = $tokenData['shop_name'] ?: $finalShopId;
+                        Yii::$app->session->setFlash('success', "เชื่อมต่อ TikTok Shop สำเร็จ! Shop: {$shopName}");
+                    } else {
+                        Yii::$app->session->setFlash('error', 'ไม่สามารถบันทึก token ได้');
+                    }
                 } else {
-                    Yii::$app->session->setFlash('error', 'ไม่สามารถบันทึก token ได้');
+                    // บันทึกด้วย timestamp หาก ไม่มี shop_id
+                    $tempId = 'tiktok_' . time();
+                    if ($this->saveTikTokToken($tempId, $tokenData)) {
+                        Yii::$app->session->setFlash('success', "เชื่อมต่อ TikTok สำเร็จ! (Token ID: {$tempId})");
+                    } else {
+                        Yii::$app->session->setFlash('error', 'ไม่สามารถบันทึก token ได้');
+                    }
                 }
             } else {
-                throw new \Exception('No token data or shop ID received');
+                $error = 'No access_token found. Available data: ' . json_encode(array_keys($tokenData));
+                Yii::error($error, __METHOD__);
+                throw new \Exception($error);
             }
 
         } catch (\GuzzleHttp\Exception\ClientException $e) {
