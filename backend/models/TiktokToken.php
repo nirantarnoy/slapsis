@@ -19,9 +19,10 @@ class TiktokToken extends ActiveRecord
     {
         return [
             [['shop_id', 'access_token'], 'required'],
-            [['expire_in', 'created_at', 'updated_at','expires_at'], 'integer'],
+            [['expire_in', 'created_at','expires_at'], 'integer'],
             [['shop_id', 'access_token', 'refresh_token'], 'string', 'max' => 500],
             [['status'], 'string', 'max' => 20],
+            [['updated_at'],'safe'],
             [['status'], 'in', 'range' => [self::STATUS_ACTIVE, self::STATUS_EXPIRED, self::STATUS_REVOKED]],
         ];
     }
@@ -53,7 +54,7 @@ class TiktokToken extends ActiveRecord
                 $this->created_at = time();
                 $this->status = self::STATUS_ACTIVE;
             }
-            $this->updated_at = time();
+            //$this->updated_at = time();
             return true;
         }
         return false;
