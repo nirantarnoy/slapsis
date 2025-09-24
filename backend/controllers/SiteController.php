@@ -1425,12 +1425,12 @@ class SiteController extends Controller
 
             // ตรวจสอบว่ามี record อยู่แล้วหรือไม่
             $query = (new \yii\db\Query())
-                ->from('tiktok_token')
+                ->from('tiktok_tokens')
                 ->where(['shop_id' => $shop_id]);
 
             if ($query->exists()) {
                 // อัปเดต token เดิม
-                $rowsAffected = $db->createCommand()->update('tiktok_token', [
+                $rowsAffected = $db->createCommand()->update('tiktok_tokens', [
                     'access_token'  => $tokenData['access_token'],
                     'refresh_token' => $tokenData['refresh_token'] ?? '',
                     'expire_in'     => $expireIn,
@@ -1442,7 +1442,7 @@ class SiteController extends Controller
                 Yii::info("Updated TikTok token for shop_id: {$shop_id}, rows affected: {$rowsAffected}", __METHOD__);
             } else {
                 // เพิ่ม token ใหม่
-                $rowsAffected = $db->createCommand()->insert('tiktok_token', [
+                $rowsAffected = $db->createCommand()->insert('tiktok_tokens', [
                     'shop_id'       => $shop_id,
                     'access_token'  => $tokenData['access_token'],
                     'refresh_token' => $tokenData['refresh_token'] ?? '',
@@ -1453,12 +1453,12 @@ class SiteController extends Controller
                     'updated_at'    => $now,
                 ])->execute();
 
-                Yii::info("Inserted new TikTok token for shop_id: {$shop_id}, rows affected: {$rowsAffected}", __METHOD__);
+                Yii::info("Inserted new TikTok tokens for shop_id: {$shop_id}, rows affected: {$rowsAffected}", __METHOD__);
             }
 
             return true;
         } catch (\Throwable $e) {
-            Yii::error('Error saving TikTok token: ' . $e->getMessage(), __METHOD__);
+            Yii::error('Error saving TikTok tokens: ' . $e->getMessage(), __METHOD__);
             Yii::error('Error trace: ' . $e->getTraceAsString(), __METHOD__);
             return false;
         }
