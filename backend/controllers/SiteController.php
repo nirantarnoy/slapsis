@@ -613,24 +613,28 @@ class SiteController extends Controller
 
     public function actionConnectTiktok()
     {
-        // ✅ ใช้ service_id ที่ได้จาก TikTok Shop Open Platform
-        $serviceId = '7542630137068013332';
+        // ✅ ใช้ TikTok for Developers API (ไม่ใช่ TikTok Shop Open Platform)
+        $appKey = '6h9n461r774e1'; // Client Key
         $redirectUri = 'https://www.pjrichth.co/site/tiktok-callback';
         $state = Yii::$app->security->generateRandomString(32);
 
         Yii::$app->session->open();
         Yii::$app->session->set('tiktok_oauth_state', $state);
 
-        // ✅ สร้าง authorization URL สำหรับ TikTok Shop Open Platform
+        // ✅ ใช้ TikTok for Developers authorization URL
+        $scopes = 'user.info.basic,video.list'; // หรือ scopes ที่ต้องการ
+
         $params = [
-            'service_id' => $serviceId,
+            'client_key' => $appKey,
+            'response_type' => 'code',
+            'scope' => $scopes,
             'redirect_uri' => $redirectUri,
             'state' => $state,
         ];
 
-        $authUrl = "https://services.tiktokshop.com/open/authorize?" . http_build_query($params);
+        $authUrl = "https://www.tiktok.com/v2/auth/authorize/?" . http_build_query($params);
 
-        Yii::info("TikTok Shop OAuth URL: {$authUrl}", __METHOD__);
+        Yii::info("TikTok OAuth URL: {$authUrl}", __METHOD__);
 
         return $this->redirect($authUrl);
     }
@@ -648,8 +652,7 @@ class SiteController extends Controller
         $code = Yii::$app->request->get('code');
         $state = Yii::$app->request->get('state');
         $error = Yii::$app->request->get('error');
-        $shopId = Yii::$app->request->get('shop_id');
-        $shopRegion = Yii::$app->request->get('shop_region');
+        $scopes = Yii::$app->request->get('scopes');
 
         // ตรวจสอบ error
         if ($error) {
@@ -671,10 +674,10 @@ class SiteController extends Controller
         }
         Yii::$app->session->remove('tiktok_oauth_state');
 
-        // ✅ ข้อมูล App สำหรับ TikTok Shop Open Platform
-        $appKey = '6h9n461r774e1';
-        $appSecret = '1c45a0c25224293abd7de681049f90de3363389a';
-        $serviceId = '7542630137068013332';
+        // ✅ TikTok for Developers credentials
+        $clientKey = '6h9n461r774e1';
+        $clientSecret = '1c45a0c25224293abd7de681049f90de3363389a';
+        $redirectUri = 'https://www.pjrichth.co/site/tiktok-callback';
 
         try {
             $client = new \GuzzleHttp\Client([
@@ -682,88 +685,36 @@ class SiteController extends Controller
                 'connect_timeout' => 10,
             ]);
 
-            // ✅ ลองหลาย endpoint ที่เป็นไปได้
-            $endpoints = [
-                'https://open-api.tiktokglobalshop.com/api/token/get',
-                'https://open-api.tiktokglobalshop.com/token',
-                'https://open-api.tiktokglobalshop.com/oauth/token',
-                'https://open-api.tiktokglobalshop.com/authorization/token',
-                'https://open-api.tiktokglobalshop.com/v1/token',
-                'https://open-api.tiktokglobalshop.com/auth/token',
+            // ✅ TikTok for Developers Token Endpoint
+            $url = 'https://open.tiktokapis.com/v2/oauth/token/';
+
+            // ✅ ใช้ form_params ตาม TikTok for Developers documentation
+            $requestParams = [
+                'client_key' => $clientKey,
+                'client_secret' => $clientSecret,
+                'code' => $code,
+                'grant_type' => 'authorization_code',
+                'redirect_uri' => $redirectUri,
             ];
 
-            $success = false;
-            $lastError = null;
+            Yii::info('TikTok Token Request: ' . json_encode($requestParams), __METHOD__);
 
-            foreach ($endpoints as $url) {
-                try {
-                    Yii::info("Trying endpoint: {$url}", __METHOD__);
+            $response = $client->post($url, [
+                'form_params' => $requestParams,
+                'headers' => [
+                    'Content-Type' => 'application/x-www-form-urlencoded',
+                    'Cache-Control' => 'no-cache',
+                ]
+            ]);
 
-                    // ✅ ใช้ signature-based authentication
-                    $timestamp = time();
-                    $requestParams = [
-                        'app_key' => $appKey,
-                        'timestamp' => $timestamp,
-                        'auth_code' => $code,
-                        'grant_type' => 'authorization_code'
-                    ];
+            $statusCode = $response->getStatusCode();
+            $raw = (string)$response->getBody();
 
-                    // ✅ สร้าง signature (สำคัญมาก!)
-                    $signature = $this->generateTikTokSignature($requestParams, $appSecret);
-                    $requestParams['sign'] = $signature;
+            Yii::info("TikTok Response status: {$statusCode}", __METHOD__);
+            Yii::info("TikTok raw response: " . $raw, __METHOD__);
 
-                    // Debug signature process
-                    Yii::info('Request params before sign: ' . json_encode($requestParams), __METHOD__);
-                    Yii::info('Generated signature: ' . $signature, __METHOD__);
-
-                    $response = $client->post($url, [
-                        'json' => $requestParams,
-                        'headers' => [
-                            'Content-Type' => 'application/json',
-                            'User-Agent' => 'YourApp/1.0',
-                        ]
-                    ]);
-
-                    $statusCode = $response->getStatusCode();
-                    $raw = (string)$response->getBody();
-
-                    Yii::info("Response status: {$statusCode}", __METHOD__);
-                    Yii::info("Raw response: " . $raw, __METHOD__);
-
-                    if ($statusCode === 200) {
-                        $data = json_decode($raw, true);
-                        if (json_last_error() === JSON_ERROR_NONE) {
-                            $success = true;
-                            break; // สำเร็จแล้ว ออกจาก loop
-                        }
-                    }
-
-                } catch (\GuzzleHttp\Exception\ClientException $e) {
-                    $statusCode = $e->getResponse() ? $e->getResponse()->getStatusCode() : 0;
-                    $errorBody = $e->getResponse() ? $e->getResponse()->getBody()->getContents() : 'No response';
-
-                    Yii::info("Endpoint failed [{$statusCode}]: {$errorBody}", __METHOD__);
-                    $lastError = ['status' => $statusCode, 'body' => $errorBody, 'url' => $url];
-
-                    // ถ้าไม่ใช่ 404 แสดงว่าเจอ endpoint ที่ถูก แต่มีปัญหาอื่น
-                    if ($statusCode !== 404) {
-                        break;
-                    }
-                    continue;
-                } catch (\Exception $e) {
-                    Yii::info("Endpoint error: " . $e->getMessage(), __METHOD__);
-                    $lastError = ['error' => $e->getMessage(), 'url' => $url];
-                    continue;
-                }
-            }
-
-            // ถ้าทุก endpoint ล้มเหลว
-            if (!$success) {
-                if ($lastError) {
-                    $errorMsg = isset($lastError['body']) ? $lastError['body'] : $lastError['error'];
-                    throw new \Exception("All endpoints failed. Last error: " . $errorMsg);
-                }
-                throw new \Exception("All endpoints failed with no specific error");
+            if ($statusCode !== 200) {
+                throw new \Exception("HTTP Error: $statusCode - $raw");
             }
 
             $data = json_decode($raw, true);
@@ -771,48 +722,40 @@ class SiteController extends Controller
                 throw new \Exception("JSON decode error: " . json_last_error_msg() . " Raw: " . $raw);
             }
 
-            // ✅ ตรวจสอบ response จาก TikTok Shop Open Platform
-            if (isset($data['code']) && $data['code'] !== 0) {
-                $errorMsg = $data['message'] ?? 'Unknown API error';
-                Yii::$app->session->setFlash('error', "TikTok API Error [{$data['code']}]: $errorMsg");
+            // ✅ ตรวจสอบ response จาก TikTok for Developers
+            if (isset($data['error'])) {
+                $errorMsg = $data['error_description'] ?? $data['error'];
+                Yii::$app->session->setFlash('error', "TikTok API Error: $errorMsg");
                 return $this->redirect(['site/index']);
             }
 
             // ✅ ดึงข้อมูล token
             $tokenData = [];
-            if (isset($data['data']) && isset($data['data']['access_token'])) {
-                $responseData = $data['data'];
-
+            if (isset($data['access_token'])) {
                 $tokenData = [
-                    'access_token' => $responseData['access_token'],
-                    'refresh_token' => $responseData['refresh_token'] ?? '',
-                    'access_token_expire_in' => $responseData['access_token_expire_in'] ?? 86400,
-                    'refresh_token_expire_in' => $responseData['refresh_token_expire_in'] ?? 2592000,
-                    'seller_name' => $responseData['seller_name'] ?? '',
-                    'seller_base_region' => $responseData['seller_base_region'] ?? '',
-                    'shop_id' => $responseData['shop_id'] ?? $shopId,
-                    'shop_name' => $responseData['shop_name'] ?? '',
+                    'access_token' => $data['access_token'],
+                    'refresh_token' => $data['refresh_token'] ?? '',
+                    'expires_in' => $data['expires_in'] ?? 86400,
+                    'refresh_expires_in' => $data['refresh_expires_in'] ?? 31536000,
+                    'scope' => $data['scope'] ?? '',
+                    'token_type' => $data['token_type'] ?? 'Bearer',
+                    'open_id' => $data['open_id'] ?? '',
                 ];
 
-                // Shop ID
-                $finalShopId = $tokenData['shop_id'];
-
                 Yii::info('TikTok Token Data: ' . json_encode($tokenData), __METHOD__);
-                Yii::info('TikTok Final Shop ID: ' . $finalShopId, __METHOD__);
             } else {
-                throw new \Exception('Invalid response structure: ' . json_encode($data));
+                throw new \Exception('No access_token in response: ' . json_encode($data));
             }
 
-            // บันทึก token
-            if (!empty($tokenData) && $finalShopId) {
-                if ($this->saveTikTokToken($finalShopId, $tokenData)) {
-                    $shopName = $tokenData['shop_name'] ?: $finalShopId;
-                    Yii::$app->session->setFlash('success', "เชื่อมต่อ TikTok Shop สำเร็จ! Shop: {$shopName}");
+            // บันทึก token (ใช้ open_id เป็น identifier)
+            if (!empty($tokenData) && !empty($tokenData['open_id'])) {
+                if ($this->saveTikTokToken($tokenData['open_id'], $tokenData)) {
+                    Yii::$app->session->setFlash('success', 'เชื่อมต่อ TikTok สำเร็จ! User ID: ' . $tokenData['open_id']);
                 } else {
                     Yii::$app->session->setFlash('error', 'ไม่สามารถบันทึก token ได้');
                 }
             } else {
-                throw new \Exception('No token data or shop ID received');
+                throw new \Exception('No token data or open_id received');
             }
 
         } catch (\GuzzleHttp\Exception\ClientException $e) {
@@ -832,63 +775,54 @@ class SiteController extends Controller
     }
 
     /**
-     * ✅ สร้าง signature สำหรับ TikTok Shop API
+     * ✅ ตัวอย่างการเรียกใช้ TikTok API
      */
-    private function generateTikTokSignature($params, $appSecret)
-    {
-        // เรียง parameters ตาม key
-        ksort($params);
-
-        // สร้าง query string
-        $queryString = '';
-        foreach ($params as $key => $value) {
-            if ($key !== 'sign') { // ไม่รวม sign ใน signature
-                $queryString .= $key . $value;
-            }
-        }
-
-        // สร้าง signature: HMAC-SHA256(secret + query_string + secret)
-        $stringToSign = $appSecret . $queryString . $appSecret;
-        $signature = hash_hmac('sha256', $stringToSign, $appSecret);
-
-        // Debug logging
-        Yii::info("Signature params: " . json_encode($params), __METHOD__);
-        Yii::info("Query string: " . $queryString, __METHOD__);
-        Yii::info("String to sign: " . $stringToSign, __METHOD__);
-        Yii::info("Final signature: " . $signature, __METHOD__);
-
-        return $signature;
-    }
-
-    /**
-     * ✅ เรียก TikTok Shop API อื่นๆ (ตัวอย่าง)
-     */
-    public function callTikTokShopAPI($endpoint, $params, $accessToken, $appSecret)
+    public function getUserInfo($accessToken)
     {
         try {
-            $timestamp = time();
-            $apiParams = array_merge($params, [
-                'app_key' => '6h9n461r774e1',
-                'timestamp' => $timestamp,
-                'access_token' => $accessToken,
-            ]);
-
-            // สร้าง signature
-            $signature = $this->generateTikTokSignature($apiParams, $appSecret);
-            $apiParams['sign'] = $signature;
-
             $client = new \GuzzleHttp\Client(['timeout' => 30]);
-            $response = $client->post("https://open-api.tiktokglobalshop.com{$endpoint}", [
-                'json' => $apiParams,
+
+            $response = $client->get('https://open.tiktokapis.com/v2/user/info/', [
                 'headers' => [
+                    'Authorization' => 'Bearer ' . $accessToken,
                     'Content-Type' => 'application/json',
+                ],
+                'query' => [
+                    'fields' => 'open_id,union_id,avatar_url,display_name'
                 ]
             ]);
 
             return json_decode($response->getBody(), true);
 
         } catch (\Exception $e) {
-            Yii::error("TikTok API call error: " . $e->getMessage(), __METHOD__);
+            Yii::error('Get user info error: ' . $e->getMessage(), __METHOD__);
+            return null;
+        }
+    }
+
+    /**
+     * ✅ ดึง videos ของ user
+     */
+    public function getUserVideos($accessToken)
+    {
+        try {
+            $client = new \GuzzleHttp\Client(['timeout' => 30]);
+
+            $response = $client->post('https://open.tiktokapis.com/v2/video/list/', [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $accessToken,
+                    'Content-Type' => 'application/json',
+                ],
+                'json' => [
+                    'max_count' => 20,
+                    'fields' => 'id,title,video_description,duration,cover_image_url,embed_html,embed_link'
+                ]
+            ]);
+
+            return json_decode($response->getBody(), true);
+
+        } catch (\Exception $e) {
+            Yii::error('Get user videos error: ' . $e->getMessage(), __METHOD__);
             return null;
         }
     }
