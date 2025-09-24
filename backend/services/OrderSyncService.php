@@ -373,7 +373,17 @@ class OrderSyncService
         return strtolower(hash('sha256', $raw));
     }
 
-    private function fetchShopCipher(TiktokToken $tokenModel)
+    function generateSign($appSecret, $params) {
+        ksort($params); // ต้องเรียง key ตามตัวอักษรก่อน
+        $signString = $appSecret;
+        foreach ($params as $key => $value) {
+            $signString .= $key . $value;
+        }
+        $signString .= $appSecret;
+        return hash_hmac('sha256', $signString, $appSecret);
+    }
+
+    private function fetchShopCipher($tokenModel)
     {
         $appKey     = '6h9n461r774e1';
         $appSecret  = '1c45a0c25224293abd7de681049f90de3363389a';
@@ -383,17 +393,17 @@ class OrderSyncService
         $params = [
             'app_key'   => $appKey,
             'timestamp' => $timestamp,
+            'access_token' => $tokenModel->access_token, // ถ้าต้องใช้ใน endpoint
         ];
 
         // ✅ สร้าง sign ถูกต้องตาม TikTok
-        ksort($params);
-        $signString = '';
-        foreach ($params as $k => $v) {
-            $signString .= $k . $v;
-        }
-        $sign = strtolower(hash('sha256', $appSecret . $path . $signString . $appSecret));
 
-        $url = 'https://open-api.tiktokglobalshop.com' . $path . '?' . http_build_query(array_merge($params, ['sign' => $sign]));
+       // $sign = strtolower(hash('sha256', $appSecret . $path . $signString . $appSecret));
+        $sign = $this->generateSign($appKey,$params);
+
+       // $url = 'https://open-api.tiktokglobalshop.com' . $path . '?' . http_build_query(array_merge($params, ['sign' => $sign]));
+        $url = "https://open-api.tiktokglobalshop.com/api/shop/get_authorized_shop?"
+            . http_build_query($params) . "&sign=" . $sign;
 
         Yii::info("Shop API URL: $url", __METHOD__);
 
