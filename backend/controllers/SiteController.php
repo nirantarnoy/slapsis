@@ -793,7 +793,7 @@ class SiteController extends Controller
                         $shopName = $tokenData['shop_name'] ?: $finalShopId;
                         Yii::$app->session->setFlash('success', "เชื่อมต่อ TikTok Shop สำเร็จ! Shop: {$shopName}");
                     } else {
-                        Yii::$app->session->setFlash('error', 'ไม่สามารถบันทึก token ได้');
+                        Yii::$app->session->setFlash('error', 'ไม่สามารถบันทึก token ได้ แต่มี shop id');
                     }
                 } else {
                     // บันทึกด้วย timestamp หาก ไม่มี shop_id
