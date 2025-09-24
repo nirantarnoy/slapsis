@@ -399,9 +399,9 @@ class OrderSyncService
         // ✅ สร้าง sign ถูกต้องตาม TikTok
 
        // $sign = strtolower(hash('sha256', $appSecret . $path . $signString . $appSecret));
-        $sign = $this->generateSign($appSecret,$params);
+        $sign = $this->generateSign($appSecret, $params);
 
-        $url = 'https://open-api.tiktokglobalshop.com' . $path . '?' . http_build_query(array_merge($params, ['sign' => $sign]));
+        $url = 'https://open-api.tiktokglobalshop.com/authorization/202309/shops?' . http_build_query($params) . '&sign=' . $sign;
 
 
         Yii::info("Shop API URL: $url", __METHOD__);
