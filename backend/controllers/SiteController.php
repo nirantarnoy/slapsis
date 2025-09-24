@@ -1403,10 +1403,23 @@ class SiteController extends Controller
     private function saveTikTokToken($shop_id, $tokenData)
     {
         try {
+            // Debug ข้อมูลที่รับเข้ามา
+            Yii::info("saveTikTokToken called with shop_id: {$shop_id}", __METHOD__);
+            Yii::info("saveTikTokToken tokenData keys: " . implode(', ', array_keys($tokenData)), __METHOD__);
+            Yii::info("saveTikTokToken full tokenData: " . json_encode($tokenData), __METHOD__);
+
+            // ตรวจสอบว่ามี access_token หรือไม่
+            if (empty($tokenData['access_token'])) {
+                Yii::error("No access_token found in tokenData", __METHOD__);
+                return false;
+            }
+
             $now = date('Y-m-d H:i:s');
             // TikTok อาจใช้ access_token_expire_in หรือ expires_in
             $expireIn = (int)($tokenData['access_token_expire_in'] ?? $tokenData['expires_in'] ?? 86400);
             $expiresAt = date('Y-m-d H:i:s', time() + $expireIn);
+
+            Yii::info("Calculated expireIn: {$expireIn}, expiresAt: {$expiresAt}", __METHOD__);
 
             $db = Yii::$app->db;
 
@@ -1417,7 +1430,7 @@ class SiteController extends Controller
 
             if ($query->exists()) {
                 // อัปเดต token เดิม
-                $db->createCommand()->update('tiktok_token', [
+                $rowsAffected = $db->createCommand()->update('tiktok_token', [
                     'access_token'  => $tokenData['access_token'],
                     'refresh_token' => $tokenData['refresh_token'] ?? '',
                     'expire_in'     => $expireIn,
@@ -1426,10 +1439,10 @@ class SiteController extends Controller
                     'updated_at'    => $now,
                 ], ['shop_id' => $shop_id])->execute();
 
-                Yii::info("Updated TikTok token for shop_id: {$shop_id}", __METHOD__);
+                Yii::info("Updated TikTok token for shop_id: {$shop_id}, rows affected: {$rowsAffected}", __METHOD__);
             } else {
                 // เพิ่ม token ใหม่
-                $db->createCommand()->insert('tiktok_token', [
+                $rowsAffected = $db->createCommand()->insert('tiktok_token', [
                     'shop_id'       => $shop_id,
                     'access_token'  => $tokenData['access_token'],
                     'refresh_token' => $tokenData['refresh_token'] ?? '',
@@ -1440,12 +1453,13 @@ class SiteController extends Controller
                     'updated_at'    => $now,
                 ])->execute();
 
-                Yii::info("Inserted new TikTok token for shop_id: {$shop_id}", __METHOD__);
+                Yii::info("Inserted new TikTok token for shop_id: {$shop_id}, rows affected: {$rowsAffected}", __METHOD__);
             }
 
             return true;
         } catch (\Throwable $e) {
             Yii::error('Error saving TikTok token: ' . $e->getMessage(), __METHOD__);
+            Yii::error('Error trace: ' . $e->getTraceAsString(), __METHOD__);
             return false;
         }
     }
