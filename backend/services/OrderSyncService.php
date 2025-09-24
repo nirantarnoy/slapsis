@@ -366,7 +366,7 @@ class OrderSyncService
     {
         // ดึงข้อมูล token จากตาราง tiktok_tokens
         $tokenModel = TiktokToken::find()
-            ->where(['channel_id' => $channel->id, 'status' => 'active'])
+            ->where(['status' => 'active'])
             ->orderBy(['created_at' => SORT_DESC])
             ->one();
 
