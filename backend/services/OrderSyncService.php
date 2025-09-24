@@ -375,12 +375,19 @@ class OrderSyncService
             return $this->syncTikTokSampleOrders($channel);
         }
 
-        // ✅ แก้ไข: เปรียบเทียบ datetime string กับ timestamp
+        // ✅ Debug: แสดงข้อมูล token
+        Yii::info('Token Model Info: ID=' . $tokenModel->id . ', Shop ID=' . $tokenModel->shop_id . ', Expires At=' . $tokenModel->expires_at, __METHOD__);
+
+        // ตรวจสอบว่า token หมดอายุหรือไม่
         if ($tokenModel->expires_at && strtotime($tokenModel->expires_at) < time()) {
+            Yii::info('Token expired, attempting refresh...', __METHOD__);
             if (!$this->refreshTikTokToken($tokenModel)) {
                 Yii::warning('Failed to refresh TikTok token for channel: ' . $channel->id, __METHOD__);
                 return $this->syncTikTokSampleOrders($channel);
             }
+            Yii::info('Token refreshed successfully', __METHOD__);
+        } else {
+            Yii::info('Token is still valid', __METHOD__);
         }
 
         $appKey = '6h9n461r774e1';
@@ -391,18 +398,29 @@ class OrderSyncService
         $count = 0;
         $pageSize = 50;
         $pageToken = '';
+        $pageCount = 0;
+
+        // ✅ Debug: แสดงข้อมูลเริ่มต้น
+        Yii::info('Starting TikTok Orders sync with:', __METHOD__);
+        Yii::info('- App Key: ' . $appKey, __METHOD__);
+        Yii::info('- Shop ID: ' . $shopId, __METHOD__);
+        Yii::info('- Access Token: ' . substr($accessToken, 0, 20) . '...', __METHOD__);
 
         try {
             do {
+                $pageCount++;
                 $timestamp = time();
                 $path = "/order/202309/orders/search";
 
-                // ✅ แก้ไข: เพิ่ม access_token ใน params สำหรับ signature
+                Yii::info("=== Processing Page {$pageCount} ===", __METHOD__);
+                Yii::info('Page Token: ' . ($pageToken ?: 'FIRST_PAGE'), __METHOD__);
+
+                // สร้าง parameters
                 $params = [
                     'app_key' => $appKey,
                     'timestamp' => $timestamp,
                     'shop_id' => $shopId,
-                    'access_token' => $accessToken,  // ✅ เพิ่มตรงนี้
+                    'access_token' => $accessToken,
                     'page_size' => $pageSize,
                     'create_time_from' => strtotime('-7 days'),
                     'create_time_to' => time(),
@@ -412,7 +430,17 @@ class OrderSyncService
                     $params['page_token'] = $pageToken;
                 }
 
-                // ✅ แก้ไข: สร้าง signature ตามมาตรฐาน TikTok Shop
+                // ✅ Debug: แสดง parameters ก่อนสร้าง signature
+                Yii::info('Parameters before signature:', __METHOD__);
+                foreach ($params as $key => $value) {
+                    if ($key === 'access_token') {
+                        Yii::info("- {$key}: " . substr($value, 0, 20) . '...', __METHOD__);
+                    } else {
+                        Yii::info("- {$key}: {$value}", __METHOD__);
+                    }
+                }
+
+                // สร้าง signature
                 ksort($params);
                 $queryString = '';
                 foreach ($params as $key => $value) {
@@ -420,13 +448,21 @@ class OrderSyncService
                 }
                 $stringToSign = $appSecret . $path . $queryString . $appSecret;
                 $sign = hash_hmac('sha256', $stringToSign, $appSecret);
-
                 $params['sign'] = $sign;
 
-                Yii::info('TikTok Orders API Request: ' . json_encode($params), __METHOD__);
+                // ✅ Debug: แสดงการสร้าง signature
+                Yii::info('Signature Details:', __METHOD__);
+                Yii::info('- Query String: ' . substr($queryString, 0, 100) . '...', __METHOD__);
+                Yii::info('- String to Sign: ' . substr($stringToSign, 0, 100) . '...', __METHOD__);
+                Yii::info('- Generated Signature: ' . $sign, __METHOD__);
 
-                // ✅ แก้ไข: ใช้ POST request แทน GET สำหรับ orders search
-                $response = $this->httpClient->post('https://open-api.tiktokglobalshop.com' . $path, [
+                // ส่ง request
+                $url = 'https://open-api.tiktokglobalshop.com' . $path;
+                Yii::info('Sending POST request to: ' . $url, __METHOD__);
+
+                $startTime = microtime(true);
+
+                $response = $this->httpClient->post($url, [
                     'json' => $params,
                     'headers' => [
                         'Content-Type' => 'application/json',
@@ -434,29 +470,97 @@ class OrderSyncService
                     ]
                 ]);
 
+                $endTime = microtime(true);
+                $responseTime = round(($endTime - $startTime) * 1000, 2);
+
+                $statusCode = $response->getStatusCode();
                 $body = $response->getBody()->getContents();
+
+                // ✅ Debug: แสดงข้อมูล response
+                Yii::info("=== API Response (Page {$pageCount}) ===", __METHOD__);
+                Yii::info('- Status Code: ' . $statusCode, __METHOD__);
+                Yii::info('- Response Time: ' . $responseTime . 'ms', __METHOD__);
+                Yii::info('- Response Size: ' . strlen($body) . ' bytes', __METHOD__);
+                Yii::info('- Response Headers: ' . json_encode($response->getHeaders()), __METHOD__);
+
+                if (strlen($body) < 1000) {
+                    Yii::info('- Full Response Body: ' . $body, __METHOD__);
+                } else {
+                    Yii::info('- Response Body (first 500 chars): ' . substr($body, 0, 500) . '...', __METHOD__);
+                }
+
                 $data = Json::decode($body);
 
-                Yii::info('TikTok Orders API Response: ' . $body, __METHOD__);
-
-                // ✅ เพิ่ม: ตรวจสอบ error response
+                // ตรวจสอบ error response
                 if (isset($data['code']) && $data['code'] !== 0) {
                     $errorMsg = $data['message'] ?? 'Unknown API error';
+                    Yii::error("TikTok API Error Code: {$data['code']}", __METHOD__);
+                    Yii::error("TikTok API Error Message: {$errorMsg}", __METHOD__);
+                    if (isset($data['request_id'])) {
+                        Yii::error("TikTok Request ID: {$data['request_id']}", __METHOD__);
+                    }
                     throw new \Exception("TikTok API Error [{$data['code']}]: $errorMsg");
                 }
 
+                // ตรวจสอบ data structure
+                Yii::info('Response Data Structure:', __METHOD__);
+                if (isset($data['data'])) {
+                    Yii::info('- data exists: YES', __METHOD__);
+                    if (isset($data['data']['orders'])) {
+                        $orderCount = count($data['data']['orders']);
+                        Yii::info('- orders count: ' . $orderCount, __METHOD__);
+                    } else {
+                        Yii::info('- orders exists: NO', __METHOD__);
+                        Yii::info('- data keys: ' . implode(', ', array_keys($data['data'])), __METHOD__);
+                    }
+
+                    if (isset($data['data']['next_page_token'])) {
+                        Yii::info('- next_page_token: ' . $data['data']['next_page_token'], __METHOD__);
+                    } else {
+                        Yii::info('- next_page_token: NOT_EXISTS', __METHOD__);
+                    }
+                } else {
+                    Yii::info('- data exists: NO', __METHOD__);
+                    Yii::info('- response keys: ' . implode(', ', array_keys($data)), __METHOD__);
+                }
+
                 if (!isset($data['data']['orders'])) {
-                    Yii::info('No orders found in response', __METHOD__);
+                    Yii::info('No orders found in response, breaking loop', __METHOD__);
                     break;
                 }
 
+                // ประมวลผล orders
+                $processedCount = 0;
                 foreach ($data['data']['orders'] as $orderData) {
-                    $count += $this->processTikTokOrder($channel, $orderData);
+                    try {
+                        $result = $this->processTikTokOrder($channel, $orderData);
+                        $count += $result;
+                        $processedCount++;
+
+                        if ($processedCount <= 3) { // แสดงแค่ 3 orders แรก
+                            Yii::info("Processed order: " . ($orderData['order_id'] ?? 'NO_ID') . ", result: {$result}", __METHOD__);
+                        }
+                    } catch (\Exception $e) {
+                        Yii::error('Error processing order: ' . $e->getMessage(), __METHOD__);
+                        if (isset($orderData['order_id'])) {
+                            Yii::error('Failed Order ID: ' . $orderData['order_id'], __METHOD__);
+                        }
+                    }
                 }
 
                 $pageToken = $data['data']['next_page_token'] ?? '';
 
-                Yii::info("Processed " . count($data['data']['orders']) . " orders, next_page_token: " . $pageToken, __METHOD__);
+                Yii::info("Page {$pageCount} Summary:", __METHOD__);
+                Yii::info("- Orders in response: " . count($data['data']['orders']), __METHOD__);
+                Yii::info("- Orders processed: {$processedCount}", __METHOD__);
+                Yii::info("- Next page token: " . ($pageToken ?: 'NONE'), __METHOD__);
+                Yii::info("- Total count so far: {$count}", __METHOD__);
+
+                // หยุดถ้า process มากกว่า 5 pages เพื่อป้องกัน infinite loop
+                if ($pageCount >= 5) {
+                    Yii::warning("Reached maximum page limit (5), stopping sync", __METHOD__);
+                    break;
+                }
 
             } while (!empty($pageToken));
 
@@ -465,15 +569,25 @@ class OrderSyncService
             $errorBody = $response ? $response->getBody()->getContents() : 'No response body';
             $statusCode = $response ? $response->getStatusCode() : 'unknown';
 
-            Yii::error("TikTok Orders API HTTP Error [{$statusCode}]: " . $e->getMessage() . " Response: " . $errorBody, __METHOD__);
+            Yii::error("=== HTTP CLIENT ERROR ===", __METHOD__);
+            Yii::error("Status Code: {$statusCode}", __METHOD__);
+            Yii::error("Error Message: " . $e->getMessage(), __METHOD__);
+            Yii::error("Response Body: " . $errorBody, __METHOD__);
+
             throw $e;
 
         } catch (\Exception $e) {
-            Yii::error('TikTok API error: ' . $e->getMessage(), __METHOD__);
+            Yii::error("=== GENERAL ERROR ===", __METHOD__);
+            Yii::error("Error Message: " . $e->getMessage(), __METHOD__);
+            Yii::error("Error File: " . $e->getFile() . ':' . $e->getLine(), __METHOD__);
             throw $e;
         }
 
-        Yii::info("Successfully synced {$count} TikTok orders for channel: " . $channel->id, __METHOD__);
+        Yii::info("=== SYNC COMPLETED ===", __METHOD__);
+        Yii::info("Total pages processed: {$pageCount}", __METHOD__);
+        Yii::info("Total orders synced: {$count}", __METHOD__);
+        Yii::info("Channel ID: " . $channel->id, __METHOD__);
+
         return $count;
     }
 
