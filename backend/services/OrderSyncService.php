@@ -373,7 +373,7 @@ class OrderSyncService
         return strtolower(hash('sha256', $raw));
     }
 
-    private function fetchShopCipher(TiktokToken $tokenModel)
+    private function fetchShopCipher($tokenModel)
     {
         $appKey     = '6h9n461r774e1';
         $appSecret  = '1c45a0c25224293abd7de681049f90de3363389a';
