@@ -419,8 +419,8 @@ class OrderSyncService
                 $params = [
                     'app_key' => $appKey,
                     'timestamp' => $timestamp,
-                    'shop_id' => $shopId,
                     'access_token' => $accessToken,
+                    'shop_id' => $shopId,
                     'page_size' => $pageSize,
                     'create_time_from' => strtotime('-7 days'),
                     'create_time_to' => time(),
@@ -448,13 +448,33 @@ class OrderSyncService
                 }
                 $stringToSign = $appSecret . $path . $queryString . $appSecret;
                 $sign = hash_hmac('sha256', $stringToSign, $appSecret);
-                $params['sign'] = $sign;
+
+                // ✅ แยก parameters สำหรับ query และ body
+                $queryParams = [
+                    'app_key' => $appKey,
+                    'timestamp' => $timestamp,
+                    'access_token' => $accessToken,
+                    'sign' => $sign,
+                ];
+
+                $bodyParams = [
+                    'shop_id' => $shopId,
+                    'page_size' => $pageSize,
+                    'create_time_from' => strtotime('-7 days'),
+                    'create_time_to' => time(),
+                ];
+
+                if (!empty($pageToken)) {
+                    $bodyParams['page_token'] = $pageToken;
+                }
 
                 // ✅ Debug: แสดงการสร้าง signature
                 Yii::info('Signature Details:', __METHOD__);
                 Yii::info('- Query String: ' . substr($queryString, 0, 100) . '...', __METHOD__);
                 Yii::info('- String to Sign: ' . substr($stringToSign, 0, 100) . '...', __METHOD__);
                 Yii::info('- Generated Signature: ' . $sign, __METHOD__);
+                Yii::info('Query Parameters: ' . json_encode($queryParams), __METHOD__);
+                Yii::info('Body Parameters: ' . json_encode($bodyParams), __METHOD__);
 
                 // ส่ง request
                 $url = 'https://open-api.tiktokglobalshop.com' . $path;
@@ -463,7 +483,8 @@ class OrderSyncService
                 $startTime = microtime(true);
 
                 $response = $this->httpClient->post($url, [
-                    'json' => $params,
+                    'query' => $queryParams,  // ✅ ส่งใน query string
+                    'json' => $bodyParams,    // ✅ ส่งใน request body
                     'headers' => [
                         'Content-Type' => 'application/json',
                         'User-Agent' => 'YourApp/1.0',
