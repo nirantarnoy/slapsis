@@ -401,9 +401,8 @@ class OrderSyncService
        // $sign = strtolower(hash('sha256', $appSecret . $path . $signString . $appSecret));
         $sign = $this->generateSign($appKey,$params);
 
-       // $url = 'https://open-api.tiktokglobalshop.com' . $path . '?' . http_build_query(array_merge($params, ['sign' => $sign]));
-        $url = "https://open-api.tiktokglobalshop.com/api/shop/get_authorized_shop?"
-            . http_build_query($params) . "&sign=" . $sign;
+        $url = 'https://open-api.tiktokglobalshop.com' . $path . '?' . http_build_query(array_merge($params, ['sign' => $sign]));
+
 
         Yii::info("Shop API URL: $url", __METHOD__);
 
