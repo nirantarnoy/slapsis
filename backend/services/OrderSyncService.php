@@ -374,6 +374,12 @@ class OrderSyncService
             return $this->syncTikTokSampleOrders($channel);
         }
 
+        if (empty($tokenModel->shop_cipher)) {
+            Yii::info("shop_cipher not found. Fetching from TikTok API...", __METHOD__);
+            $this->fetchShopCipher($tokenModel);
+        }
+
+
         if ($tokenModel->expires_at && strtotime($tokenModel->expires_at) < time()) {
             Yii::info('Token expired, attempting refresh...', __METHOD__);
             if (!$this->refreshTikTokToken($tokenModel)) {
@@ -495,6 +501,75 @@ class OrderSyncService
         Yii::info("✅ Sync complete: {$count} orders synced.", __METHOD__);
         return $count;
     }
+
+    private function fetchShopCipher(TiktokToken $tokenModel)
+    {
+        $appKey     = '6h9n461r774e1';
+        $appSecret  = '1c45a0c25224293abd7de681049f90de3363389a';
+        $timestamp  = time();
+        $path       = '/api/shop/get_authorized_shop';
+
+        // ✅ สร้าง params สำหรับ sign
+        $params = [
+            'app_key'   => $appKey,
+            'timestamp' => $timestamp,
+        ];
+
+        // ✅ สร้าง sign
+        ksort($params);
+        $signString = '';
+        foreach ($params as $k => $v) {
+            $signString .= $k . $v;
+        }
+        $signSource = $appSecret . $path . $signString . $appSecret;
+        $sign = strtolower(hash_hmac('sha256', $signSource, $appSecret));
+
+        // ✅ URL เต็ม
+        $url = 'https://open-api.tiktokglobalshop.com' . $path . '?' . http_build_query(array_merge($params, ['sign' => $sign]));
+
+        try {
+            $client = new \GuzzleHttp\Client();
+            $response = $client->get($url, [
+                'headers' => [
+                    'Content-Type'        => 'application/json',
+                    'x-tts-access-token'  => $tokenModel->access_token, // ✅ ใส่ access_token ใน header
+                ],
+            ]);
+
+            $status = $response->getStatusCode();
+            $result = json_decode($response->getBody(), true);
+
+            Yii::info("Shop Info Status: {$status}", __METHOD__);
+            Yii::info("Shop Info Response: " . json_encode($result), __METHOD__);
+
+            if (isset($result['code']) && $result['code'] !== 0) {
+                throw new \Exception("TikTok API error [{$result['code']}] {$result['message']}");
+            }
+
+            if (isset($result['data']['shops'][0]['cipher'])) {
+                $shopCipher = $result['data']['shops'][0]['cipher'];
+                $shopName   = $result['data']['shops'][0]['shop_name'] ?? '';
+
+                // ✅ บันทึกลง DB
+                $tokenModel->shop_cipher = $shopCipher;
+                $tokenModel->shop_name   = $shopName;
+                $tokenModel->save(false);
+
+                Yii::info("✅ Shop cipher updated: {$shopCipher}", __METHOD__);
+                return $shopCipher;
+            } else {
+                Yii::warning("No shop_cipher found in response", __METHOD__);
+            }
+
+        } catch (\GuzzleHttp\Exception\ClientException $e) {
+            Yii::error("Shop Info API Error: " . $e->getResponse()->getBody()->getContents(), __METHOD__);
+        } catch (\Exception $e) {
+            Yii::error("General Error in fetchShopCipher: " . $e->getMessage(), __METHOD__);
+        }
+
+        return null;
+    }
+
 
 
 

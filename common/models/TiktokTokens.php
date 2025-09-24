@@ -35,7 +35,7 @@ class TiktokTokens extends \yii\db\ActiveRecord
             [['shop_id', 'access_token', 'refresh_token', 'expires_in', 'updated_at'], 'default', 'value' => null],
             [['access_token', 'refresh_token'], 'string'],
             [['expires_in'], 'integer'],
-            [['updated_at'], 'safe'],
+            [['updated_at','shop_cipher','shop_name'], 'safe'],
             [['shop_id'], 'string', 'max' => 50],
         ];
     }
