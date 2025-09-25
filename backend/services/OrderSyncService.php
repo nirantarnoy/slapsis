@@ -531,12 +531,12 @@ class OrderSyncService
                     'create_time_lt' => $timestamp,
                 ];
 
-                $response = $this->httpClient->post($url, [
+                $client = new \GuzzleHttp\Client();
+                $response = $client->get($url, [
                     'headers' => [
                         'Content-Type' => 'application/json',
-                        'x-tts-access-token' => $accessToken,
+                        'x-tts-access-token' => $tokenModel->access_token,
                     ],
-                    'body' => json_encode($body),
                 ]);
 
                 $result = json_decode($response->getBody(), true);
@@ -563,9 +563,6 @@ class OrderSyncService
         Yii::info("✅ Total orders synced: {$count}", __METHOD__);
         return $count;
     }
-
-
-
 
 
     /**
