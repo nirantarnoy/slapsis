@@ -559,6 +559,7 @@ class OrderSyncService
 
         } catch (\Exception $e) {
             Yii::error("TikTok sync error: " . $e->getMessage(), __METHOD__);
+            Yii::error("ClientException: TikTok Status=" . $e->getResponse()->getStatusCode() . " Body=$body", __METHOD__);
         }
 
         Yii::info("✅ Total orders synced: {$count}", __METHOD__);
