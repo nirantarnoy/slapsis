@@ -383,6 +383,16 @@ class OrderSyncService
 
         return hash_hmac('sha256', $stringToSign, $appSecret); // HMAC-SHA256
     }
+    function generateSignForOrder($appSecret, $params, $path) {
+        ksort($params); // เรียง key
+        $stringToSign = $appSecret . $path;
+        foreach ($params as $key => $value) {
+            $stringToSign .= $key . $value;
+        }
+        $stringToSign .= $appSecret;
+
+        return hash('sha256', $stringToSign, $appSecret); // HMAC-SHA256
+    }
 
 
     private function fetchShopCipher($tokenModel)
@@ -507,10 +517,11 @@ class OrderSyncService
                     $queryParams['page_token'] = $pageToken;
                 }
 
+                ksort($queryParams);
                 // ✅ สร้าง sign
                 $sign = $this->generateSign($appSecret,$queryParams,$path);
-               // $queryParams['sign'] = $sign;
-                $url = 'https://open-api.tiktokglobalshop.com' . $path . '?' . http_build_query($queryParams) . '&sign=' . $sign;
+                $queryParams['sign'] = $sign;
+                $url = 'https://open-api.tiktokglobalshop.com' . $path . '?' . http_build_query($queryParams);
                 //$url = $baseUrl . $path . '?' . http_build_query($queryParams);
 
                 // ✅ กำหนด body JSON (filter เฉพาะตัวที่อยากได้)
