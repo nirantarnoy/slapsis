@@ -524,7 +524,7 @@ class OrderSyncService
 
                 // ✅ Body JSON สำหรับ POST request
                 $body = [
-                    'order_status' => 'COMPLETED', // UNPAID , ON_HOLD , IN_TRANSIT , DELIVERED , COMPLETED , CANCELLED
+                    'order_status' => 'DELIVERED', // UNPAID , ON_HOLD , IN_TRANSIT , DELIVERED , COMPLETED , CANCELLED
                     'create_time_ge' => strtotime('-7 days'),
                     'create_time_lt' => $timestamp,
                 ];
