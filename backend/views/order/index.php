@@ -116,9 +116,9 @@ $this->params['breadcrumbs'][] = $this->title;
                             'format'=>'raw',
                             'value' => function($model){
                                if($model->channel_id ==1){
-                                   return '<img src="'.Yii::$app->request->baseUrl."/uploads/logo/sp.png".'" width="20px">'.'Shopee';
+                                   return '<img src="'.Yii::$app->request->baseUrl."/uploads/logo/sp.png".'" width="32px">'.' Shopee';
                                }else if($model->channel_id==2){
-                                   return '<img src="'.Yii::$app->request->baseUrl."/uploads/logo/tt.png".'" width="20px">'.'Tiktok';
+                                   return '<img src="'.Yii::$app->request->baseUrl."/uploads/logo/tt.png".'" width="32px">'.' Tiktok';
                                }
                             },
                             'filter' => Select2::widget([
