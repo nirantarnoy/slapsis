@@ -532,7 +532,7 @@ class OrderSyncService
                 ];
 
                 $client = new \GuzzleHttp\Client();
-                $response = $client->get($url, [
+                $response = $client->post($url, [
                     'headers' => [
                         'Content-Type' => 'application/json',
                         'x-tts-access-token' => $tokenModel->access_token,
