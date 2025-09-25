@@ -566,8 +566,10 @@ class OrderSyncService
 
                 $orders = $result['data']['orders'] ?? [];
                 foreach ($orders as $order) {
-                    $this->processTikTokOrder($channel, $order);
-                    $count++;
+                    $save_row_count = $this->processTikTokOrder($channel, $order);
+                    if($save_row_count >0){
+                        $count++;
+                    }
                 }
 
                 $pageToken = $result['data']['next_page_token'] ?? '';
