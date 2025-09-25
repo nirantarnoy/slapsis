@@ -514,10 +514,13 @@ class OrderSyncService
                 //$url = $baseUrl . $path . '?' . http_build_query($queryParams);
 
                 $body = [
-                    'create_time_ge' => strtotime('-7 days'),
-                    'create_time_lt' => time(),
+                    'order_status' => 'UNPAID',
+                    'create_time_ge' => strtotime('-7 days'), // ตัวอย่าง: 7 วันล่าสุด
+                    'create_time_lt' => $timestamp,
                     'update_time_ge' => strtotime('-7 days'),
-                    'update_time_lt' => time(),
+                    'update_time_lt' => $timestamp,
+                    'shipping_type' => 'TIKTOK',
+                    'is_buyer_request_cancel' => false,
                 ];
 
                 $response = $this->httpClient->post($url, [
