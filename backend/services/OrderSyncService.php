@@ -487,7 +487,7 @@ class OrderSyncService
         $count     = 0;
         $pageCount = 0;
         $path      = '/order/202309/orders/search';
-        $baseUrl   = 'https://open-api.tiktokglobalshop.com';
+     //   $baseUrl   = 'https://open-api.tiktokglobalshop.com';
 
         try {
             do {
@@ -498,7 +498,6 @@ class OrderSyncService
                     'app_key'     => $appKey,
                     'timestamp'   => $timestamp,
                     'shop_cipher' => $shopCipher,
-                    'category_asset_cipher'=> $shopCipher,
                     'page_size'   => $pageSize,
                     'sort_field'  => 'create_time',
                     'sort_order'  => 'DESC',
@@ -514,14 +513,11 @@ class OrderSyncService
                 $url = 'https://open-api.tiktokglobalshop.com' . $path . '?' . http_build_query($queryParams) . '&sign=' . $sign;
                 //$url = $baseUrl . $path . '?' . http_build_query($queryParams);
 
+                // ✅ กำหนด body JSON (filter เฉพาะตัวที่อยากได้)
                 $body = [
                     'order_status' => 'UNPAID',
-                    'create_time_ge' => strtotime('-7 days'), // ตัวอย่าง: 7 วันล่าสุด
+                    'create_time_ge' => strtotime('-7 days'),
                     'create_time_lt' => $timestamp,
-                    'update_time_ge' => strtotime('-7 days'),
-                    'update_time_lt' => $timestamp,
-                    'shipping_type' => 'TIKTOK',
-                    'is_buyer_request_cancel' => false,
                 ];
 
                 $response = $this->httpClient->post($url, [
