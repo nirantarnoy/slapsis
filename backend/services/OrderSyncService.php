@@ -391,7 +391,7 @@ class OrderSyncService
         }
         $stringToSign .= $appSecret;
 
-        return hash('sha256', $stringToSign, $appSecret); // HMAC-SHA256
+        return hash('sha256', $stringToSign);
     }
 
 
@@ -519,7 +519,7 @@ class OrderSyncService
 
                 ksort($queryParams);
                 // ✅ สร้าง sign
-                $sign = $this->generateSign($appSecret,$queryParams,$path);
+                $sign = $this->generateSignForOrder($appSecret,$queryParams,$path);
                 $queryParams['sign'] = $sign;
                 $url = 'https://open-api.tiktokglobalshop.com' . $path . '?' . http_build_query($queryParams);
                 //$url = $baseUrl . $path . '?' . http_build_query($queryParams);
