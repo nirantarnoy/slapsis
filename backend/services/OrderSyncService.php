@@ -519,7 +519,7 @@ class OrderSyncService
 
                 ksort($queryParams);
                 // ✅ สร้าง sign
-                $sign = $this->generateSignForOrder($appSecret,$queryParams,$path);
+                $sign = $this->generateSign($appSecret,$queryParams,$path);
                 $queryParams['sign'] = $sign;
                 $url = 'https://open-api.tiktokglobalshop.com' . $path . '?' . http_build_query($queryParams);
                 //$url = $baseUrl . $path . '?' . http_build_query($queryParams);
@@ -537,6 +537,7 @@ class OrderSyncService
                         'Content-Type' => 'application/json',
                         'x-tts-access-token' => $tokenModel->access_token,
                     ],
+                    'body'=>json_encode($body)
                 ]);
 
                 $result = json_decode($response->getBody(), true);
