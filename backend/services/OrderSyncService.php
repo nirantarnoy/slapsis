@@ -614,15 +614,25 @@ class OrderSyncService
                 if ($existingOrder) {
                     continue;
                 }
+                $order_qty = 0;
+                $skuId = '';
+                $productName = '';
+                foreach ($item['combined_listing_skus'] as $sku) {
+                    $productName = $item['product_name'];
+                    $skuId       = $sku['sku_id'];
+                    $order_qty   = $sku['sku_count'];
+
+                   // echo "สินค้า: {$productName} | SKU: {$skuId} | จำนวน: {$qty}\n";
+                }
 
                 $order = new Order();
                 $order->order_id = $unique_order_id;
                 $order->channel_id = $channel->id;
 //                $order->shop_id = $orderData['shop_id'] ?? '';
 //                $order->order_sn = $order_id;
-                $order->sku = $item['seller_sku'] ?? $item['sku_id'] ?? '';
-                $order->product_name = $item['product_name'];
-                $order->quantity = $item['quantity'];
+                $order->sku = $skuId;// $item['seller_sku'] ?? $item['sku_id'] ?? '';
+                $order->product_name = $productName;// $item['product_name'];
+                $order->quantity = $order_qty;//$item['quantity'];
                 $order->price = $item['sale_price'] / 1000000; // TikTok ส่งมาเป็น micro units
                 $order->total_amount = $order->quantity * $order->price;
                 $order->order_date = date('Y-m-d H:i:s', $orderData['create_time']);
