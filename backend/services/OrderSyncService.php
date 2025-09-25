@@ -509,9 +509,9 @@ class OrderSyncService
 
                 // ✅ สร้าง sign
                 $sign = $this->generateSign($appSecret,$queryParams,$path);
-                $queryParams['sign'] = $sign;
-
-                $url = $baseUrl . $path . '?' . http_build_query($queryParams);
+               // $queryParams['sign'] = $sign;
+                $url = 'https://open-api.tiktokglobalshop.com' . $path . '?' . http_build_query($queryParams) . '&sign=' . $sign;
+                //$url = $baseUrl . $path . '?' . http_build_query($queryParams);
 
                 $body = [
                     'create_time_ge' => strtotime('-7 days'),
