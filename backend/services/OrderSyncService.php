@@ -498,6 +498,7 @@ class OrderSyncService
                     'app_key'     => $appKey,
                     'timestamp'   => $timestamp,
                     'shop_cipher' => $shopCipher,
+                    'category_asset_cipher'=> $shopCipher,
                     'page_size'   => $pageSize,
                     'sort_field'  => 'create_time',
                     'sort_order'  => 'DESC',
