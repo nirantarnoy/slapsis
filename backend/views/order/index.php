@@ -113,7 +113,14 @@ $this->params['breadcrumbs'][] = $this->title;
                         ],
                         [
                             'attribute' => 'channel_id',
-                            'value' => 'channel.name',
+                            'format'=>'raw',
+                            'value' => function($model){
+                               if($model->channel_id ==1){
+                                   return '<img src="'.Yii::$app->request->baseUrl."/uploads/logo/sp.png".'" width="20px">';
+                               }else if($model->channel_id==2){
+                                   return '<img src="'.Yii::$app->request->baseUrl."/uploads/logo/tt.png".'" width="20px">';
+                               }
+                            },
                             'filter' => Select2::widget([
                                 'model' => $searchModel,
                                 'attribute' => 'channel_id',
