@@ -508,7 +508,7 @@ class OrderSyncService
                 }
 
                 // ✅ สร้าง sign
-                $sign = $this->generateTikTokSign($appSecret, $path, $queryParams);
+                $sign = $this->generateSign($appSecret,$queryParams,$path);
                 $queryParams['sign'] = $sign;
 
                 $url = $baseUrl . $path . '?' . http_build_query($queryParams);
