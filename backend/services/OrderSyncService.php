@@ -383,15 +383,20 @@ class OrderSyncService
 
         return hash_hmac('sha256', $stringToSign, $appSecret); // HMAC-SHA256
     }
-    function generateSignForOrder($appSecret, $params, $path) {
+    function generateSignForOrder($appSecret, $params, $path, $body='') {
         ksort($params); // เรียง key
         $stringToSign = $appSecret . $path;
         foreach ($params as $key => $value) {
             $stringToSign .= $key . $value;
         }
+        if (!empty($body)) {
+            $stringToSign .= $body;
+        }
+
         $stringToSign .= $appSecret;
 
-        return hash('sha256', $stringToSign);
+        // สร้าง HMAC-SHA256 signature และคืนค่าเป็น hex
+        return hash_hmac('sha256', $stringToSign, $appSecret);
     }
 
 
@@ -483,7 +488,7 @@ class OrderSyncService
 
         // ✅ Fetch shop_cipher ถ้ายังไม่มี
         if (empty($tokenModel->shop_cipher)) {
-            Yii::info("NIRAN access token is: $tokenModel->access_token");
+            Yii::info("Access token is: " . substr($tokenModel->access_token, 0, 20) . "...", __METHOD__);
             $this->fetchShopCipher($tokenModel);
         }
 
@@ -497,50 +502,63 @@ class OrderSyncService
         $count     = 0;
         $pageCount = 0;
         $path      = '/order/202309/orders/search';
-     //   $baseUrl   = 'https://open-api.tiktokglobalshop.com';
 
         try {
             do {
                 $pageCount++;
                 $timestamp = time();
 
+                // ✅ Parameters ที่จะส่งใน query string (ไม่รวม sign และ access_token)
                 $queryParams = [
                     'app_key'     => $appKey,
-                    'timestamp'   => $timestamp,
-                    'shop_cipher' => $shopCipher,
                     'page_size'   => $pageSize,
+                    'shop_cipher' => $shopCipher,
                     'sort_field'  => 'create_time',
                     'sort_order'  => 'DESC',
+                    'timestamp'   => $timestamp,
                 ];
 
                 if ($pageToken) {
                     $queryParams['page_token'] = $pageToken;
                 }
 
-                ksort($queryParams);
-                // ✅ สร้าง sign
-                $sign = $this->generateSignForOrder($appSecret,$queryParams,$path);
-                $queryParams['sign'] = $sign;
-                $url = 'https://open-api.tiktokglobalshop.com' . $path . '?' . http_build_query($queryParams);
-                //$url = $baseUrl . $path . '?' . http_build_query($queryParams);
-
-                // ✅ กำหนด body JSON (filter เฉพาะตัวที่อยากได้)
+                // ✅ Body JSON สำหรับ POST request
                 $body = [
                     'order_status' => 'UNPAID',
                     'create_time_ge' => strtotime('-7 days'),
                     'create_time_lt' => $timestamp,
                 ];
+                $bodyJson = json_encode($body);
 
-                $client = new \GuzzleHttp\Client();
+                // ✅ สร้าง signature ด้วย HMAC-SHA256 พร้อม body
+                $sign = $this->generateSignForOrder($appSecret, $queryParams, $path, $bodyJson);
+
+                // ✅ Debug signature process
+                //$this->debugSignature($appSecret, $queryParams, $path, $bodyJson);
+
+                // ✅ เพิ่ม sign และ access_token เข้าไปใน URL
+                $queryParams['sign'] = $sign;
+                $queryParams['access_token'] = $accessToken;
+
+                $url = 'https://open-api.tiktokglobalshop.com' . $path . '?' . http_build_query($queryParams);
+
+                Yii::info("Request URL: $url", __METHOD__);
+                Yii::info("Request body: $bodyJson", __METHOD__);
+
+                $client = new \GuzzleHttp\Client([
+                    'timeout' => 30,
+                ]);
+
                 $response = $client->post($url, [
                     'headers' => [
                         'Content-Type' => 'application/json',
-                        'x-tts-access-token' => $tokenModel->access_token,
+                        'x-tts-access-token' => $accessToken,
                     ],
-                    'body'=>json_encode($body)
+                    'body' => $bodyJson
                 ]);
 
                 $result = json_decode($response->getBody(), true);
+                Yii::info('Orders API response: ' . json_encode($result), __METHOD__);
 
                 if (isset($result['code']) && $result['code'] !== 0) {
                     throw new \Exception("TikTok API error [{$result['code']}] {$result['message']}");
@@ -553,14 +571,23 @@ class OrderSyncService
                 }
 
                 $pageToken = $result['data']['next_page_token'] ?? '';
-                if ($pageCount >= 5) break;
+                if ($pageCount >= 5) break; // จำกัดการ loop
 
             } while (!empty($pageToken));
 
+        } catch (\GuzzleHttp\Exception\ClientException $e) {
+            $statusCode = $e->getResponse()->getStatusCode();
+            $body = $e->getResponse() ? $e->getResponse()->getBody()->getContents() : 'No response';
+            Yii::error("ClientException [$statusCode]: $body", __METHOD__);
+
+            // ถ้าได้ 401 ลองใช้วิธีอื่น
+            if ($statusCode == 401) {
+                Yii::error("401 Unauthorized - trying alternative signature method", __METHOD__);
+                // อาจจะต้อง retry ด้วยวิธีอื่น
+            }
+
         } catch (\Exception $e) {
             Yii::error("TikTok sync error: " . $e->getMessage(), __METHOD__);
-            $body = $e->getResponse() ? $e->getResponse()->getBody()->getContents() : 'No response';
-            Yii::error("ClientException: TikTok Status=" . $e->getResponse()->getStatusCode() . " Body=$body", __METHOD__);
         }
 
         Yii::info("✅ Total orders synced: {$count}", __METHOD__);
