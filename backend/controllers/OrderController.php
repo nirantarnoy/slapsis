@@ -209,6 +209,7 @@ class OrderController extends Controller
     public function actionSyncShopeeFee()
     {
         $channelId = 1;
+        echo $channelId;return;
 
         try {
             // เรียกใช้ service สำหรับ sync ข้อมูล
