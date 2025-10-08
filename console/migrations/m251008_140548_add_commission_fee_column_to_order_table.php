@@ -51,17 +51,17 @@ class m251008_140548_add_commission_fee_column_to_order_table extends Migration
         );
 
         // สร้าง index สำหรับการ query
-        $this->createIndex(
-            'idx-order-actual_income',
-            '{{%order}}',
-            'actual_income'
-        );
-
-        $this->createIndex(
-            'idx-order-commission_fee',
-            '{{%order}}',
-            'commission_fee'
-        );
+//        $this->createIndex(
+//            'idx-order-actual_income',
+//            '{{%order}}',
+//            'actual_income'
+//        );
+//
+//        $this->createIndex(
+//            'idx-order-commission_fee',
+//            '{{%order}}',
+//            'commission_fee'
+//        );
 
         echo "✓ เพิ่มฟิลด์ค่าธรรมเนียมในตาราง order สำเร็จ\n";
     }
@@ -72,8 +72,8 @@ class m251008_140548_add_commission_fee_column_to_order_table extends Migration
     public function safeDown()
     {
         // ลบ indexes
-        $this->dropIndex('idx-order-commission_fee', '{{%order}}');
-        $this->dropIndex('idx-order-actual_income', '{{%order}}');
+//        $this->dropIndex('idx-order-commission_fee', '{{%order}}');
+//        $this->dropIndex('idx-order-actual_income', '{{%order}}');
 
         // ลบคอลัมน์
         $this->dropColumn('{{%order}}', 'original_price');
