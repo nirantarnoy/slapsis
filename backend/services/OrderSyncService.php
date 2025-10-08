@@ -988,6 +988,67 @@ class OrderSyncService
             $toTime = time();
         }
 
+        $totalCount = 0;
+
+        // แบ่งช่วงเวลาเป็นช่วงๆ ละ 15 วัน (Shopee จำกัดไม่เกิน 15 วัน)
+        $maxDays = 15;
+        $maxSeconds = $maxDays * 24 * 60 * 60;
+
+        $currentFrom = $fromTime;
+
+        try {
+            while ($currentFrom < $toTime) {
+                $currentTo = min($currentFrom + $maxSeconds, $toTime);
+
+                Yii::info("Syncing transactions from " . date('Y-m-d H:i:s', $currentFrom) .
+                    " to " . date('Y-m-d H:i:s', $currentTo), __METHOD__);
+
+                // ดึงข้อมูลในช่วงนี้
+                $count = $this->syncShopeeTransactionFeesForPeriod(
+                    $channel,
+                    $partner_id,
+                    $partner_key,
+                    $shop_id,
+                    $access_token,
+                    $currentFrom,
+                    $currentTo
+                );
+
+                $totalCount += $count;
+
+                // เลื่อนไปช่วงถัดไป
+                $currentFrom = $currentTo + 1;
+
+                // หน่วงเวลาระหว่างการเรียก API
+                if ($currentFrom < $toTime) {
+                    usleep(300000); // 0.3 วินาที
+                }
+            }
+
+            Yii::info("Total synced {$totalCount} Shopee transactions for channel: " . $channel->id, __METHOD__);
+
+        } catch (\Exception $e) {
+            Yii::error('Shopee Transaction API error: ' . $e->getMessage(), __METHOD__);
+            throw $e;
+        }
+
+        return $totalCount;
+    }
+
+    /**
+     * Sync Shopee Transaction Fees for a specific period (max 15 days)
+     *
+     * @param OnlineChannel $channel
+     * @param int $partner_id
+     * @param string $partner_key
+     * @param string $shop_id
+     * @param string $access_token
+     * @param int $fromTime Unix timestamp
+     * @param int $toTime Unix timestamp
+     * @return int Number of transactions synced
+     */
+    private function syncShopeeTransactionFeesForPeriod($channel, $partner_id, $partner_key, $shop_id, $access_token, $fromTime, $toTime)
+    {
         $count = 0;
         $page_no = 1;
         $page_size = 100;
@@ -1010,8 +1071,8 @@ class OrderSyncService
                 $body = [
                     'page_no' => $page_no,
                     'page_size' => $page_size,
-                    'create_time_from' => $fromTime,
-                    'create_time_to' => $toTime,
+                    'create_time_from' => (int)$fromTime,
+                    'create_time_to' => (int)$toTime,
                 ];
 
                 $response = $this->httpClient->post('https://partner.shopeemobile.com' . $path, [
@@ -1034,18 +1095,12 @@ class OrderSyncService
                 // เช็ค API error
                 if (!empty($data['error'])) {
                     Yii::error("Shopee API Error Fee Sync: {$data['error']} - " . ($data['message'] ?? 'Unknown error'), __METHOD__);
-
-                    if (in_array($data['error'], ['error_auth', 'error_permission'])) {
-                        if ($this->refreshShopeeToken($tokenModel)) {
-                            continue;
-                        }
-                    }
                     break;
                 }
 
                 // เช็ค response
                 if (empty($data['response']['transaction_list'])) {
-                    Yii::info('Shopee response valid but no transaction_list found', __METHOD__);
+                    Yii::debug('No transaction_list found for this period', __METHOD__);
                     break;
                 }
 
@@ -1068,10 +1123,8 @@ class OrderSyncService
 
             } while (true);
 
-            Yii::info("Synced {$count} Shopee transactions for channel: " . $channel->id, __METHOD__);
-
         } catch (\Exception $e) {
-            Yii::error('Shopee Transaction API error: ' . $e->getMessage(), __METHOD__);
+            Yii::error('Shopee Transaction API error for period: ' . $e->getMessage(), __METHOD__);
             throw $e;
         }
 
