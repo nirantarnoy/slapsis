@@ -2,6 +2,7 @@
 
 namespace backend\services;
 
+use backend\models\ShopeeTransaction;
 use Yii;
 use backend\models\Order;
 use backend\models\OnlineChannel;
@@ -905,5 +906,396 @@ class OrderSyncService
         }
 
         return $count;
+    }
+
+
+
+    /////////////////// sync shopee other fee
+    ///
+    ///
+    ///
+
+    public function syncShopeeFree($channelId = null)
+    {
+        $channels = [];
+
+        if ($channelId) {
+            $channel = OnlineChannel::findOne($channelId);
+            if (!$channel) {
+                throw new Exception('Channel not found');
+            }
+            $channels[] = $channel;
+        } else {
+            $channels = OnlineChannel::find()->where(['status' => OnlineChannel::STATUS_ACTIVE])->all();
+        }
+
+        $totalSynced = 0;
+        $errors = [];
+
+        foreach ($channels as $channel) {
+            try {
+                switch ($channel->name) {
+                    case 'Tiktok':
+                        $totalSynced += $this->syncShopeeTransactionFees($channel);
+                        break;
+                    case 'Shopee':
+                        $totalSynced += $this->syncShopeeTransactionFees($channel);
+                        break;
+                }
+            } catch (\Exception $e) {
+                $errors[] = $channel->name . ': ' . $e->getMessage();
+                Yii::error('Order sync error for ' . $channel->name . ': ' . $e->getMessage(), __METHOD__);
+            }
+        }
+
+        return [
+            'count' => $totalSynced,
+            'errors' => $errors
+        ];
+    }
+
+    private function syncShopeeTransactionFees($channel, $fromTime = null, $toTime = null)
+    {
+        $tokenModel = ShopeeToken::find()
+            ->where(['status' => 'active'])
+            ->orderBy(['created_at' => SORT_DESC])
+            ->one();
+
+        if (!$tokenModel) {
+            Yii::warning('No active Shopee token found for channel: ' . $channel->id, __METHOD__);
+            return 0;
+        }
+
+        // ตรวจสอบ token หมดอายุ
+        if (strtotime($tokenModel->expires_at) < time()) {
+            Yii::error('Access Token is expired');
+            if (!$this->refreshShopeeToken($tokenModel)) {
+                Yii::warning('Failed to refresh Shopee token for channel: ' . $channel->id, __METHOD__);
+                return 0;
+            }
+        }
+
+        $partner_id = 2012399;
+        $partner_key = 'shpk72476151525864414e4b6e475449626679624f695a696162696570417043';
+        $shop_id = $tokenModel->shop_id;
+        $access_token = $tokenModel->access_token;
+
+        // Default to last 30 days if not specified
+        if ($fromTime === null) {
+            $fromTime = strtotime('-15 day');
+        }
+        if ($toTime === null) {
+            $toTime = time();
+        }
+
+        $count = 0;
+        $page_no = 1;
+        $page_size = 100;
+
+        try {
+            do {
+                $timestamp = time();
+                $path = "/api/v2/payment/get_wallet_transaction_list";
+                $base_string = $partner_id . $path . $timestamp . $access_token . $shop_id;
+                $sign = hash_hmac('sha256', $base_string, $partner_key);
+
+                $params = [
+                    'partner_id' => (int)$partner_id,
+                    'shop_id' => (int)$shop_id,
+                    'sign' => $sign,
+                    'timestamp' => $timestamp,
+                    'access_token' => $access_token,
+                ];
+
+                $body = [
+                    'page_no' => $page_no,
+                    'page_size' => $page_size,
+                    'create_time_from' => $fromTime,
+                    'create_time_to' => $toTime,
+                ];
+
+                $response = $this->httpClient->post('https://partner.shopeemobile.com' . $path, [
+                    'query' => $params,
+                    'json' => $body,
+                    'timeout' => 30
+                ]);
+
+                $statusCode = $response->getStatusCode();
+                if ($statusCode !== 200) {
+                    Yii::error("HTTP Shopee Fee Sync Error: {$statusCode}", __METHOD__);
+                    break;
+                }
+
+                $rawBody = (string)$response->getBody();
+                Yii::debug("Shopee Transaction Raw Body: " . $rawBody, __METHOD__);
+
+                $data = Json::decode($rawBody);
+
+                // เช็ค API error
+                if (!empty($data['error'])) {
+                    Yii::error("Shopee API Error Fee Sync: {$data['error']} - " . ($data['message'] ?? 'Unknown error'), __METHOD__);
+
+                    if (in_array($data['error'], ['error_auth', 'error_permission'])) {
+                        if ($this->refreshShopeeToken($tokenModel)) {
+                            continue;
+                        }
+                    }
+                    break;
+                }
+
+                // เช็ค response
+                if (empty($data['response']['transaction_list'])) {
+                    Yii::info('Shopee response valid but no transaction_list found', __METHOD__);
+                    break;
+                }
+
+                $transactionList = $data['response']['transaction_list'];
+                foreach ($transactionList as $transaction) {
+                    $processResult = $this->processShopeeTransaction($channel, $transaction, $shop_id);
+                    if ($processResult) {
+                        $count++;
+                    }
+                }
+
+                // เช็คว่ามีหน้าถัดไปไหม
+                $more = $data['response']['more'] ?? false;
+                if ($more) {
+                    $page_no++;
+                    usleep(200000); // 0.2 วินาที กัน rate limit
+                } else {
+                    break;
+                }
+
+            } while (true);
+
+            Yii::info("Synced {$count} Shopee transactions for channel: " . $channel->id, __METHOD__);
+
+        } catch (\Exception $e) {
+            Yii::error('Shopee Transaction API error: ' . $e->getMessage(), __METHOD__);
+            throw $e;
+        }
+
+        return $count;
+    }
+
+    /**
+     * Process individual Shopee transaction
+     * @param OnlineChannel $channel
+     * @param array $transaction
+     * @param string $shop_id
+     * @return bool
+     */
+    private function processShopeeTransaction($channel, $transaction, $shop_id)
+    {
+        try {
+            $transaction_id = $transaction['transaction_id'] ?? null;
+            if (empty($transaction_id)) {
+                Yii::warning("Missing transaction_id", __METHOD__);
+                return false;
+            }
+
+            // เช็คว่ามีอยู่แล้วหรือไม่
+            $existingTransaction = ShopeeTransaction::findOne(['transaction_id' => $transaction_id]);
+            if ($existingTransaction) {
+                return false; // ข้ามถ้ามีแล้ว
+            }
+
+            $feeTransaction = new ShopeeTransaction();
+            $feeTransaction->transaction_id = $transaction_id;
+            $feeTransaction->channel_id = $channel->id;
+            $feeTransaction->shop_id = $shop_id;
+
+            // Transaction details
+            $feeTransaction->transaction_type = $transaction['transaction_type'] ?? 'UNKNOWN';
+            $feeTransaction->status = $transaction['status'] ?? 'UNKNOWN';
+            $feeTransaction->reason = $transaction['reason'] ?? '';
+
+            // Amount (Shopee ส่งมาเป็น float)
+            $feeTransaction->amount = (float)($transaction['amount'] ?? 0);
+            $feeTransaction->current_balance = (float)($transaction['current_balance'] ?? 0);
+
+            // Order reference
+            $feeTransaction->order_sn = $transaction['order_sn'] ?? null;
+
+            // Timestamps
+            $create_time = $transaction['create_time'] ?? time();
+            $feeTransaction->transaction_date = date('Y-m-d H:i:s', $create_time);
+            $feeTransaction->created_at = date('Y-m-d H:i:s');
+            $feeTransaction->updated_at = date('Y-m-d H:i:s');
+
+            // จัดหมวดหมู่ค่าธรรมเนียม
+            $feeTransaction->fee_category = $this->categorizeFee($transaction);
+
+            if ($feeTransaction->save()) {
+                Yii::info("Saved transaction: $transaction_id", __METHOD__);
+                return true;
+            } else {
+                Yii::error("Failed to save transaction $transaction_id: " . Json::encode($feeTransaction->errors), __METHOD__);
+                return false;
+            }
+
+        } catch (\Exception $e) {
+            Yii::error('Error processing transaction: ' . $e->getMessage(), __METHOD__);
+            return false;
+        }
+    }
+
+    /**
+     * Categorize fee type based on transaction data
+     * @param array $transaction
+     * @return string
+     */
+    private function categorizeFee($transaction)
+    {
+        $reason = strtolower($transaction['reason'] ?? '');
+        $type = strtolower($transaction['transaction_type'] ?? '');
+
+        // เฉพาะรายการที่เป็นค่าใช้จ่าย (amount < 0)
+        $amount = (float)($transaction['amount'] ?? 0);
+        if ($amount >= 0) {
+            return 'INCOME'; // รายได้
+        }
+
+        // จัดหมวดหมู่ตามเหตุผล
+        if (strpos($reason, 'commission') !== false) {
+            return 'COMMISSION_FEE';
+        } elseif (strpos($reason, 'transaction fee') !== false || strpos($reason, 'payment fee') !== false) {
+            return 'TRANSACTION_FEE';
+        } elseif (strpos($reason, 'service fee') !== false) {
+            return 'SERVICE_FEE';
+        } elseif (strpos($reason, 'shipping') !== false) {
+            return 'SHIPPING_FEE';
+        } elseif (strpos($reason, 'campaign') !== false || strpos($reason, 'ads') !== false || strpos($reason, 'promotion') !== false) {
+            return 'CAMPAIGN_FEE';
+        } elseif (strpos($reason, 'penalty') !== false || strpos($reason, 'fine') !== false) {
+            return 'PENALTY_FEE';
+        } elseif (strpos($reason, 'refund') !== false || strpos($reason, 'return') !== false) {
+            return 'REFUND';
+        } elseif (strpos($reason, 'adjustment') !== false) {
+            return 'ADJUSTMENT';
+        } elseif (strpos($reason, 'withdrawal') !== false) {
+            return 'WITHDRAWAL';
+        } else {
+            return 'OTHER';
+        }
+    }
+
+    /**
+     * Get order income details (fees breakdown for specific orders)
+     * @param OnlineChannel $channel
+     * @param array $orderSnList Array of order_sn
+     * @return array
+     */
+    private function getShopeeOrderIncome($channel, $orderSnList)
+    {
+        if (empty($orderSnList)) {
+            return [];
+        }
+
+        $tokenModel = ShopeeToken::find()
+            ->where(['status' => 'active'])
+            ->orderBy(['created_at' => SORT_DESC])
+            ->one();
+
+        if (!$tokenModel) {
+            Yii::warning('No active Shopee token found for channel: ' . $channel->id, __METHOD__);
+            return [];
+        }
+
+        // ตรวจสอบ token หมดอายุ
+        if (strtotime($tokenModel->expires_at) < time()) {
+            if (!$this->refreshShopeeToken($tokenModel)) {
+                return [];
+            }
+        }
+
+        $partner_id = 2012399;
+        $partner_key = 'shpk72476151525864414e4b6e475449626679624f695a696162696570417043';
+        $shop_id = $tokenModel->shop_id;
+        $access_token = $tokenModel->access_token;
+
+        try {
+            $timestamp = time();
+            $path = "/api/v2/payment/get_order_income";
+            $base_string = $partner_id . $path . $timestamp . $access_token . $shop_id;
+            $sign = hash_hmac('sha256', $base_string, $partner_key);
+
+            $params = [
+                'partner_id' => (int)$partner_id,
+                'shop_id' => (int)$shop_id,
+                'sign' => $sign,
+                'timestamp' => $timestamp,
+                'access_token' => $access_token,
+            ];
+
+            $body = [
+                'order_sn_list' => array_values($orderSnList),
+            ];
+
+            $response = $this->httpClient->post('https://partner.shopeemobile.com' . $path, [
+                'query' => $params,
+                'json' => $body,
+                'timeout' => 30
+            ]);
+
+            if ($response->getStatusCode() !== 200) {
+                Yii::error("HTTP Error getting order income: {$response->getStatusCode()}", __METHOD__);
+                return [];
+            }
+
+            $rawBody = (string)$response->getBody();
+            $data = Json::decode($rawBody);
+
+            if (!empty($data['error'])) {
+                Yii::error("Shopee API Error getting order income: {$data['error']}", __METHOD__);
+                return [];
+            }
+
+            return $data['response']['order_income_list'] ?? [];
+
+        } catch (\Exception $e) {
+            Yii::error('Error getting order income: ' . $e->getMessage(), __METHOD__);
+            return [];
+        }
+    }
+
+    /**
+     * Update order with income details (fees)
+     * @param string $order_sn
+     * @param array $incomeData
+     * @return bool
+     */
+    private function updateOrderWithIncome($order_sn, $incomeData)
+    {
+        try {
+            $orders = Order::find()
+                ->where(['order_sn' => $order_sn])
+                ->all();
+
+            if (empty($orders)) {
+                return false;
+            }
+
+            foreach ($orders as $order) {
+                // Shopee ส่งมาเป็น float
+                $order->commission_fee = (float)($incomeData['commission_fee'] ?? 0);
+                $order->transaction_fee = (float)($incomeData['transaction_fee'] ?? 0);
+                $order->service_fee = (float)($incomeData['service_fee'] ?? 0);
+                $order->escrow_amount = (float)($incomeData['escrow_amount'] ?? 0);
+                $order->actual_income = (float)($incomeData['actual_income'] ?? 0);
+
+                $order->updated_at = date('Y-m-d H:i:s');
+
+                if (!$order->save()) {
+                    Yii::error("Failed to update order fees for $order_sn: " . Json::encode($order->errors), __METHOD__);
+                }
+            }
+
+            return true;
+
+        } catch (\Exception $e) {
+            Yii::error('Error updating order with income: ' . $e->getMessage(), __METHOD__);
+            return false;
+        }
     }
 }

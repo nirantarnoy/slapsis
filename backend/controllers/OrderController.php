@@ -206,6 +206,25 @@ class OrderController extends Controller
         return $this->redirect(['index']);
     }
 
+    public function actionSyncShopeeFee()
+    {
+        $channelId = 1;
+
+        try {
+            // เรียกใช้ service สำหรับ sync ข้อมูล
+            $service = new \backend\services\OrderSyncService();
+            $result = $service->syncShopeeFree($channelId);
+
+            Yii::$app->session->setFlash('success',
+                "ดึงข้อมูล Fee เรียบร้อยแล้ว จำนวน {$result['count']} รายการ"
+            );
+        } catch (\Exception $e) {
+            Yii::$app->session->setFlash('error', 'เกิดข้อผิดพลาด: ' . $e->getMessage());
+        }
+
+        return $this->redirect(['index']);
+    }
+
     protected function findModel($id)
     {
         if (($model = Order::findOne($id)) !== null) {
