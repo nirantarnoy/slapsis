@@ -236,7 +236,7 @@ class OrderController extends Controller
             $result = $service->syncMonthlyShopeeFees($channelId);
 
             Yii::$app->session->setFlash('success',
-                "ดึงข้อมูล Sync Settlement เรียบร้อยแล้ว จำนวน {$result['settlement_count']} รายการ"
+                "ดึงข้อมูล Sync Settlement เรียบร้อยแล้ว จำนวน {$result['error']} รายการ"
             );
         } catch (\Exception $e) {
             Yii::$app->session->setFlash('error', 'Sync Monthly Shopee Free เกิดข้อผิดพลาด: ' . $e->getMessage());
