@@ -2157,11 +2157,11 @@ class OrderSyncService
             $results['transaction_count'] = $transactionCount;
             Yii::info("✓ Synced {$transactionCount} transactions", __METHOD__);
 
-            // 2. Sync order income details (ค่าธรรมเนียมแยกตาม order)
-            Yii::info('Step 2: Syncing order income details...', __METHOD__);
-            $orderIncomeCount = $this->syncShopeeOrderIncome($channel, $fromTime, $toTime);
-            $results['order_income_count'] = $orderIncomeCount;
-            Yii::info("✓ Updated {$orderIncomeCount} orders with income details", __METHOD__);
+//            // 2. Sync order income details (ค่าธรรมเนียมแยกตาม order)
+//            Yii::info('Step 2: Syncing order income details...', __METHOD__);
+//            $orderIncomeCount = $this->syncShopeeOrderIncome($channel, $fromTime, $toTime);
+//            $results['order_income_count'] = $orderIncomeCount;
+//            Yii::info("✓ Updated {$orderIncomeCount} orders with income details", __METHOD__);
 
 //            // 3. Sync settlements (การถอนเงิน)
 //            Yii::info('Step 3: Syncing settlements...', __METHOD__);
