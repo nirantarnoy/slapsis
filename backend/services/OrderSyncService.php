@@ -2151,11 +2151,11 @@ class OrderSyncService
         ];
 
         try {
-            // 1. Sync wallet transactions (ค่าธรรมเนียมทั้งหมด)
-            Yii::info('Step 1: Syncing wallet transactions...', __METHOD__);
-            $transactionCount = $this->syncShopeeTransactionFees($channel, $fromTime, $toTime);
-            $results['transaction_count'] = $transactionCount;
-            Yii::info("✓ Synced {$transactionCount} transactions", __METHOD__);
+//            // 1. Sync wallet transactions (ค่าธรรมเนียมทั้งหมด)
+//            Yii::info('Step 1: Syncing wallet transactions...', __METHOD__);
+//            $transactionCount = $this->syncShopeeTransactionFees($channel, $fromTime, $toTime);
+//            $results['transaction_count'] = $transactionCount;
+//            Yii::info("✓ Synced {$transactionCount} transactions", __METHOD__);
 
 //            // 2. Sync order income details (ค่าธรรมเนียมแยกตาม order)
 //            Yii::info('Step 2: Syncing order income details...', __METHOD__);
@@ -2197,9 +2197,9 @@ class OrderSyncService
             ];
 
             Yii::info("=== Sync completed successfully ===", __METHOD__);
-            Yii::info("Transactions: {$transactionCount}", __METHOD__);
-            Yii::info("Orders updated: {$orderIncomeCount}", __METHOD__);
-            Yii::info("Settlements: {$settlementCount}", __METHOD__);
+         //   Yii::info("Transactions: {$transactionCount}", __METHOD__);
+         //   Yii::info("Orders updated: {$orderIncomeCount}", __METHOD__);
+          //  Yii::info("Settlements: {$settlementCount}", __METHOD__);
          //   Yii::info("Total fees: " . number_format($summary['total_fees'], 2) . " THB", __METHOD__);
           //  Yii::info("Total income: " . number_format($orderSummary['total_actual_income'], 2) . " THB", __METHOD__);
          //   Yii::info("Total received: " . number_format($settlementSummary['total_net_amount'], 2) . " THB", __METHOD__);
