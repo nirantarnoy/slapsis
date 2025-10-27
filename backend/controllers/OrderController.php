@@ -217,7 +217,7 @@ class OrderController extends Controller
             $result = $service->syncShopeeFree($channelId);
 
             Yii::$app->session->setFlash('success',
-                "ดึงข้อมูล Fee เรียบร้อยแล้ว จำนวน {$result['count']} รายการ"
+                "ดึงข้อมูล Sync Fee เรียบร้อยแล้ว จำนวน {$result['count']} รายการ"
             );
         } catch (\Exception $e) {
             Yii::$app->session->setFlash('error', 'เกิดข้อผิดพลาด: ' . $e->getMessage());
