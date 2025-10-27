@@ -353,6 +353,7 @@ class OrderSyncService
         $model = \backend\models\Product::find()->where(['sku' => trim($sku), 'name' => trim($name)])->one();
         if (!$model) {
             $model_new = new \backend\models\Product();
+            $model_new->product_group_id = 1;
             $model_new->sku = trim($sku);
             $model_new->name = trim($name);
             $model_new->status = 1;
