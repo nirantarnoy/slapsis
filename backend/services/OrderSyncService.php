@@ -2162,13 +2162,13 @@ class OrderSyncService
             $orderIncomeCount = $this->syncShopeeOrderIncome($channel, $fromTime, $toTime);
             $results['order_income_count'] = $orderIncomeCount;
             Yii::info("✓ Updated {$orderIncomeCount} orders with income details", __METHOD__);
-//
-//            // 3. Get escrow details (เงินที่ระบบเก็บไว้)
-//            Yii::info('Step 3: Getting escrow details...', __METHOD__);
-//            $escrowData = $this->getShopeeEscrowDetail($channel, $fromTime, $toTime);
-//            $results['escrow_data'] = $escrowData;
-//            Yii::info("✓ Retrieved escrow details", __METHOD__);
-//
+
+            // 3. Get escrow details (เงินที่ระบบเก็บไว้)
+            Yii::info('Step 3: Getting escrow details...', __METHOD__);
+            $escrowData = $this->getShopeeEscrowDetail($channel, $fromTime, $toTime);
+            $results['escrow_data'] = $escrowData;
+            Yii::info("✓ Retrieved escrow details", __METHOD__);
+
 //            // 4. Get settlement list (การถอนเงิน)
 //            Yii::info('Step 4: Getting settlement list...', __METHOD__);
 //            $settlementList = $this->getShopeeSettlementList($channel, $fromTime, $toTime);
