@@ -233,7 +233,7 @@ class OrderController extends Controller
         try {
             // เรียกใช้ service สำหรับ sync ข้อมูล
             $service = new \backend\services\OrderSyncService();
-            $result = $service->syncMonthlyShopeeFees($channelId);
+            $result = $service->syncMonthlyShopeeFees($channelId,2025,10);
 
             Yii::$app->session->setFlash('success',
                 "ดึงข้อมูล Sync Settlement เรียบร้อยแล้ว จำนวน {$result['count']} รายการ"
