@@ -2,6 +2,7 @@
 
 namespace backend\services;
 
+use backend\models\ShopeeSettlement;
 use backend\models\ShopeeTransaction;
 use Yii;
 use backend\models\Order;
