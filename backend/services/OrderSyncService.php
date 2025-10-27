@@ -1568,6 +1568,76 @@ class OrderSyncService
      * @param string $shop_id
      * @return bool
      */
+//    private function processShopeeTransaction($channel, $transaction, $shop_id)
+//    {
+//        try {
+//            $transaction_id = $transaction['transaction_id'] ?? null;
+//            if (empty($transaction_id)) {
+//                Yii::warning("Missing transaction_id", __METHOD__);
+//                return false;
+//            }
+//
+//            // แปลง transaction_id เป็น string (Shopee ส่งมาเป็น big integer)
+//            $transaction_id = (string)$transaction_id;
+//
+//            // เช็คว่ามีอยู่แล้วหรือไม่
+//            $existingTransaction = ShopeeTransaction::findOne(['transaction_id' => $transaction_id]);
+//            if ($existingTransaction) {
+//                Yii::debug("Transaction already exists: $transaction_id", __METHOD__);
+//                return false; // ข้ามถ้ามีแล้ว
+//            }
+//
+//            $feeTransaction = new ShopeeTransaction();
+//            $feeTransaction->transaction_id = $transaction_id;
+//            $feeTransaction->channel_id = $channel->id;
+//            $feeTransaction->shop_id = (string)$shop_id;
+//
+//            // Transaction details - ทุกค่า string ต้อง cast เป็น string
+//            $feeTransaction->transaction_type = isset($transaction['transaction_type'])
+//                ? (string)$transaction['transaction_type']
+//                : 'UNKNOWN';
+//
+//            $feeTransaction->status = isset($transaction['status'])
+//                ? (string)$transaction['status']
+//                : 'UNKNOWN';
+//
+//            $feeTransaction->reason = isset($transaction['reason'])
+//                ? (string)$transaction['reason']
+//                : '';
+//
+//            // Amount (Shopee ส่งมาเป็น float)
+//            $feeTransaction->amount = (float)($transaction['amount'] ?? 0);
+//            $feeTransaction->current_balance = (float)($transaction['current_balance'] ?? 0);
+//
+//            // Order reference - cast เป็น string
+//            $feeTransaction->order_sn = isset($transaction['order_sn'])
+//                ? (string)$transaction['order_sn']
+//                : null;
+//
+//            // Timestamps
+//            $create_time = $transaction['create_time'] ?? time();
+//            $feeTransaction->transaction_date = date('Y-m-d H:i:s', $create_time);
+//            $feeTransaction->created_at = date('Y-m-d H:i:s');
+//            $feeTransaction->updated_at = date('Y-m-d H:i:s');
+//
+//            // จัดหมวดหมู่ค่าธรรมเนียม
+//            $feeTransaction->fee_category = $this->categorizeFee($transaction);
+//
+//            if ($feeTransaction->save()) {
+//                Yii::info("Saved transaction: $transaction_id (Category: {$feeTransaction->fee_category}, Amount: {$feeTransaction->amount})", __METHOD__);
+//                return true;
+//            } else {
+//                Yii::error("Failed to save transaction $transaction_id: " . Json::encode($feeTransaction->errors), __METHOD__);
+//                return false;
+//            }
+//
+//        } catch (\Exception $e) {
+//            Yii::error('Error processing transaction: ' . $e->getMessage(), __METHOD__);
+//            Yii::error('Transaction data: ' . Json::encode($transaction), __METHOD__);
+//            return false;
+//        }
+//    }
+
     private function processShopeeTransaction($channel, $transaction, $shop_id)
     {
         try {
@@ -1609,10 +1679,26 @@ class OrderSyncService
             $feeTransaction->amount = (float)($transaction['amount'] ?? 0);
             $feeTransaction->current_balance = (float)($transaction['current_balance'] ?? 0);
 
-            // Order reference - cast เป็น string
-            $feeTransaction->order_sn = isset($transaction['order_sn'])
-                ? (string)$transaction['order_sn']
-                : null;
+            // Order reference - เช็คว่า order มีจริงในระบบหรือไม่
+            $order_sn = isset($transaction['order_sn']) ? (string)$transaction['order_sn'] : null;
+
+            // ถ้ามี order_sn ให้เช็คว่ามี order จริงในระบบหรือไม่
+            if (!empty($order_sn)) {
+                $orderExists = Order::find()
+                    ->where(['order_sn' => $order_sn])
+                    ->exists();
+
+                if ($orderExists) {
+                    $feeTransaction->order_sn = $order_sn;
+                } else {
+                    // ถ้าไม่มี order ในระบบ ให้เก็บไว้ใน reason แทน
+                    $feeTransaction->order_sn = null;
+                    $feeTransaction->reason = $feeTransaction->reason . " [Order SN: {$order_sn}]";
+                    Yii::debug("Order not found in system: $order_sn for transaction: $transaction_id", __METHOD__);
+                }
+            } else {
+                $feeTransaction->order_sn = null;
+            }
 
             // Timestamps
             $create_time = $transaction['create_time'] ?? time();
@@ -1628,6 +1714,7 @@ class OrderSyncService
                 return true;
             } else {
                 Yii::error("Failed to save transaction $transaction_id: " . Json::encode($feeTransaction->errors), __METHOD__);
+                Yii::error("Transaction data: " . Json::encode($transaction), __METHOD__);
                 return false;
             }
 
