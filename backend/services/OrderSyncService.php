@@ -2150,65 +2150,65 @@ class OrderSyncService
             ]
         ];
 
-        try {
-//            // 1. Sync wallet transactions (ค่าธรรมเนียมทั้งหมด)
-//            Yii::info('Step 1: Syncing wallet transactions...', __METHOD__);
-//            $transactionCount = $this->syncShopeeTransactionFees($channel, $fromTime, $toTime);
-//            $results['transaction_count'] = $transactionCount;
-//            Yii::info("✓ Synced {$transactionCount} transactions", __METHOD__);
-
-//            // 2. Sync order income details (ค่าธรรมเนียมแยกตาม order)
-//            Yii::info('Step 2: Syncing order income details...', __METHOD__);
-//            $orderIncomeCount = $this->syncShopeeOrderIncome($channel, $fromTime, $toTime);
-//            $results['order_income_count'] = $orderIncomeCount;
-//            Yii::info("✓ Updated {$orderIncomeCount} orders with income details", __METHOD__);
-
-//            // 3. Sync settlements (การถอนเงิน)
-//            Yii::info('Step 3: Syncing settlements...', __METHOD__);
-//            $settlementCount = $this->syncShopeeSettlements($channel, $fromTime, $toTime);
-//            $results['settlement_count'] = $settlementCount;
-//            Yii::info("✓ Synced {$settlementCount} settlements", __METHOD__);
-
-//            // 4. คำนวณสรุปค่าธรรมเนียมจาก transactions
-//            Yii::info('Step 4: Calculating fee summary from transactions...', __METHOD__);
-//            $summary = $this->calculateFeeSummary($channel, $fromTime, $toTime);
-//            $results['transaction_summary'] = $summary;
+//        try {
+////            // 1. Sync wallet transactions (ค่าธรรมเนียมทั้งหมด)
+////            Yii::info('Step 1: Syncing wallet transactions...', __METHOD__);
+////            $transactionCount = $this->syncShopeeTransactionFees($channel, $fromTime, $toTime);
+////            $results['transaction_count'] = $transactionCount;
+////            Yii::info("✓ Synced {$transactionCount} transactions", __METHOD__);
 //
-//            // 5. คำนวณสรุปจาก orders
-//            Yii::info('Step 5: Calculating order summary...', __METHOD__);
-//            $orderSummary = $this->calculateOrderFeeSummary($channel, $fromTime, $toTime);
-//            $results['order_summary'] = $orderSummary;
+////            // 2. Sync order income details (ค่าธรรมเนียมแยกตาม order)
+////            Yii::info('Step 2: Syncing order income details...', __METHOD__);
+////            $orderIncomeCount = $this->syncShopeeOrderIncome($channel, $fromTime, $toTime);
+////            $results['order_income_count'] = $orderIncomeCount;
+////            Yii::info("✓ Updated {$orderIncomeCount} orders with income details", __METHOD__);
 //
-//            // 6. คำนวณสรุปจาก settlements
-//            Yii::info('Step 6: Calculating settlement summary...', __METHOD__);
-//            $settlementSummary = $this->calculateSettlementSummary($channel, $fromTime, $toTime);
-//            $results['settlement_summary'] = $settlementSummary;
-
-            // 7. สรุปรวมทั้งหมด
-            $results['grand_summary'] = [
-              //  'total_revenue' => $orderSummary['total_revenue'],
-              //  'total_buyer_paid' => $orderSummary['total_buyer_paid'],
-              //  'total_all_fees' => $orderSummary['total_all_fees'],
-              //  'total_actual_income' => $orderSummary['total_actual_income'],
-              //  'total_settlements_received' => $settlementSummary['total_net_amount'],
-              //  'fee_percentage' => $orderSummary['fee_percentage'],
-              //  'total_orders' => $orderSummary['total_orders'],
-              //  'total_settlements' => $settlementSummary['total_settlements'],
-            ];
-
-            Yii::info("=== Sync completed successfully ===", __METHOD__);
-         //   Yii::info("Transactions: {$transactionCount}", __METHOD__);
-         //   Yii::info("Orders updated: {$orderIncomeCount}", __METHOD__);
-          //  Yii::info("Settlements: {$settlementCount}", __METHOD__);
-         //   Yii::info("Total fees: " . number_format($summary['total_fees'], 2) . " THB", __METHOD__);
-          //  Yii::info("Total income: " . number_format($orderSummary['total_actual_income'], 2) . " THB", __METHOD__);
-         //   Yii::info("Total received: " . number_format($settlementSummary['total_net_amount'], 2) . " THB", __METHOD__);
-
-        } catch (\Exception $e) {
-            $results['success'] = false;
-            $results['error'] = $e->getMessage();
-            Yii::error("Sync failed: " . $e->getMessage(), __METHOD__);
-        }
+////            // 3. Sync settlements (การถอนเงิน)
+////            Yii::info('Step 3: Syncing settlements...', __METHOD__);
+////            $settlementCount = $this->syncShopeeSettlements($channel, $fromTime, $toTime);
+////            $results['settlement_count'] = $settlementCount;
+////            Yii::info("✓ Synced {$settlementCount} settlements", __METHOD__);
+//
+////            // 4. คำนวณสรุปค่าธรรมเนียมจาก transactions
+////            Yii::info('Step 4: Calculating fee summary from transactions...', __METHOD__);
+////            $summary = $this->calculateFeeSummary($channel, $fromTime, $toTime);
+////            $results['transaction_summary'] = $summary;
+////
+////            // 5. คำนวณสรุปจาก orders
+////            Yii::info('Step 5: Calculating order summary...', __METHOD__);
+////            $orderSummary = $this->calculateOrderFeeSummary($channel, $fromTime, $toTime);
+////            $results['order_summary'] = $orderSummary;
+////
+////            // 6. คำนวณสรุปจาก settlements
+////            Yii::info('Step 6: Calculating settlement summary...', __METHOD__);
+////            $settlementSummary = $this->calculateSettlementSummary($channel, $fromTime, $toTime);
+////            $results['settlement_summary'] = $settlementSummary;
+//
+//            // 7. สรุปรวมทั้งหมด
+//            $results['grand_summary'] = [
+//              //  'total_revenue' => $orderSummary['total_revenue'],
+//              //  'total_buyer_paid' => $orderSummary['total_buyer_paid'],
+//              //  'total_all_fees' => $orderSummary['total_all_fees'],
+//              //  'total_actual_income' => $orderSummary['total_actual_income'],
+//              //  'total_settlements_received' => $settlementSummary['total_net_amount'],
+//              //  'fee_percentage' => $orderSummary['fee_percentage'],
+//              //  'total_orders' => $orderSummary['total_orders'],
+//              //  'total_settlements' => $settlementSummary['total_settlements'],
+//            ];
+//
+//            Yii::info("=== Sync completed successfully ===", __METHOD__);
+//         //   Yii::info("Transactions: {$transactionCount}", __METHOD__);
+//         //   Yii::info("Orders updated: {$orderIncomeCount}", __METHOD__);
+//          //  Yii::info("Settlements: {$settlementCount}", __METHOD__);
+//         //   Yii::info("Total fees: " . number_format($summary['total_fees'], 2) . " THB", __METHOD__);
+//          //  Yii::info("Total income: " . number_format($orderSummary['total_actual_income'], 2) . " THB", __METHOD__);
+//         //   Yii::info("Total received: " . number_format($settlementSummary['total_net_amount'], 2) . " THB", __METHOD__);
+//
+//        } catch (\Exception $e) {
+//            $results['success'] = false;
+//            $results['error'] = $e->getMessage();
+//            Yii::error("Sync failed: " . $e->getMessage(), __METHOD__);
+//        }
 
         return $results;
     }
