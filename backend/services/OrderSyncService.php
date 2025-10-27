@@ -1558,7 +1558,7 @@ class OrderSyncService
             throw $e;
         }
 
-        return 99;
+        return 1;
     }
 
     /**
