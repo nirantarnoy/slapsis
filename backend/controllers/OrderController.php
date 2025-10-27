@@ -230,7 +230,7 @@ class OrderController extends Controller
         $channelId = 1;
         // echo $channelId;return;
 
-        try {
+       // try {
             // เรียกใช้ service สำหรับ sync ข้อมูล
             $service = new \backend\services\OrderSyncService();
             $result = $service->syncMonthlyShopeeFees($channelId,2025,10);
@@ -238,9 +238,9 @@ class OrderController extends Controller
             Yii::$app->session->setFlash('success',
                 "ดึงข้อมูล Sync Settlement เรียบร้อยแล้ว จำนวน {$result['count']} รายการ"
             );
-        } catch (\Exception $e) {
-            Yii::$app->session->setFlash('error', 'Sync Monthly Shopee Free เกิดข้อผิดพลาด: ' . $e->getMessage());
-        }
+//        } catch (\Exception $e) {
+//            Yii::$app->session->setFlash('error', 'Sync Monthly Shopee Free เกิดข้อผิดพลาด: ' . $e->getMessage());
+//        }
 
         return $this->redirect(['index']);
     }
