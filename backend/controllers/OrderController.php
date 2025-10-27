@@ -239,7 +239,7 @@ class OrderController extends Controller
                 "ดึงข้อมูล Sync Settlement เรียบร้อยแล้ว จำนวน {$result['count']} รายการ"
             );
         } catch (\Exception $e) {
-            Yii::$app->session->setFlash('error', 'เกิดข้อผิดพลาด: ' . $e->getMessage());
+            Yii::$app->session->setFlash('error', 'Sync Monthly Shopee Free เกิดข้อผิดพลาด: ' . $e->getMessage());
         }
 
         return $this->redirect(['index']);
