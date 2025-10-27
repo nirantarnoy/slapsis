@@ -2157,25 +2157,25 @@ class OrderSyncService
             $results['transaction_count'] = $transactionCount;
             Yii::info("✓ Synced {$transactionCount} transactions", __METHOD__);
 
-            // 2. Sync order income details (ค่าธรรมเนียมแยกตาม order)
-            Yii::info('Step 2: Syncing order income details...', __METHOD__);
-            $orderIncomeCount = $this->syncShopeeOrderIncome($channel, $fromTime, $toTime);
-            $results['order_income_count'] = $orderIncomeCount;
-            Yii::info("✓ Updated {$orderIncomeCount} orders with income details", __METHOD__);
-
-            // 3. Get escrow details (เงินที่ระบบเก็บไว้)
-            Yii::info('Step 3: Getting escrow details...', __METHOD__);
-            $escrowData = $this->getShopeeEscrowDetail($channel, $fromTime, $toTime);
-            $results['escrow_data'] = $escrowData;
-            Yii::info("✓ Retrieved escrow details", __METHOD__);
-
-            // 4. Get settlement list (การถอนเงิน)
-            Yii::info('Step 4: Getting settlement list...', __METHOD__);
-            $settlementList = $this->getShopeeSettlementList($channel, $fromTime, $toTime);
-            $results['settlement_count'] = count($settlementList);
-            $results['settlement_list'] = $settlementList;
-            Yii::info("✓ Found " . count($settlementList) . " settlements", __METHOD__);
-
+//            // 2. Sync order income details (ค่าธรรมเนียมแยกตาม order)
+//            Yii::info('Step 2: Syncing order income details...', __METHOD__);
+//            $orderIncomeCount = $this->syncShopeeOrderIncome($channel, $fromTime, $toTime);
+//            $results['order_income_count'] = $orderIncomeCount;
+//            Yii::info("✓ Updated {$orderIncomeCount} orders with income details", __METHOD__);
+//
+//            // 3. Get escrow details (เงินที่ระบบเก็บไว้)
+//            Yii::info('Step 3: Getting escrow details...', __METHOD__);
+//            $escrowData = $this->getShopeeEscrowDetail($channel, $fromTime, $toTime);
+//            $results['escrow_data'] = $escrowData;
+//            Yii::info("✓ Retrieved escrow details", __METHOD__);
+//
+//            // 4. Get settlement list (การถอนเงิน)
+//            Yii::info('Step 4: Getting settlement list...', __METHOD__);
+//            $settlementList = $this->getShopeeSettlementList($channel, $fromTime, $toTime);
+//            $results['settlement_count'] = count($settlementList);
+//            $results['settlement_list'] = $settlementList;
+//            Yii::info("✓ Found " . count($settlementList) . " settlements", __METHOD__);
+//
             // 5. คำนวณสรุปค่าธรรมเนียม
             Yii::info('Step 5: Calculating fee summary...', __METHOD__);
             $summary = $this->calculateFeeSummary($channel, $fromTime, $toTime);
