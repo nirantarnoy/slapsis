@@ -1392,7 +1392,7 @@ class OrderSyncService
             ->one();
 
         if (!$tokenModel) {
-            Yii::warning('No active Shopee token found for channel: ' . $channel->id, __METHOD__);
+            Yii::warning('No active Shopee token found for channel: ' . $channel, __METHOD__);
             return 0;
         }
 
@@ -1400,7 +1400,7 @@ class OrderSyncService
         if (strtotime($tokenModel->expires_at) < time()) {
             Yii::error('Access Token is expired');
             if (!$this->refreshShopeeToken($tokenModel)) {
-                Yii::warning('Failed to refresh Shopee token for channel: ' . $channel->id, __METHOD__);
+                Yii::warning('Failed to refresh Shopee token for channel: ' . $channel, __METHOD__);
                 return 0;
             }
         }
@@ -1455,7 +1455,7 @@ class OrderSyncService
                 }
             }
 
-            Yii::info("Total synced {$totalCount} Shopee transactions for channel: " . $channel->id, __METHOD__);
+            Yii::info("Total synced {$totalCount} Shopee transactions for channel: " . $channel, __METHOD__);
 
         } catch (\Exception $e) {
             Yii::error('Shopee Transaction API error: ' . $e->getMessage(), __METHOD__);
@@ -1659,7 +1659,7 @@ class OrderSyncService
 
             $feeTransaction = new ShopeeTransaction();
             $feeTransaction->transaction_id = $transaction_id;
-            $feeTransaction->channel_id = $channel->id;
+            $feeTransaction->channel_id = $channel;
             $feeTransaction->shop_id = (string)$shop_id;
 
             // Transaction details - ทุกค่า string ต้อง cast เป็น string
@@ -1783,7 +1783,7 @@ class OrderSyncService
             ->one();
 
         if (!$tokenModel) {
-            Yii::warning('No active Shopee token found for channel: ' . $channel->id, __METHOD__);
+            Yii::warning('No active Shopee token found for channel: ' . $channel, __METHOD__);
             return [];
         }
 
@@ -1910,7 +1910,7 @@ class OrderSyncService
 
         // ดึง orders ที่ยังไม่มีข้อมูล income หรืออัพเดทไม่ครบ
         $orders = Order::find()
-            ->where(['channel_id' => $channel->id])
+            ->where(['channel_id' => $channel])
             ->andWhere(['>=', 'order_date', date('Y-m-d H:i:s', $fromTime)])
             ->andWhere(['<=', 'order_date', date('Y-m-d H:i:s', $toTime)])
             ->andWhere(['or',
@@ -2223,7 +2223,7 @@ class OrderSyncService
     private function calculateSettlementSummary($channel, $fromTime, $toTime)
     {
         $settlements = ShopeeSettlement::find()
-            ->where(['channel_id' => $channel->id])
+            ->where(['channel_id' => $channel])
             ->andWhere(['>=', 'payout_time', date('Y-m-d H:i:s', $fromTime)])
             ->andWhere(['<=', 'payout_time', date('Y-m-d H:i:s', $toTime)])
             ->all();
@@ -2284,7 +2284,7 @@ class OrderSyncService
 
             $settlementModel = new ShopeeSettlement();
             $settlementModel->settlement_id = $settlement_id;
-            $settlementModel->channel_id = $channel->id;
+            $settlementModel->channel_id = $channel;
             $settlementModel->shop_id = (string)$shop_id;
 
             // ข้อมูลการจ่ายเงิน
@@ -2360,7 +2360,7 @@ class OrderSyncService
             ->one();
 
         if (!$tokenModel) {
-            Yii::warning('No active Shopee token found for channel: ' . $channel->id, __METHOD__);
+            Yii::warning('No active Shopee token found for channel: ' . $channel, __METHOD__);
             return 0;
         }
 
@@ -2435,7 +2435,7 @@ class OrderSyncService
     private function calculateOrderFeeSummary($channel, $fromTime, $toTime)
     {
         $orders = Order::find()
-            ->where(['channel_id' => $channel->id])
+            ->where(['channel_id' => $channel])
             ->andWhere(['>=', 'order_date', date('Y-m-d H:i:s', $fromTime)])
             ->andWhere(['<=', 'order_date', date('Y-m-d H:i:s', $toTime)])
             ->all();
@@ -2498,7 +2498,7 @@ class OrderSyncService
     private function calculateFeeSummary($channel, $fromTime, $toTime)
     {
         $transactions = ShopeeTransaction::find()
-            ->where(['channel_id' => $channel->id])
+            ->where(['channel_id' => $channel])
             ->andWhere(['>=', 'transaction_date', date('Y-m-d H:i:s', $fromTime)])
             ->andWhere(['<=', 'transaction_date', date('Y-m-d H:i:s', $toTime)])
             ->andWhere(['<', 'amount', 0]) // เฉพาะค่าใช้จ่าย
