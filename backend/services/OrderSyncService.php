@@ -2169,13 +2169,13 @@ class OrderSyncService
             $results['escrow_data'] = $escrowData;
             Yii::info("✓ Retrieved escrow details", __METHOD__);
 
-//            // 4. Get settlement list (การถอนเงิน)
-//            Yii::info('Step 4: Getting settlement list...', __METHOD__);
-//            $settlementList = $this->getShopeeSettlementList($channel, $fromTime, $toTime);
-//            $results['settlement_count'] = count($settlementList);
-//            $results['settlement_list'] = $settlementList;
-//            Yii::info("✓ Found " . count($settlementList) . " settlements", __METHOD__);
-//
+            // 4. Get settlement list (การถอนเงิน)
+            Yii::info('Step 4: Getting settlement list...', __METHOD__);
+            $settlementList = $this->getShopeeSettlementList($channel, $fromTime, $toTime);
+            $results['settlement_count'] = count($settlementList);
+            $results['settlement_list'] = $settlementList;
+            Yii::info("✓ Found " . count($settlementList) . " settlements", __METHOD__);
+
             // 5. คำนวณสรุปค่าธรรมเนียม
             Yii::info('Step 5: Calculating fee summary...', __METHOD__);
             $summary = $this->calculateFeeSummary($channel, $fromTime, $toTime);
