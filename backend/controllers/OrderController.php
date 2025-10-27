@@ -209,7 +209,7 @@ class OrderController extends Controller
     public function actionSyncShopeeFee()
     {
         $channelId = 1;
-       // echo $channelId;return;
+        // echo $channelId;return;
 
         try {
             // เรียกใช้ service สำหรับ sync ข้อมูล
@@ -218,6 +218,25 @@ class OrderController extends Controller
 
             Yii::$app->session->setFlash('success',
                 "ดึงข้อมูล Sync Fee เรียบร้อยแล้ว จำนวน {$result['count']} รายการ"
+            );
+        } catch (\Exception $e) {
+            Yii::$app->session->setFlash('error', 'เกิดข้อผิดพลาด: ' . $e->getMessage());
+        }
+
+        return $this->redirect(['index']);
+    }
+    public function actionSyncShopeeFeeSettlement()
+    {
+        $channelId = 1;
+        // echo $channelId;return;
+
+        try {
+            // เรียกใช้ service สำหรับ sync ข้อมูล
+            $service = new \backend\services\OrderSyncService();
+            $result = $service->syncMonthlyShopeeFees($channelId);
+
+            Yii::$app->session->setFlash('success',
+                "ดึงข้อมูล Sync Settlement เรียบร้อยแล้ว จำนวน {$result['count']} รายการ"
             );
         } catch (\Exception $e) {
             Yii::$app->session->setFlash('error', 'เกิดข้อผิดพลาด: ' . $e->getMessage());
