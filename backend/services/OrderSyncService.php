@@ -2600,8 +2600,8 @@ class OrderSyncService
             }
         }
 
-        $app_key = $tokenModel->app_key;
-        $app_secret = $tokenModel->app_secret;
+        $app_key = '6h9n461r774e1';
+        $app_secret = '1c45a0c25224293abd7de681049f90de3363389a';
         $shop_id = $tokenModel->shop_id;
         $access_token = $tokenModel->access_token;
 
