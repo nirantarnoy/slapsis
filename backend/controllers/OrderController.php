@@ -2,6 +2,7 @@
 
 namespace backend\controllers;
 
+use backend\services\OrderSyncService;
 use Yii;
 use backend\models\Order;
 use backend\models\OrderSearch;
@@ -307,5 +308,42 @@ class OrderController extends Controller
             'salesByDate' => $salesByDate,
             'salesByChannel' => $salesByChannel,
         ];
+    }
+
+    public function actionTest()
+    {
+        $channel_id = 2;
+        $service = new OrderSyncService();
+
+        echo "=== TikTok Fee Sync Debug ===\n\n";
+
+        // 1. Orders overview
+        echo "1. Orders Overview:\n";
+        $ordersInfo = $service->debugTikTokOrders($channel_id);
+        echo "   Total orders: {$ordersInfo['total_orders']}\n";
+        echo "   Orders with fees: {$ordersInfo['orders_with_fees']}\n";
+        echo "   Total transactions: {$ordersInfo['total_transactions']}\n\n";
+
+        // 2. Transactions overview
+        echo "2. Transactions Overview:\n";
+        $transInfo = $service->debugTikTokTransactions($channel_id);
+        echo "   Total transactions: {$transInfo['total_transactions']}\n";
+        echo "   Total amount: {$transInfo['total_amount']}\n";
+        echo "   By category:\n";
+        foreach ($transInfo['by_category'] as $cat => $info) {
+            echo "     - $cat: {$info['count']} transactions, {$info['total_amount']} THB\n";
+        }
+        echo "\n";
+
+        // 3. Test sync single order
+        $order = Order::find()
+            ->where(['channel_id' => $channel_id])
+            ->one();
+
+        if ($order) {
+            echo "3. Testing sync with order: {$order->order_id}\n";
+            $result = $service->debugSyncSingleTikTokOrder($order->order_id, $channel_id);
+            echo $result['log'] . "\n";
+        }
     }
 }
