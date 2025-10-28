@@ -2607,7 +2607,7 @@ class OrderSyncService
 
         // Default to last 30 days if not specified
         if ($fromTime === null) {
-            $fromTime = strtotime('-60 day');
+            $fromTime = strtotime('-30 day');
         }
         if ($toTime === null) {
             $toTime = time();
@@ -3158,7 +3158,7 @@ class OrderSyncService
         }
 
         if ($fromTime === null) {
-            $fromTime = strtotime('-60 day');
+            $fromTime = strtotime('-30 day');
         }
         if ($toTime === null) {
             $toTime = time();
@@ -3260,7 +3260,7 @@ class OrderSyncService
             $year = (int)date('Y');
         }
         if ($month === null) {
-            $month = 9;// (int)date('m');
+            $month = (int)date('m');
         }
 
         // คำนวณช่วงเวลา
