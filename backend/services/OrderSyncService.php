@@ -3531,11 +3531,14 @@ class OrderSyncService
             // 2. ดึง order details
             $log[] = "\nFetching order details from TikTok API...";
 
+            $app_key = '6h9n461r774e1';
+            $app_secret = '1c45a0c25224293abd7de681049f90de3363389a';
+
             $orderDetails = $this->getTikTokOrderDetail(
                 $order->order_id,
                 $tokenModel->shop_id,
-                $tokenModel->app_key,
-                $tokenModel->app_secret,
+                $app_key,
+                $app_secret,
                 $tokenModel->access_token
             );
 
