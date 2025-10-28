@@ -2571,7 +2571,7 @@ class OrderSyncService
     private function syncTikTokTransactionFees($channel, $fromTime = null, $toTime = null)
     {
         // รองรับทั้ง object และ int
-        $channel_id = is_object($channel) ? $channel->id : (int)$channel;
+        $channel_id = $channel; // is_object($channel) ? $channel->id : (int)$channel;
 
         if (is_int($channel)) {
             $channel = OnlineChannel::findOne($channel_id);
@@ -2673,7 +2673,7 @@ class OrderSyncService
      */
     private function syncTikTokTransactionFeesForPeriod($channel, $app_key, $app_secret, $shop_id, $access_token, $fromTime, $toTime)
     {
-        $channel_id = is_object($channel) ? $channel->id : (int)$channel;
+        $channel_id = $channel; // is_object($channel) ? $channel->id : (int)$channel;
 
         $count = 0;
         $page_number = 1;
@@ -2946,7 +2946,7 @@ class OrderSyncService
      */
     private function syncTikTokOrderIncome($channel, $fromTime = null, $toTime = null)
     {
-        $channel_id = is_object($channel) ? $channel->id : (int)$channel;
+        $channel_id = $channel; //is_object($channel) ? $channel->id : (int)$channel;
 
         if (is_int($channel)) {
             $channel = OnlineChannel::findOne($channel_id);
@@ -3049,7 +3049,7 @@ class OrderSyncService
      */
     public function syncMonthlyTikTokFees($channel, $year = null, $month = null)
     {
-        $channel_id = is_object($channel) ? $channel->id : (int)$channel;
+        $channel_id = $channel; // is_object($channel) ? $channel->id : (int)$channel;
 
         if (is_int($channel)) {
             $channel = OnlineChannel::findOne($channel_id);
