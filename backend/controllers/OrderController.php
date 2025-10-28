@@ -239,10 +239,32 @@ class OrderController extends Controller
 //                "ดึงข้อมูล Sync Settlement เรียบร้อยแล้ว จำนวน {$result['transaction_count']} รายการ"
 //            );
             Yii::$app->session->setFlash('success',
-                "ดึงข้อมูล Sync Settlement เรียบร้อยแล้ว จำนวน {$result['period']['to']} รายการ"
+                "ดึงข้อมูล Shopee Sync Settlement เรียบร้อยแล้ว จำนวน {$result['period']['to']} รายการ"
             );
         } catch (\Exception $e) {
             Yii::$app->session->setFlash('error', 'Sync Monthly Shopee Free เกิดข้อผิดพลาด: ' . $e->getMessage());
+        }
+
+        return $this->redirect(['index']);
+    }
+    public function actionSyncTiktokFeeSettlement()
+    {
+        $channelId = 2;
+        // echo $channelId;return;
+
+        try {
+            // เรียกใช้ service สำหรับ sync ข้อมูล
+            $service = new \backend\services\OrderSyncService();
+            $result = $service->syncMonthlyTikTokFees($channelId);
+
+//            Yii::$app->session->setFlash('success',
+//                "ดึงข้อมูล Sync Settlement เรียบร้อยแล้ว จำนวน {$result['transaction_count']} รายการ"
+//            );
+            Yii::$app->session->setFlash('success',
+                "ดึงข้อมูล Tiktok Sync Settlement เรียบร้อยแล้ว จำนวน {$result['period']['to']} รายการ"
+            );
+        } catch (\Exception $e) {
+            Yii::$app->session->setFlash('error', 'Sync Monthly Tiktok Free เกิดข้อผิดพลาด: ' . $e->getMessage());
         }
 
         return $this->redirect(['index']);
