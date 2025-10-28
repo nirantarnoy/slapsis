@@ -2578,8 +2578,8 @@ class OrderSyncService
         }
 
         // ใช้ค่าจาก environment หรือ config เหมือน syncTikTokOrders
-        $app_key = Yii::$app->params['tiktok']['app_key'] ?? null;
-        $app_secret = Yii::$app->params['tiktok']['app_secret'] ?? null;
+        $app_key = '6h9n461r774e1';
+        $app_secret = '1c45a0c25224293abd7de681049f90de3363389a';
 
         if (!$app_key || !$app_secret) {
             Yii::error('TikTok app_key or app_secret not configured', __METHOD__);
