@@ -3595,7 +3595,7 @@ class OrderSyncService
 
 
     //// DEBUG
-    public function debugTikTokOrderDetail($order_id, $channel = null)
+    public function debugTikTokOrderDetailx($order_id, $channel = null)
     {
         $tokenModel = TiktokToken::find()
             ->where(['status' => 'active'])
@@ -3998,5 +3998,40 @@ class OrderSyncService
                 echo "</pre>";
             }
         }
+    }
+    public function debugTikTokOrderDetail($order_id, $channel = null)
+    {
+        $tokenModel = TiktokToken::find()
+            ->where(['status' => 'active'])
+            ->orderBy(['created_at' => SORT_DESC])
+            ->one();
+
+        if (!$tokenModel) {
+            return ['error' => 'No active TikTok token found'];
+        }
+
+        $app_key = '6h9n461r774e1';
+        $app_secret = '1c45a0c25224293abd7de681049f90de3363389a';
+        $shop_id = $tokenModel->shop_id;
+        $access_token = $tokenModel->access_token;
+
+        // เพิ่ม verbose output
+        echo "=== TikTok Order Detail API Test ===\n";
+        echo "Order ID: $order_id\n";
+        echo "Shop ID: $shop_id\n";
+        echo "App Key: " . substr($app_key, 0, 10) . "...\n";
+        echo "Access Token: " . substr($access_token, 0, 20) . "...\n\n";
+
+        $result = $this->getTikTokOrderDetail($order_id, $shop_id, $app_key, $app_secret, $access_token);
+
+        if ($result === null) {
+            echo "ERROR: getTikTokOrderDetail returned NULL\n";
+            echo "Check logs for details\n";
+        } else {
+            echo "SUCCESS: Got order details\n";
+            echo "Payment data exists: " . (!empty($result['payment']) ? 'YES' : 'NO') . "\n";
+        }
+
+        return $result;
     }
 }
