@@ -2571,7 +2571,7 @@ class OrderSyncService
     private function syncTikTokTransactionFees($channel, $fromTime = null, $toTime = null)
     {
         // รองรับทั้ง object และ int
-        $channel_id = $channel; // is_object($channel) ? $channel->id : (int)$channel;
+        $channel_id =  is_object($channel) ? $channel->id : (int)$channel;
 
         if (is_int($channel)) {
             $channel = OnlineChannel::findOne($channel_id);
