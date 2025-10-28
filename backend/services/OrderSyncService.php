@@ -2616,7 +2616,7 @@ class OrderSyncService
 
         try {
             // แบ่งช่วงเวลาเป็นช่วงๆ ละ 30 วัน (TikTok อนุญาตสูงสุด 90 วัน)
-            $maxDays = 30;
+            $maxDays = 60;
             $maxSeconds = $maxDays * 24 * 60 * 60;
 
             $currentFrom = $fromTime;
