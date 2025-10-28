@@ -2555,19 +2555,6 @@ class OrderSyncService
     ///////// TIKTOK FEE TRANSACTION
 
 
-    /**
-     * TikTok Shop Fee Sync Functions
-     * เพิ่มฟังก์ชันเหล่านี้เข้าไปใน OrderSyncService
-     * ไม่แก้ไขส่วนของ Shopee และ syncTikTokOrders() เลย
-     */
-
-    /**
-     * Sync TikTok Transaction Fees for specific date range
-     * @param OnlineChannel|int $channel Channel object หรือ channel_id
-     * @param int $fromTime Unix timestamp
-     * @param int $toTime Unix timestamp
-     * @return int Number of transactions synced
-     */
     private function syncTikTokTransactionFees($channel, $fromTime = null, $toTime = null)
     {
         // รองรับทั้ง object และ int
@@ -2600,8 +2587,15 @@ class OrderSyncService
             }
         }
 
-        $app_key = '6h9n461r774e1';
-        $app_secret = '1c45a0c25224293abd7de681049f90de3363389a';
+        // ใช้ค่าจาก environment หรือ config เหมือน syncTikTokOrders
+        $app_key = Yii::$app->params['tiktok']['app_key'] ?? null;
+        $app_secret = Yii::$app->params['tiktok']['app_secret'] ?? null;
+
+        if (!$app_key || !$app_secret) {
+            Yii::error('TikTok app_key or app_secret not configured', __METHOD__);
+            return 0;
+        }
+
         $shop_id = $tokenModel->shop_id;
         $access_token = $tokenModel->access_token;
 
@@ -2616,41 +2610,11 @@ class OrderSyncService
         $totalCount = 0;
 
         try {
-            // แบ่งช่วงเวลาเป็นช่วงๆ ละ 30 วัน (TikTok อนุญาตสูงสุด 90 วัน)
-            $maxDays = 30;
-            $maxSeconds = $maxDays * 24 * 60 * 60;
+            // ใช้วิธี Order Details แทน (เพราะ Settlement API อาจไม่มีสิทธิ์)
+            Yii::info("Using TikTok Order Details to extract fees", __METHOD__);
+            $totalCount = $this->syncTikTokOrderDetails($channel_id, $shop_id, $app_key, $app_secret, $access_token, $fromTime, $toTime);
 
-            $currentFrom = $fromTime;
-
-            while ($currentFrom < $toTime) {
-                $currentTo = min($currentFrom + $maxSeconds, $toTime);
-
-                Yii::info("Syncing TikTok transactions from " . date('Y-m-d H:i:s', $currentFrom) .
-                    " to " . date('Y-m-d H:i:s', $currentTo), __METHOD__);
-
-                // ดึงข้อมูลในช่วงนี้
-                $count = $this->syncTikTokTransactionFeesForPeriod(
-                    $channel,
-                    $app_key,
-                    $app_secret,
-                    $shop_id,
-                    $access_token,
-                    $currentFrom,
-                    $currentTo
-                );
-
-                $totalCount += $count;
-
-                // เลื่อนไปช่วงถัดไป
-                $currentFrom = $currentTo + 1;
-
-                // หน่วงเวลาระหว่างการเรียก API
-                if ($currentFrom < $toTime) {
-                    usleep(300000); // 0.3 วินาที
-                }
-            }
-
-            Yii::info("Total synced {$totalCount} TikTok transactions for channel: " . $channel_id, __METHOD__);
+            Yii::info("Total synced {$totalCount} TikTok fee records for channel: " . $channel_id, __METHOD__);
 
         } catch (\Exception $e) {
             Yii::error('TikTok Transaction API error: ' . $e->getMessage(), __METHOD__);
@@ -2671,136 +2635,136 @@ class OrderSyncService
      * @param int $toTime Unix timestamp
      * @return int Number of transactions synced
      */
-    private function syncTikTokTransactionFeesForPeriod($channel, $app_key, $app_secret, $shop_id, $access_token, $fromTime, $toTime)
-    {
-        $channel_id = is_object($channel) ? $channel->id : (int)$channel;
-
-        $count = 0;
-        $page_number = 1;
-        $page_size = 50;
-
-        try {
-            do {
-                $timestamp = time();
-
-                // TikTok Finance API - Seller Transaction
-                $path = "/finance/202309/settlements";
-
-                // สร้าง sign สำหรับ TikTok
-                $params = [
-                    'app_key' => $app_key,
-                    'timestamp' => $timestamp,
-                    'shop_id' => $shop_id,
-                    'access_token' => $access_token,
-                ];
-
-                // Sort parameters
-                ksort($params);
-
-                // Generate sign
-                $sign_string = $path;
-                foreach ($params as $key => $value) {
-                    if ($key != 'access_token' && $key != 'sign') {
-                        $sign_string .= $key . $value;
-                    }
-                }
-
-                // Body parameters for POST
-                $body = [
-                    'page_number' => $page_number,
-                    'page_size' => $page_size,
-                    'sort_field' => 'create_time',
-                    'sort_order' => 'DESC',
-                    'create_time_ge' => $fromTime,
-                    'create_time_lt' => $toTime,
-                ];
-
-                // Add body to sign string
-                $sign_string .= json_encode($body);
-                $sign = hash_hmac('sha256', $sign_string, $app_secret);
-
-                $url = "https://open-api.tiktokglobalshop.com" . $path;
-                $queryParams = [
-                    'app_key' => $app_key,
-                    'timestamp' => $timestamp,
-                    'shop_id' => $shop_id,
-                    'access_token' => $access_token,
-                    'sign' => $sign,
-                ];
-
-                Yii::info("Calling TikTok API: " . $url, __METHOD__);
-                Yii::debug("Query params: " . Json::encode($queryParams), __METHOD__);
-                Yii::debug("Body: " . Json::encode($body), __METHOD__);
-
-                $response = $this->httpClient->post($url, [
-                    'query' => $queryParams,
-                    'json' => $body,
-                    'timeout' => 30,
-                    'headers' => [
-                        'Content-Type' => 'application/json',
-                    ]
-                ]);
-
-                $statusCode = $response->getStatusCode();
-                if ($statusCode !== 200) {
-                    Yii::error("HTTP TikTok Fee Sync Error: {$statusCode}", __METHOD__);
-                    break;
-                }
-
-                $rawBody = (string)$response->getBody();
-                Yii::debug("TikTok Settlement Raw Body: " . $rawBody, __METHOD__);
-
-                $data = Json::decode($rawBody);
-
-                // เช็ค API error
-                if (!empty($data['code']) && $data['code'] != 0) {
-                    Yii::error("TikTok API Error Fee Sync: {$data['code']} - " . ($data['message'] ?? 'Unknown error'), __METHOD__);
-
-                    // ลอง API อื่นถ้า settlements ไม่ work
-                    if ($data['code'] == 36009009) {
-                        Yii::warning("Trying alternative API endpoint", __METHOD__);
-                        return $this->syncTikTokOrderDetails($channel_id, $shop_id, $app_key, $app_secret, $access_token, $fromTime, $toTime);
-                    }
-                    break;
-                }
-
-                // เช็ค response
-                if (empty($data['data']['settlements'])) {
-                    Yii::debug('No settlement list found for this period', __METHOD__);
-                    break;
-                }
-
-                $settlementList = $data['data']['settlements'];
-                foreach ($settlementList as $settlement) {
-                    $processResult = $this->processTikTokSettlement($channel_id, $settlement, $shop_id);
-                    if ($processResult) {
-                        $count++;
-                    }
-                }
-
-                // เช็คว่ามีหน้าถัดไปไหม
-                $total = $data['data']['total'] ?? 0;
-                $hasMore = ($page_number * $page_size) < $total;
-
-                if ($hasMore) {
-                    $page_number++;
-                    usleep(200000); // 0.2 วินาที กัน rate limit
-                } else {
-                    break;
-                }
-
-            } while (true);
-
-        } catch (\Exception $e) {
-            Yii::error('TikTok Settlement API error for period: ' . $e->getMessage(), __METHOD__);
-            Yii::error('Stack trace: ' . $e->getTraceAsString(), __METHOD__);
-
-            // ลอง fallback เป็น order details
-            return $this->syncTikTokOrderDetails($channel_id, $shop_id, $app_key, $app_secret, $access_token, $fromTime, $toTime);
-        }
-
-        return $count;
-    }
+//    private function syncTikTokTransactionFeesForPeriod($channel, $app_key, $app_secret, $shop_id, $access_token, $fromTime, $toTime)
+//    {
+//        $channel_id = is_object($channel) ? $channel->id : (int)$channel;
+//
+//        $count = 0;
+//        $page_number = 1;
+//        $page_size = 50;
+//
+//        try {
+//            do {
+//                $timestamp = time();
+//
+//                // TikTok Finance API - Seller Transaction
+//                $path = "/finance/202309/settlements";
+//
+//                // สร้าง sign สำหรับ TikTok
+//                $params = [
+//                    'app_key' => $app_key,
+//                    'timestamp' => $timestamp,
+//                    'shop_id' => $shop_id,
+//                    'access_token' => $access_token,
+//                ];
+//
+//                // Sort parameters
+//                ksort($params);
+//
+//                // Generate sign
+//                $sign_string = $path;
+//                foreach ($params as $key => $value) {
+//                    if ($key != 'access_token' && $key != 'sign') {
+//                        $sign_string .= $key . $value;
+//                    }
+//                }
+//
+//                // Body parameters for POST
+//                $body = [
+//                    'page_number' => $page_number,
+//                    'page_size' => $page_size,
+//                    'sort_field' => 'create_time',
+//                    'sort_order' => 'DESC',
+//                    'create_time_ge' => $fromTime,
+//                    'create_time_lt' => $toTime,
+//                ];
+//
+//                // Add body to sign string
+//                $sign_string .= json_encode($body);
+//                $sign = hash_hmac('sha256', $sign_string, $app_secret);
+//
+//                $url = "https://open-api.tiktokglobalshop.com" . $path;
+//                $queryParams = [
+//                    'app_key' => $app_key,
+//                    'timestamp' => $timestamp,
+//                    'shop_id' => $shop_id,
+//                    'access_token' => $access_token,
+//                    'sign' => $sign,
+//                ];
+//
+//                Yii::info("Calling TikTok API: " . $url, __METHOD__);
+//                Yii::debug("Query params: " . Json::encode($queryParams), __METHOD__);
+//                Yii::debug("Body: " . Json::encode($body), __METHOD__);
+//
+//                $response = $this->httpClient->post($url, [
+//                    'query' => $queryParams,
+//                    'json' => $body,
+//                    'timeout' => 30,
+//                    'headers' => [
+//                        'Content-Type' => 'application/json',
+//                    ]
+//                ]);
+//
+//                $statusCode = $response->getStatusCode();
+//                if ($statusCode !== 200) {
+//                    Yii::error("HTTP TikTok Fee Sync Error: {$statusCode}", __METHOD__);
+//                    break;
+//                }
+//
+//                $rawBody = (string)$response->getBody();
+//                Yii::debug("TikTok Settlement Raw Body: " . $rawBody, __METHOD__);
+//
+//                $data = Json::decode($rawBody);
+//
+//                // เช็ค API error
+//                if (!empty($data['code']) && $data['code'] != 0) {
+//                    Yii::error("TikTok API Error Fee Sync: {$data['code']} - " . ($data['message'] ?? 'Unknown error'), __METHOD__);
+//
+//                    // ลอง API อื่นถ้า settlements ไม่ work
+//                    if ($data['code'] == 36009009) {
+//                        Yii::warning("Trying alternative API endpoint", __METHOD__);
+//                        return $this->syncTikTokOrderDetails($channel_id, $shop_id, $app_key, $app_secret, $access_token, $fromTime, $toTime);
+//                    }
+//                    break;
+//                }
+//
+//                // เช็ค response
+//                if (empty($data['data']['settlements'])) {
+//                    Yii::debug('No settlement list found for this period', __METHOD__);
+//                    break;
+//                }
+//
+//                $settlementList = $data['data']['settlements'];
+//                foreach ($settlementList as $settlement) {
+//                    $processResult = $this->processTikTokSettlement($channel_id, $settlement, $shop_id);
+//                    if ($processResult) {
+//                        $count++;
+//                    }
+//                }
+//
+//                // เช็คว่ามีหน้าถัดไปไหม
+//                $total = $data['data']['total'] ?? 0;
+//                $hasMore = ($page_number * $page_size) < $total;
+//
+//                if ($hasMore) {
+//                    $page_number++;
+//                    usleep(200000); // 0.2 วินาที กัน rate limit
+//                } else {
+//                    break;
+//                }
+//
+//            } while (true);
+//
+//        } catch (\Exception $e) {
+//            Yii::error('TikTok Settlement API error for period: ' . $e->getMessage(), __METHOD__);
+//            Yii::error('Stack trace: ' . $e->getTraceAsString(), __METHOD__);
+//
+//            // ลอง fallback เป็น order details
+//            return $this->syncTikTokOrderDetails($channel_id, $shop_id, $app_key, $app_secret, $access_token, $fromTime, $toTime);
+//        }
+//
+//        return $count;
+//    }
 
     /**
      * Sync TikTok fees from Order Details (Alternative method)
@@ -2855,7 +2819,7 @@ class OrderSyncService
     }
 
     /**
-     * Get TikTok Order Detail
+     * Get TikTok Order Detail (with enhanced debug logging)
      * @param string $order_id
      * @param string $shop_id
      * @param string $app_key
@@ -2896,27 +2860,46 @@ class OrderSyncService
                 'sign' => $sign,
             ];
 
+            Yii::info("Calling TikTok Order Detail API", __METHOD__);
+            Yii::debug("URL: $url", __METHOD__);
+            Yii::debug("Order ID: $order_id", __METHOD__);
+            Yii::debug("Shop ID: $shop_id", __METHOD__);
+
             $response = $this->httpClient->get($url, [
                 'query' => $queryParams,
                 'timeout' => 30
             ]);
 
-            if ($response->getStatusCode() !== 200) {
+            $statusCode = $response->getStatusCode();
+            $rawBody = (string)$response->getBody();
+
+            Yii::debug("TikTok Order Detail Response Status: $statusCode", __METHOD__);
+            Yii::debug("TikTok Order Detail Response Body: $rawBody", __METHOD__);
+
+            if ($statusCode !== 200) {
+                Yii::error("HTTP Error $statusCode getting TikTok order detail for $order_id", __METHOD__);
                 return null;
             }
 
-            $rawBody = (string)$response->getBody();
             $data = Json::decode($rawBody);
 
             if (empty($data['code']) || $data['code'] != 0) {
-                Yii::warning("TikTok order detail error: " . ($data['message'] ?? 'Unknown'), __METHOD__);
+                Yii::warning("TikTok order detail API error for $order_id: Code={$data['code']}, Message=" . ($data['message'] ?? 'Unknown'), __METHOD__);
+                Yii::debug("Full error response: " . Json::encode($data), __METHOD__);
                 return null;
             }
 
-            return $data['data'] ?? null;
+            if (empty($data['data'])) {
+                Yii::warning("TikTok order detail API returned empty data for $order_id", __METHOD__);
+                return null;
+            }
+
+            Yii::info("Successfully got TikTok order detail for $order_id", __METHOD__);
+            return $data['data'];
 
         } catch (\Exception $e) {
-            Yii::error("Error calling TikTok order detail API: " . $e->getMessage(), __METHOD__);
+            Yii::error("Exception calling TikTok order detail API for $order_id: " . $e->getMessage(), __METHOD__);
+            Yii::error("Stack trace: " . $e->getTraceAsString(), __METHOD__);
             return null;
         }
     }
@@ -3144,7 +3127,280 @@ class OrderSyncService
             return false;
         }
     }
+    private function syncTikTokTransactionFeesForPeriod($channel, $app_key, $app_secret, $shop_id, $access_token, $fromTime, $toTime)
+    {
+        $channel_id = is_object($channel) ? $channel->id : (int)$channel;
 
+        $count = 0;
+        $page_number = 1;
+        $page_size = 50;
+
+        try {
+            do {
+                $timestamp = time();
+                $path = "/finance/202309/transactions/search";
+
+                // สร้าง sign สำหรับ TikTok
+                $params = [
+                    'app_key' => $app_key,
+                    'timestamp' => $timestamp,
+                    'shop_id' => $shop_id,
+                ];
+
+                $body = [
+                    'page_number' => $page_number,
+                    'page_size' => $page_size,
+                    'request_time_from' => $fromTime,
+                    'request_time_to' => $toTime,
+                ];
+
+                // Generate signature
+                $sign = $this->generateTikTokSign2($path, $params, $body, $app_secret);
+
+                $url = "https://open-api.tiktokglobalshop.com" . $path;
+                $queryParams = array_merge($params, [
+                    'access_token' => $access_token,
+                    'sign' => $sign,
+                ]);
+
+                $response = $this->httpClient->post($url, [
+                    'query' => $queryParams,
+                    'json' => $body,
+                    'timeout' => 30
+                ]);
+
+                $statusCode = $response->getStatusCode();
+                if ($statusCode !== 200) {
+                    Yii::error("HTTP TikTok Fee Sync Error: {$statusCode}", __METHOD__);
+                    break;
+                }
+
+                $rawBody = (string)$response->getBody();
+                Yii::debug("TikTok Transaction Raw Body: " . $rawBody, __METHOD__);
+
+                $data = Json::decode($rawBody);
+
+                // เช็ค API error
+                if (!empty($data['code']) && $data['code'] != 0) {
+                    Yii::error("TikTok API Error Fee Sync: {$data['code']} - " . ($data['message'] ?? 'Unknown error'), __METHOD__);
+                    break;
+                }
+
+                // เช็ค response
+                if (empty($data['data']['transactions'])) {
+                    Yii::debug('No transaction list found for this period', __METHOD__);
+                    break;
+                }
+
+                $transactionList = $data['data']['transactions'];
+                foreach ($transactionList as $transaction) {
+                    $processResult = $this->processTikTokTransaction($channel_id, $transaction, $shop_id);
+                    if ($processResult) {
+                        $count++;
+                    }
+                }
+
+                // เช็คว่ามีหน้าถัดไปไหม
+                $total_count = $data['data']['total_count'] ?? 0;
+                $hasMore = ($page_number * $page_size) < $total_count;
+
+                if ($hasMore) {
+                    $page_number++;
+                    usleep(200000); // 0.2 วินาที กัน rate limit
+                } else {
+                    break;
+                }
+
+            } while (true);
+
+        } catch (\Exception $e) {
+            Yii::error('TikTok Transaction API error for period: ' . $e->getMessage(), __METHOD__);
+            throw $e;
+        }
+
+        return $count;
+    }
+
+    /**
+     * Process individual TikTok transaction
+     * @param int $channel_id
+     * @param array $transaction
+     * @param string $shop_id
+     * @return bool
+     */
+    private function processTikTokTransaction($channel_id, $transaction, $shop_id)
+    {
+        try {
+            $transaction_id = $transaction['id'] ?? null;
+            if (empty($transaction_id)) {
+                Yii::warning("Missing TikTok transaction_id", __METHOD__);
+                return false;
+            }
+
+            // แปลง transaction_id เป็น string
+            $transaction_id = 'TT_' . (string)$transaction_id; // เพิ่ม prefix TT_ เพื่อแยกจาก Shopee
+
+            // เช็คว่ามีอยู่แล้วหรือไม่
+            $existingTransaction = ShopeeTransaction::findOne(['transaction_id' => $transaction_id]);
+            if ($existingTransaction) {
+                Yii::debug("TikTok Transaction already exists: $transaction_id", __METHOD__);
+                return false;
+            }
+
+            $feeTransaction = new ShopeeTransaction(); // ใช้ table เดียวกัน
+            $feeTransaction->transaction_id = $transaction_id;
+            $feeTransaction->channel_id = $channel_id;
+            $feeTransaction->shop_id = (string)$shop_id;
+
+            // Transaction details
+            $feeTransaction->transaction_type = isset($transaction['transaction_type'])
+                ? (string)$transaction['transaction_type']
+                : 'UNKNOWN';
+
+            $feeTransaction->status = isset($transaction['status'])
+                ? (string)$transaction['status']
+                : 'UNKNOWN';
+
+            $feeTransaction->reason = isset($transaction['statement_description'])
+                ? (string)$transaction['statement_description']
+                : '';
+
+            // Amount (TikTok ส่งมาเป็น object {amount, currency})
+            $amount_info = $transaction['amount'] ?? [];
+            $feeTransaction->amount = isset($amount_info['amount'])
+                ? (float)$amount_info['amount']
+                : 0;
+
+            $feeTransaction->current_balance = isset($transaction['balance']['amount'])
+                ? (float)$transaction['balance']['amount']
+                : 0;
+
+            // Order reference
+            $order_id = isset($transaction['order_id']) ? (string)$transaction['order_id'] : null;
+
+            if (!empty($order_id)) {
+                // เช็คว่ามี order ในระบบหรือไม่ (TikTok ใช้ order_id ไม่ใช่ order_sn)
+                $orderExists = Order::find()
+                    ->where(['order_id' => $order_id])
+                    ->orWhere(['LIKE', 'order_id', $order_id]) // เพราะ TikTok อาจมี format แตกต่าง
+                    ->exists();
+
+                if ($orderExists) {
+                    $feeTransaction->order_sn = $order_id;
+                } else {
+                    $feeTransaction->order_sn = null;
+                    $feeTransaction->reason .= " [Order ID: {$order_id}]";
+                    Yii::debug("TikTok Order not found in system: $order_id for transaction: $transaction_id", __METHOD__);
+                }
+            } else {
+                $feeTransaction->order_sn = null;
+            }
+
+            // Timestamps
+            $create_time = $transaction['create_time'] ?? time();
+            $feeTransaction->transaction_date = date('Y-m-d H:i:s', $create_time);
+            $feeTransaction->created_at = date('Y-m-d H:i:s');
+            $feeTransaction->updated_at = date('Y-m-d H:i:s');
+
+            // จัดหมวดหมู่ค่าธรรมเนียม (TikTok)
+            $feeTransaction->fee_category = $this->categorizeTikTokFee($transaction);
+
+            if ($feeTransaction->save()) {
+                Yii::info("Saved TikTok transaction: $transaction_id (Category: {$feeTransaction->fee_category}, Amount: {$feeTransaction->amount})", __METHOD__);
+                return true;
+            } else {
+                Yii::error("Failed to save TikTok transaction $transaction_id: " . Json::encode($feeTransaction->errors), __METHOD__);
+                Yii::error("Transaction data: " . Json::encode($transaction), __METHOD__);
+                return false;
+            }
+
+        } catch (\Exception $e) {
+            Yii::error('Error processing TikTok transaction: ' . $e->getMessage(), __METHOD__);
+            Yii::error('Transaction data: ' . Json::encode($transaction), __METHOD__);
+            return false;
+        }
+    }
+
+    /**
+     * Categorize TikTok fee type based on transaction data
+     * @param array $transaction
+     * @return string
+     */
+    private function categorizeTikTokFee($transaction)
+    {
+        $type = strtolower($transaction['transaction_type'] ?? '');
+        $description = strtolower($transaction['statement_description'] ?? '');
+
+        // เฉพาะรายการที่เป็นค่าใช้จ่าย (amount < 0)
+        $amount = isset($transaction['amount']['amount']) ? (float)$transaction['amount']['amount'] : 0;
+        if ($amount >= 0) {
+            return 'INCOME'; // รายได้
+        }
+
+        // จัดหมวดหมู่ตามประเภทธุรกรรมของ TikTok
+        if (strpos($type, 'commission') !== false || strpos($description, 'commission') !== false) {
+            return 'COMMISSION_FEE';
+        } elseif (strpos($type, 'transaction_fee') !== false || strpos($description, 'transaction fee') !== false) {
+            return 'TRANSACTION_FEE';
+        } elseif (strpos($type, 'payment_fee') !== false || strpos($description, 'payment') !== false) {
+            return 'PAYMENT_FEE';
+        } elseif (strpos($type, 'shipping') !== false || strpos($description, 'shipping') !== false) {
+            return 'SHIPPING_FEE';
+        } elseif (strpos($type, 'affiliate') !== false || strpos($description, 'affiliate') !== false) {
+            return 'AFFILIATE_FEE';
+        } elseif (strpos($type, 'marketing') !== false || strpos($description, 'ads') !== false || strpos($description, 'promotion') !== false) {
+            return 'CAMPAIGN_FEE';
+        } elseif (strpos($type, 'penalty') !== false || strpos($description, 'fine') !== false || strpos($description, 'penalty') !== false) {
+            return 'PENALTY_FEE';
+        } elseif (strpos($type, 'refund') !== false || strpos($description, 'refund') !== false || strpos($description, 'return') !== false) {
+            return 'REFUND';
+        } elseif (strpos($type, 'adjustment') !== false || strpos($description, 'adjustment') !== false) {
+            return 'ADJUSTMENT';
+        } elseif (strpos($type, 'withdrawal') !== false || strpos($description, 'withdrawal') !== false) {
+            return 'WITHDRAWAL';
+        } elseif (strpos($type, 'service_fee') !== false || strpos($description, 'service') !== false) {
+            return 'SERVICE_FEE';
+        } else {
+            return 'OTHER';
+        }
+    }
+
+    /**
+     * Generate TikTok API signature
+     * @param string $path
+     * @param array $params
+     * @param array $body
+     * @param string $app_secret
+     * @return string
+     */
+    private function generateTikTokSign2($path, $params, $body, $app_secret)
+    {
+        // TikTok signature format
+        ksort($params);
+
+        $sign_string = $app_secret . $path;
+
+        foreach ($params as $key => $value) {
+            $sign_string .= $key . $value;
+        }
+
+        if (!empty($body)) {
+            $sign_string .= json_encode($body);
+        }
+
+        $sign_string .= $app_secret;
+
+        return hash_hmac('sha256', $sign_string, $app_secret);
+    }
+
+    /**
+     * Sync TikTok order income details (รายละเอียดค่าธรรมเนียมต่อ order)
+     * แก้ไขให้ sync ทุก order ไม่ว่าจะมีค่าหรือไม่
+     * @param OnlineChannel|int $channel
+     * @param int $fromTime Unix timestamp
+     * @param int $toTime Unix timestamp
+     * @return int Number of orders updated
+     */
     private function syncTikTokOrderIncome($channel, $fromTime = null, $toTime = null)
     {
         $channel_id = is_object($channel) ? $channel->id : (int)$channel;
@@ -3164,15 +3420,11 @@ class OrderSyncService
             $toTime = time();
         }
 
-        // ดึง TikTok orders ที่ยังไม่มีข้อมูล income
+        // ดึง TikTok orders ทั้งหมด (ไม่กรองว่ามี income หรือไม่)
         $orders = Order::find()
             ->where(['channel_id' => $channel_id])
             ->andWhere(['>=', 'order_date', date('Y-m-d H:i:s', $fromTime)])
             ->andWhere(['<=', 'order_date', date('Y-m-d H:i:s', $toTime)])
-            ->andWhere(['or',
-                ['actual_income' => 0],
-                ['actual_income' => null]
-            ])
             ->all();
 
         if (empty($orders)) {
@@ -3180,60 +3432,70 @@ class OrderSyncService
             return 0;
         }
 
+        Yii::info('Found ' . count($orders) . ' TikTok orders to process', __METHOD__);
+
+        // ใช้วิธี Order Details
+        $tokenModel = TiktokToken::find()
+            ->where(['status' => 'active'])
+            ->orderBy(['created_at' => SORT_DESC])
+            ->one();
+
+        if (!$tokenModel) {
+            Yii::warning('No active TikTok token found', __METHOD__);
+            return 0;
+        }
+
+        // ใช้ app_key/app_secret จาก config
+//        $app_key = Yii::$app->params['tiktok']['app_key'] ?? null;
+//        $app_secret = Yii::$app->params['tiktok']['app_secret'] ?? null;
+
+        $app_key = '6h9n461r774e1';
+        $app_secret = '1c45a0c25224293abd7de681049f90de3363389a';
+
+        if (!$app_key || !$app_secret) {
+            Yii::error('TikTok app_key or app_secret not configured in params', __METHOD__);
+            return 0;
+        }
+
+        $shop_id = $tokenModel->shop_id;
+        $access_token = $tokenModel->access_token;
+
         $count = 0;
 
         foreach ($orders as $order) {
-            // ดึงข้อมูลค่าธรรมเนียมจาก transactions ที่ link กับ order นี้
-            $transactions = ShopeeTransaction::find()
+            // เช็คว่าได้ดึงข้อมูลไปแล้วหรือยัง (มี transaction แล้ว)
+            $hasTransaction = ShopeeTransaction::find()
                 ->where(['channel_id' => $channel_id])
-                ->andWhere(['like', 'transaction_id', 'TT_%', false]) // เฉพาะ TikTok
-                ->andWhere(['or',
-                    ['order_sn' => $order->order_id],
-                    ['like', 'reason', '[Order ID: ' . $order->order_id . ']', false]
-                ])
-                ->all();
+                ->andWhere(['like', 'transaction_id', 'TT_' . $order->order_id . '_%', false])
+                ->exists();
 
-            if (!empty($transactions)) {
-                $total_commission = 0;
-                $total_transaction_fee = 0;
-                $total_service_fee = 0;
-                $total_payment_fee = 0;
+            if ($hasTransaction) {
+                Yii::debug("Order {$order->order_id} already has fee transactions, skipping", __METHOD__);
+                continue;
+            }
 
-                foreach ($transactions as $trans) {
-                    $amount = abs($trans->amount);
+            // ดึงข้อมูลค่าธรรมเนียมจาก Order Details
+            try {
+                Yii::info("Fetching TikTok order details for: " . $order->order_id, __METHOD__);
 
-                    switch ($trans->fee_category) {
-                        case 'COMMISSION_FEE':
-                            $total_commission += $amount;
-                            break;
-                        case 'TRANSACTION_FEE':
-                            $total_transaction_fee += $amount;
-                            break;
-                        case 'SERVICE_FEE':
-                            $total_service_fee += $amount;
-                            break;
-                        case 'PAYMENT_FEE':
-                            $total_payment_fee += $amount;
-                            break;
+                $orderDetails = $this->getTikTokOrderDetail($order->order_id, $shop_id, $app_key, $app_secret, $access_token);
+
+                if ($orderDetails) {
+                    Yii::debug("Got order details for {$order->order_id}", __METHOD__);
+
+                    // Process fee details
+                    if ($this->processTikTokOrderFees($channel_id, $order, $orderDetails, $shop_id)) {
+                        $count++;
                     }
+                } else {
+                    Yii::warning("No order details returned for {$order->order_id}", __METHOD__);
                 }
 
-                // อัพเดท order
-                $order->commission_fee = $total_commission;
-                $order->transaction_fee = $total_transaction_fee;
-                $order->service_fee = $total_service_fee;
-                $order->payment_fee = $total_payment_fee;
+                usleep(300000); // 0.3 วินาที หลีกเลี่ยง rate limit
 
-                // คำนวณ actual income
-                $total_fees = $total_commission + $total_transaction_fee + $total_service_fee + $total_payment_fee;
-                $order->actual_income = $order->total_amount - $total_fees;
-
-                $order->updated_at = date('Y-m-d H:i:s');
-
-                if ($order->save(false)) {
-                    $count++;
-                    Yii::info("Updated TikTok order {$order->order_id} with income details", __METHOD__);
-                }
+            } catch (\Exception $e) {
+                Yii::error("Error getting TikTok order details for {$order->order_id}: " . $e->getMessage(), __METHOD__);
+                continue;
             }
         }
 
@@ -3241,6 +3503,13 @@ class OrderSyncService
         return $count;
     }
 
+    /**
+     * Sync monthly fees for TikTok - ฟังก์ชันหลัก
+     * @param OnlineChannel|int $channel Channel object หรือ channel_id
+     * @param int $year
+     * @param int $month
+     * @return array Summary of fees
+     */
     public function syncMonthlyTikTokFees($channel, $year = null, $month = null)
     {
         $channel_id = is_object($channel) ? $channel->id : (int)$channel;
