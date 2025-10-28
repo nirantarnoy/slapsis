@@ -3260,7 +3260,7 @@ class OrderSyncService
             $year = (int)date('Y');
         }
         if ($month === null) {
-            $month = (int)date('m');
+            $month = 9;// (int)date('m');
         }
 
         // คำนวณช่วงเวลา
