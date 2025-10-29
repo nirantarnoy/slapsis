@@ -277,9 +277,12 @@ class OrderController extends Controller
         try{
             $service = new \backend\services\TestSyncService();
             $res = $service->syncTikTokTransactionFees(2);
+            print_r($res);
+            return;
         }catch (\Exception $e){
             Yii::$app->session->setFlash('error', $e->getMessage());
             echo $e->getMessage();
+            return;
         }
     }
 
