@@ -276,7 +276,7 @@ class OrderController extends Controller
     public function actionSyncTestNew(){
         try{
             $service = new \backend\services\TestSyncService();
-            $resx = $service->syncTikTokTransactionFeesx(2);
+            $resx = $service->syncTikTokOrderIncomeEnhanced(2);
             print_r($resx);
             return;
         }catch (\Exception $e){
