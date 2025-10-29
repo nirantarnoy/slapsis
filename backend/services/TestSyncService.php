@@ -128,7 +128,7 @@ class TestSyncService
         Yii::info("Shop ID: $shop_id", __METHOD__);
 
         // Try multiple methods
-        $totalCount = 0;
+        $totalCount = 10;
 
         // Method 1: Try to get from order details directly
         Yii::info("Method 1: Extracting fees from existing orders...", __METHOD__);
