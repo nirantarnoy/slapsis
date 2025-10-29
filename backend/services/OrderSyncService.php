@@ -909,7 +909,7 @@ class OrderSyncService
     ///
     ///
 
-    public function syncShopeeFree($channelId = null)
+    public function syncShopeeFee($channelId = null)
     {
         $channels = [];
 

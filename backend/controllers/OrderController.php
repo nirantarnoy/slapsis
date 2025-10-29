@@ -215,7 +215,7 @@ class OrderController extends Controller
         try {
             // เรียกใช้ service สำหรับ sync ข้อมูล
             $service = new \backend\services\OrderSyncService();
-            $result = $service->syncShopeeFree($channelId);
+            $result = $service->syncShopeeFee($channelId);
 
             Yii::$app->session->setFlash('success',
                 "ดึงข้อมูล Sync Fee เรียบร้อยแล้ว จำนวน {$result['count']} รายการ"
@@ -233,8 +233,11 @@ class OrderController extends Controller
 
         try {
             // เรียกใช้ service สำหรับ sync ข้อมูล
-            $service = new \backend\services\OrderSyncService();
-            $result = $service->syncMonthlyShopeeFees($channelId);
+//            $service = new \backend\services\OrderSyncService();
+//            $result = $service->syncMonthlyShopeeFees($channelId);
+
+            $service = new \backend\services\TestSyncService();
+            $result = $service->syncMonthlyShopeeFeesV2($channelId);
 
 //            Yii::$app->session->setFlash('success',
 //                "ดึงข้อมูล Sync Settlement เรียบร้อยแล้ว จำนวน {$result['transaction_count']} รายการ"
