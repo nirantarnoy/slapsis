@@ -276,8 +276,8 @@ class OrderController extends Controller
     public function actionSyncTest(){
         try{
             $service = new \backend\services\TestSyncService();
-            $res = $service->syncTikTokTransactionFees(2);
-            print_r($res);
+            $resx = $service->syncTikTokTransactionFeesx(2);
+            print_r($resx);
             return;
         }catch (\Exception $e){
             Yii::$app->session->setFlash('error', $e->getMessage());

@@ -79,7 +79,7 @@ class TestSyncService
     /**
      * Main function to sync TikTok fees
      */
-    public function syncTikTokTransactionFees($channel, $fromTime = null, $toTime = null)
+    public function syncTikTokTransactionFeesx($channel, $fromTime = null, $toTime = null)
     {
         $channel_id = is_object($channel) ? $channel->id : (int)$channel;
 
