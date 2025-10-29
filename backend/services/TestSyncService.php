@@ -480,9 +480,9 @@ class TestSyncService
                     Yii::warning("✗ No transaction data: {$order->order_id}", __METHOD__);
 
                     // Fallback: Use estimated fees
-                    if ($this->createEstimatedFeesForOrder($channel_id, $order, $shop_id)) {
-                        Yii::info("Created estimated fees for {$order->order_id}", __METHOD__);
-                    }
+//                    if ($this->createEstimatedFeesForOrder($channel_id, $order, $shop_id)) {
+//                        Yii::info("Created estimated fees for {$order->order_id}", __METHOD__);
+//                    }
                 }
 
                 usleep(300000); // 0.3 seconds delay
