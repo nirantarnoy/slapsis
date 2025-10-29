@@ -79,136 +79,23 @@ class TestSyncService
     /**
      * Main function to sync TikTok fees
      */
-    private function getTikTokOrderDetailFixed($order_id, $shop_id, $app_key, $app_secret, $access_token)
+    private function getTikTokOrderTransactions($order_id, $shop_id, $app_key, $app_secret, $access_token)
     {
-        Yii::info("Fetching order details for: $order_id", __METHOD__);
+        Yii::info("Getting transaction details for order: $order_id", __METHOD__);
 
-        // TikTok Order ID format handling
-        // TikTok มักใช้ order_id แบบ numeric string หรือมี underscore
-        // ลองทั้ง 2 format:
-        // 1. ใช้ order_id เต็ม
-        // 2. ใช้ส่วนแรกก่อน underscore (ถ้ามี)
-        // 3. ใช้ส่วนหลัง underscore (ถ้ามี)
-
-        $orderIdVariants = [$order_id];
-
-        if (strpos($order_id, '_') !== false) {
-            $parts = explode('_', $order_id);
-            $orderIdVariants[] = $parts[0]; // ส่วนแรก
-            $orderIdVariants[] = $parts[1]; // ส่วนหลัง
-            if (count($parts) > 2) {
-                $orderIdVariants[] = end($parts); // ส่วนสุดท้าย
-            }
-        }
-
-        // Remove duplicates
-        $orderIdVariants = array_unique($orderIdVariants);
-
-        Yii::info("Will try order ID variants: " . implode(', ', $orderIdVariants), __METHOD__);
-
-        // Try multiple API versions and order ID variants
-        $apiVersions = [
-            '/order/202309/orders',      // Latest version
-            '/order/202212/orders',      // Previous version
-            '/order/202111/orders',      // Older version
-        ];
-
-        foreach ($orderIdVariants as $tryOrderId) {
-            foreach ($apiVersions as $basePath) {
-                try {
-                    $timestamp = time();
-                    $path = $basePath . '/' . $tryOrderId;
-
-                    $params = [
-                        'app_key' => $app_key,
-                        'timestamp' => $timestamp,
-                        'shop_id' => $shop_id,
-                        'access_token' => $access_token,
-                    ];
-
-                    ksort($params);
-
-                    // Generate signature
-                    $sign_string = $path;
-                    foreach ($params as $key => $value) {
-                        if ($key != 'access_token' && $key != 'sign') {
-                            $sign_string .= $key . $value;
-                        }
-                    }
-                    $sign = hash_hmac('sha256', $sign_string, $app_secret);
-
-                    $url = "https://open-api.tiktokglobalshop.com" . $path;
-                    $queryParams = array_merge($params, ['sign' => $sign]);
-
-                    Yii::debug("Trying: $path with order_id: $tryOrderId", __METHOD__);
-
-                    $response = $this->httpClient->get($url, [
-                        'query' => $queryParams,
-                        'timeout' => 30,
-                        'http_errors' => false,
-                    ]);
-
-                    $statusCode = $response->getStatusCode();
-                    $rawBody = (string)$response->getBody();
-
-                    if ($statusCode !== 200) {
-                        Yii::debug("HTTP $statusCode for $tryOrderId with $basePath", __METHOD__);
-                        continue;
-                    }
-
-                    $data = Json::decode($rawBody);
-
-                    if (!isset($data['code'])) {
-                        Yii::debug("Invalid response format", __METHOD__);
-                        continue;
-                    }
-
-                    // Success
-                    if ($data['code'] == 0 && !empty($data['data'])) {
-                        Yii::info("✓ Successfully got order details using: $tryOrderId with $basePath", __METHOD__);
-
-                        // Log payment data if available
-                        if (!empty($data['data']['payment'])) {
-                            Yii::info("Payment data found: " . Json::encode($data['data']['payment']), __METHOD__);
-                        } else {
-                            Yii::warning("No payment data in response", __METHOD__);
-                        }
-
-                        return $data['data'];
-                    }
-
-                    // Log specific errors
-                    if ($data['code'] == 36009009) {
-                        Yii::debug("Path not found (36009009), trying next variant", __METHOD__);
-                        continue;
-                    }
-
-                    Yii::debug("API Error: Code={$data['code']}, Message=" . ($data['message'] ?? 'Unknown'), __METHOD__);
-
-                } catch (\Exception $e) {
-                    Yii::debug("Exception with $basePath and $tryOrderId: " . $e->getMessage(), __METHOD__);
-                    continue;
-                }
-            }
-        }
-
-        Yii::error("All API attempts failed for order: $order_id", __METHOD__);
-        Yii::error("Tried order ID variants: " . implode(', ', $orderIdVariants), __METHOD__);
-
-        return null;
-    }
-
-    /**
-     * Alternative: ดึงข้อมูล Order จาก TikTok List Orders API
-     * ใช้เมื่อ Order Detail API ไม่ทำงาน
-     */
-    private function getTikTokOrderFromList($order_id, $shop_id, $app_key, $app_secret, $access_token)
-    {
         try {
-            Yii::info("Trying to get order from List Orders API: $order_id", __METHOD__);
+            // Clean order ID (remove underscore if exists)
+            $cleanOrderId = $order_id;
+            if (strpos($order_id, '_') !== false) {
+                $parts = explode('_', $order_id);
+                $cleanOrderId = $parts[0]; // Try first part
+                Yii::info("Cleaned order ID from $order_id to $cleanOrderId", __METHOD__);
+            }
 
             $timestamp = time();
-            $path = "/order/202309/orders/search";
+
+            // Use Finance API endpoint
+            $path = "/finance/202501/orders/{$cleanOrderId}/statement_transactions";
 
             $params = [
                 'app_key' => $app_key,
@@ -217,163 +104,220 @@ class TestSyncService
                 'access_token' => $access_token,
             ];
 
-            // Try different order ID formats in search
-            $searchOrderIds = [$order_id];
-            if (strpos($order_id, '_') !== false) {
-                $parts = explode('_', $order_id);
-                $searchOrderIds = array_merge($searchOrderIds, $parts);
+            ksort($params);
+
+            // Generate signature
+            $sign_string = $path;
+            foreach ($params as $key => $value) {
+                if ($key != 'access_token' && $key != 'sign') {
+                    $sign_string .= $key . $value;
+                }
+            }
+            $sign = hash_hmac('sha256', $sign_string, $app_secret);
+
+            $url = "https://open-api.tiktokglobalshop.com" . $path;
+            $queryParams = array_merge($params, ['sign' => $sign]);
+
+            Yii::info("Calling Finance API: $url", __METHOD__);
+
+            $response = $this->httpClient->get($url, [
+                'query' => $queryParams,
+                'timeout' => 30,
+                'http_errors' => false,
+                'headers' => [
+                    'Content-Type' => 'application/json',
+                ]
+            ]);
+
+            $statusCode = $response->getStatusCode();
+            $rawBody = (string)$response->getBody();
+
+            Yii::debug("Response Status: $statusCode", __METHOD__);
+            Yii::debug("Response Body: " . substr($rawBody, 0, 1000), __METHOD__);
+
+            if ($statusCode !== 200) {
+                Yii::error("HTTP Error $statusCode for order $order_id", __METHOD__);
+                return null;
             }
 
-            foreach ($searchOrderIds as $searchId) {
-                $body = [
-                    'order_id_list' => [$searchId],
-                    'page_size' => 1,
-                ];
+            $data = Json::decode($rawBody);
 
-                ksort($params);
+            if (!isset($data['code'])) {
+                Yii::error("Invalid response format", __METHOD__);
+                return null;
+            }
 
-                // Generate signature
-                $sign_string = $path;
-                foreach ($params as $key => $value) {
-                    if ($key != 'access_token' && $key != 'sign') {
-                        $sign_string .= $key . $value;
+            if ($data['code'] != 0) {
+                Yii::warning("API Error: Code={$data['code']}, Message=" . ($data['message'] ?? 'Unknown'), __METHOD__);
+
+                // If order ID with underscore didn't work, try second part
+                if (strpos($order_id, '_') !== false && $cleanOrderId != $order_id) {
+                    $parts = explode('_', $order_id);
+                    if (count($parts) > 1) {
+                        Yii::info("Retrying with second part of order ID", __METHOD__);
+                        return $this->getTikTokOrderTransactions($parts[1], $shop_id, $app_key, $app_secret, $access_token);
                     }
                 }
-                $sign_string .= json_encode($body);
-                $sign = hash_hmac('sha256', $sign_string, $app_secret);
 
-                $url = "https://open-api.tiktokglobalshop.com" . $path;
-                $queryParams = array_merge($params, ['sign' => $sign]);
-
-                Yii::debug("Searching for order: $searchId", __METHOD__);
-
-                $response = $this->httpClient->post($url, [
-                    'query' => $queryParams,
-                    'json' => $body,
-                    'timeout' => 30,
-                    'http_errors' => false,
-                ]);
-
-                $statusCode = $response->getStatusCode();
-                if ($statusCode !== 200) {
-                    continue;
-                }
-
-                $rawBody = (string)$response->getBody();
-                $data = Json::decode($rawBody);
-
-                if (isset($data['code']) && $data['code'] == 0 && !empty($data['data']['orders'])) {
-                    $orderData = $data['data']['orders'][0];
-                    Yii::info("✓ Found order using search with ID: $searchId", __METHOD__);
-                    return $orderData;
-                }
+                return null;
             }
 
-            Yii::warning("Could not find order in List Orders API", __METHOD__);
-            return null;
+            if (empty($data['data'])) {
+                Yii::warning("Empty data returned for order $order_id", __METHOD__);
+                return null;
+            }
+
+            Yii::info("✓ Successfully got transaction details for order $order_id", __METHOD__);
+            return $data['data'];
 
         } catch (\Exception $e) {
-            Yii::error("Error getting order from list: " . $e->getMessage(), __METHOD__);
+            Yii::error("Exception getting transactions for order $order_id: " . $e->getMessage(), __METHOD__);
+            Yii::error("Stack trace: " . $e->getTraceAsString(), __METHOD__);
             return null;
         }
     }
 
     /**
-     * Enhanced: Process TikTok order fees with better fallback
+     * Process TikTok order fees from Finance API transaction data
+     * @param int $channel_id
+     * @param Order $order
+     * @param array $transactionData
+     * @param string $shop_id
+     * @return bool
      */
-    private function processTikTokOrderFeesEnhanced($channel_id, $order, $orderDetails, $shop_id)
+    private function processTikTokOrderTransactions($channel_id, $order, $transactionData, $shop_id)
     {
         try {
-            // Check if orderDetails has payment data
-            $payment = $orderDetails['payment'] ?? [];
+            Yii::info("Processing transaction data for order: {$order->order_id}", __METHOD__);
+            Yii::debug("Transaction data: " . Json::encode($transactionData), __METHOD__);
 
-            if (empty($payment)) {
-                Yii::warning("No payment data in order details for {$order->order_id}", __METHOD__);
+            // Extract main amounts
+            $revenue_amount = (float)($transactionData['revenue_amount'] ?? 0);
+            $fee_and_tax_amount = (float)($transactionData['fee_and_tax_amount'] ?? 0);
+            $shipping_cost_amount = (float)($transactionData['shipping_cost_amount'] ?? 0);
+            $settlement_amount = (float)($transactionData['settlement_amount'] ?? 0);
 
-                // Try to extract basic info from order details
-                if (!empty($orderDetails['order_amount'])) {
-                    $orderAmount = (float)($orderDetails['order_amount'] ?? 0);
-                    $payment = [
-                        'subtotal' => $orderAmount,
-                        'total_fee' => 0, // Will estimate
-                    ];
-                    Yii::info("Using basic order amount: $orderAmount", __METHOD__);
-                } else {
-                    return false;
-                }
+            Yii::info("Order {$order->order_id} amounts:", __METHOD__);
+            Yii::info("  Revenue: $revenue_amount", __METHOD__);
+            Yii::info("  Fee & Tax: $fee_and_tax_amount", __METHOD__);
+            Yii::info("  Shipping Cost: $shipping_cost_amount", __METHOD__);
+            Yii::info("  Settlement: $settlement_amount", __METHOD__);
+
+            // Get SKU transactions (detailed breakdown)
+            $sku_transactions = $transactionData['sku_transactions'] ?? [];
+
+            if (empty($sku_transactions)) {
+                Yii::warning("No SKU transactions found", __METHOD__);
+                return false;
             }
 
-            Yii::debug("Payment data: " . Json::encode($payment), __METHOD__);
+            // Sum up all fees from all SKU transactions
+            $totalCommission = 0;
+            $totalTransactionFee = 0;
+            $totalAffiliateFee = 0;
+            $totalServiceFee = 0;
+            $totalTax = 0;
+            $totalShippingCost = 0;
 
-            // Extract fee information
-            $total_fee = (float)($payment['total_fee'] ?? 0);
-            $commission_fee = (float)($payment['commission_fee'] ?? 0);
-            $transaction_fee = (float)($payment['transaction_fee'] ?? 0);
-            $affiliate_commission = (float)($payment['affiliate_commission'] ?? 0);
-            $affiliate_partner_commission = (float)($payment['affiliate_partner_commission'] ?? 0);
-            $retail_delivery_fee = (float)($payment['retail_delivery_fee'] ?? 0);
-            $shipping_insurance_fee = (float)($payment['shipping_insurance_fee'] ?? 0);
-            $small_order_cost = (float)($payment['small_order_cost'] ?? 0);
-            $seller_income = (float)($payment['seller_income'] ?? 0);
+            foreach ($sku_transactions as $sku) {
+                $feeBreakdown = $sku['fee_tax_breakdown']['fee'] ?? [];
+                $taxBreakdown = $sku['fee_tax_breakdown']['tax'] ?? [];
 
-            // Other payment details
-            $subtotal = (float)($payment['subtotal'] ?? 0);
-            $platform_discount = (float)($payment['platform_discount'] ?? 0);
-            $seller_discount = (float)($payment['seller_discount'] ?? 0);
-            $shipping_fee = (float)($payment['shipping_fee'] ?? 0);
-            $shipping_fee_seller_discount = (float)($payment['shipping_fee_seller_discount'] ?? 0);
-            $shipping_fee_platform_discount = (float)($payment['shipping_fee_platform_discount'] ?? 0);
-            $taxes = (float)($payment['taxes'] ?? 0);
+                // Commission fees
+                $platformCommission = abs((float)($feeBreakdown['platform_commission_amount'] ?? 0));
+                $referralFee = abs((float)($feeBreakdown['referral_fee_amount'] ?? 0));
+                $totalCommission += $platformCommission + $referralFee;
 
-            Yii::info("Order {$order->order_id} fees breakdown:", __METHOD__);
-            Yii::info("  Subtotal: $subtotal", __METHOD__);
-            Yii::info("  Commission: $commission_fee", __METHOD__);
-            Yii::info("  Transaction: $transaction_fee", __METHOD__);
-            Yii::info("  Total Fee: $total_fee", __METHOD__);
-            Yii::info("  Seller Income: $seller_income", __METHOD__);
+                // Transaction fees
+                $transactionFee = abs((float)($feeBreakdown['transaction_fee_amount'] ?? 0));
+                $creditCardFee = abs((float)($feeBreakdown['credit_card_handling_fee_amount'] ?? 0));
+                $totalTransactionFee += $transactionFee + $creditCardFee;
 
-            // Build fees array
+                // Affiliate fees
+                $affiliateCommission = abs((float)($feeBreakdown['affiliate_commission_amount'] ?? 0));
+                $affiliatePartner = abs((float)($feeBreakdown['affiliate_partner_commission_amount'] ?? 0));
+                $affiliateAds = abs((float)($feeBreakdown['affiliate_ads_commission_amount'] ?? 0));
+                $totalAffiliateFee += $affiliateCommission + $affiliatePartner + $affiliateAds;
+
+                // Service fees
+                $sfpServiceFee = abs((float)($feeBreakdown['sfp_service_fee_amount'] ?? 0));
+                $liveSpecialsFee = abs((float)($feeBreakdown['live_specials_fee_amount'] ?? 0));
+                $mallServiceFee = abs((float)($feeBreakdown['mall_service_fee_amount'] ?? 0));
+                $voucherServiceFee = abs((float)($feeBreakdown['voucher_xtra_service_fee_amount'] ?? 0));
+                $flashSalesFee = abs((float)($feeBreakdown['flash_sales_service_fee_amount'] ?? 0));
+                $cofundedPromoFee = abs((float)($feeBreakdown['cofunded_promotion_service_fee_amount'] ?? 0));
+                $preOrderFee = abs((float)($feeBreakdown['pre_order_service_fee_amount'] ?? 0));
+                $tspCommission = abs((float)($feeBreakdown['tsp_commission_amount'] ?? 0));
+                $dtHandlingFee = abs((float)($feeBreakdown['dt_handling_fee_amount'] ?? 0));
+                $eprPobFee = abs((float)($feeBreakdown['epr_pob_service_fee_amount'] ?? 0));
+                $feePerItem = abs((float)($feeBreakdown['fee_per_item_sold_amount'] ?? 0));
+                $paylaterFee = abs((float)($feeBreakdown['seller_paylater_handling_fee_amount'] ?? 0));
+                $creatorBonus = abs((float)($feeBreakdown['cofunded_creator_bonus_amount'] ?? 0));
+                $dynamicCommission = abs((float)($feeBreakdown['dynamic_commission_amount'] ?? 0));
+                $externalAffiliateFee = abs((float)($feeBreakdown['external_affiliate_marketing_fee_amount'] ?? 0));
+                $installationFee = abs((float)($feeBreakdown['installation_service_fee'] ?? 0));
+                $campaignResourceFee = abs((float)($feeBreakdown['campaign_resource_fee'] ?? 0));
+
+                $totalServiceFee += $sfpServiceFee + $liveSpecialsFee + $mallServiceFee + $voucherServiceFee +
+                    $flashSalesFee + $cofundedPromoFee + $preOrderFee + $tspCommission +
+                    $dtHandlingFee + $eprPobFee + $feePerItem + $paylaterFee +
+                    $creatorBonus + $dynamicCommission + $externalAffiliateFee +
+                    $installationFee + $campaignResourceFee;
+
+                // Taxes
+                $vat = abs((float)($taxBreakdown['vat_amount'] ?? 0));
+                $importVat = abs((float)($taxBreakdown['import_vat_amount'] ?? 0));
+                $customsDuty = abs((float)($taxBreakdown['customs_duty_amount'] ?? 0));
+                $customsClearance = abs((float)($taxBreakdown['customs_clearance_amount'] ?? 0));
+                $sst = abs((float)($taxBreakdown['sst_amount'] ?? 0));
+                $gst = abs((float)($taxBreakdown['gst_amount'] ?? 0));
+                $iva = abs((float)($taxBreakdown['iva_amount'] ?? 0));
+                $isr = abs((float)($taxBreakdown['isr_amount'] ?? 0));
+                $antiDumping = abs((float)($taxBreakdown['anti_dumping_duty_amount'] ?? 0));
+                $localVat = abs((float)($taxBreakdown['local_vat_amount'] ?? 0));
+                $pit = abs((float)($taxBreakdown['pit_amount'] ?? 0));
+
+                $totalTax += $vat + $importVat + $customsDuty + $customsClearance + $sst +
+                    $gst + $iva + $isr + $antiDumping + $localVat + $pit;
+
+                // Shipping costs
+                $skuShippingCost = abs((float)($sku['shipping_cost_amount'] ?? 0));
+                $totalShippingCost += $skuShippingCost;
+            }
+
+            Yii::info("Fee breakdown:", __METHOD__);
+            Yii::info("  Commission: $totalCommission", __METHOD__);
+            Yii::info("  Transaction: $totalTransactionFee", __METHOD__);
+            Yii::info("  Affiliate: $totalAffiliateFee", __METHOD__);
+            Yii::info("  Service: $totalServiceFee", __METHOD__);
+            Yii::info("  Tax: $totalTax", __METHOD__);
+            Yii::info("  Shipping: $totalShippingCost", __METHOD__);
+
+            // Create fee transactions
             $fees = [];
 
-            if ($commission_fee > 0) {
-                $fees['COMMISSION_FEE'] = $commission_fee;
+            if ($totalCommission > 0) {
+                $fees['COMMISSION_FEE'] = $totalCommission;
             }
 
-            if ($transaction_fee > 0) {
-                $fees['TRANSACTION_FEE'] = $transaction_fee;
+            if ($totalTransactionFee > 0) {
+                $fees['TRANSACTION_FEE'] = $totalTransactionFee;
             }
 
-            $totalAffiliateFee = $affiliate_commission + $affiliate_partner_commission;
             if ($totalAffiliateFee > 0) {
                 $fees['AFFILIATE_FEE'] = $totalAffiliateFee;
             }
 
-            if ($shipping_fee_seller_discount > 0) {
-                $fees['SHIPPING_FEE'] = $shipping_fee_seller_discount;
-            }
-
-            $totalServiceFee = $retail_delivery_fee + $shipping_insurance_fee + $small_order_cost;
             if ($totalServiceFee > 0) {
                 $fees['SERVICE_FEE'] = $totalServiceFee;
             }
 
-            // If no breakdown but has total_fee
-            if (empty($fees) && $total_fee > 0) {
-                $fees['COMMISSION_FEE'] = $total_fee;
-                Yii::info("Using total_fee as commission_fee: $total_fee", __METHOD__);
-            }
-
-            // If still no fees and have subtotal, estimate
-            if (empty($fees) && $subtotal > 0) {
-                $estimatedCommission = $subtotal * 0.05; // 5%
-                $estimatedTransaction = $subtotal * 0.02; // 2%
-                $fees['COMMISSION_FEE'] = $estimatedCommission;
-                $fees['TRANSACTION_FEE'] = $estimatedTransaction;
-                Yii::warning("No fee data, using estimates for order {$order->order_id}", __METHOD__);
+            if ($totalShippingCost > 0) {
+                $fees['SHIPPING_FEE'] = $totalShippingCost;
             }
 
             if (empty($fees)) {
-                Yii::warning("No fees could be determined for order {$order->order_id}", __METHOD__);
+                Yii::warning("No fees to record for order {$order->order_id}", __METHOD__);
                 return false;
             }
 
@@ -399,7 +343,7 @@ class TestSyncService
                 $feeTransaction->transaction_type = 'ORDER_FEE';
                 $feeTransaction->status = 'COMPLETED';
                 $feeTransaction->reason = str_replace('_', ' ', $category) . ' for order ' . $order->order_id;
-                $feeTransaction->amount = -$amount;
+                $feeTransaction->amount = -$amount; // Negative for expense
                 $feeTransaction->current_balance = 0;
                 $feeTransaction->order_sn = $order->order_id;
                 $feeTransaction->transaction_date = $order->order_date;
@@ -421,17 +365,12 @@ class TestSyncService
             $order->payment_fee = $fees['AFFILIATE_FEE'] ?? 0;
             $order->service_fee = $fees['SERVICE_FEE'] ?? 0;
 
-            if ($seller_income > 0) {
-                $order->actual_income = $seller_income;
+            // Calculate actual income
+            if ($settlement_amount > 0) {
+                $order->actual_income = $settlement_amount;
             } else {
-                $total_fees_amount = array_sum($fees);
-                $order->actual_income = $order->total_amount - $total_fees_amount;
-            }
-
-            if ($subtotal > 0) {
-                $order->buyer_paid_amount = $subtotal + $shipping_fee - $platform_discount - $seller_discount + $taxes;
-                $order->seller_discount = $seller_discount + $shipping_fee_seller_discount;
-                $order->shopee_discount = $platform_discount + $shipping_fee_platform_discount;
+                $total_fees_amount = array_sum($fees) + $totalTax;
+                $order->actual_income = $revenue_amount - $total_fees_amount - $totalShippingCost;
             }
 
             $order->updated_at = date('Y-m-d H:i:s');
@@ -440,6 +379,7 @@ class TestSyncService
                 Yii::info("✓ Updated order {$order->order_id}", __METHOD__);
                 Yii::info("  Commission: {$order->commission_fee}", __METHOD__);
                 Yii::info("  Transaction: {$order->transaction_fee}", __METHOD__);
+                Yii::info("  Service: {$order->service_fee}", __METHOD__);
                 Yii::info("  Actual Income: {$order->actual_income}", __METHOD__);
             } else {
                 Yii::error("✗ Failed to update order", __METHOD__);
@@ -448,16 +388,16 @@ class TestSyncService
             return $transactionCreated;
 
         } catch (\Exception $e) {
-            Yii::error("Exception processing fees for {$order->order_id}: " . $e->getMessage(), __METHOD__);
+            Yii::error("Exception processing transactions for {$order->order_id}: " . $e->getMessage(), __METHOD__);
             Yii::error("Stack trace: " . $e->getTraceAsString(), __METHOD__);
             return false;
         }
     }
 
     /**
-     * Main sync function with enhanced order detail retrieval
+     * Sync TikTok order income using Finance API
      */
-    public function syncTikTokOrderIncomeEnhanced($channel, $fromTime = null, $toTime = null)
+    public function syncTikTokOrderIncomeFinanceAPI($channel, $fromTime = null, $toTime = null)
     {
         $channel_id = is_object($channel) ? $channel->id : (int)$channel;
 
@@ -494,10 +434,13 @@ class TestSyncService
         $shop_id = $tokenModel->shop_id;
         $access_token = $tokenModel->access_token;
 
+        Yii::info("=== Syncing fees using Finance API ===", __METHOD__);
+        Yii::info("Total orders to process: " . count($orders), __METHOD__);
+
         $count = 0;
         $successCount = 0;
-
-        Yii::info("Processing " . count($orders) . " orders", __METHOD__);
+        $skipCount = 0;
+        $failCount = 0;
 
         foreach ($orders as $order) {
             $count++;
@@ -509,44 +452,91 @@ class TestSyncService
                 ->exists();
 
             if ($hasTransaction) {
+                $skipCount++;
+                Yii::debug("Order {$order->order_id} already has transactions", __METHOD__);
                 continue;
             }
 
             try {
-                // Method 1: Try detail API
-                $orderDetails = $this->getTikTokOrderDetailFixed($order->order_id, $shop_id, $app_key, $app_secret, $access_token);
+                // Get transaction details from Finance API
+                $transactionData = $this->getTikTokOrderTransactions(
+                    $order->order_id,
+                    $shop_id,
+                    $app_key,
+                    $app_secret,
+                    $access_token
+                );
 
-                // Method 2: Try list API if detail fails
-                if (!$orderDetails) {
-                    Yii::info("Trying List Orders API for {$order->order_id}", __METHOD__);
-                    $orderDetails = $this->getTikTokOrderFromList($order->order_id, $shop_id, $app_key, $app_secret, $access_token);
-                }
-
-                if ($orderDetails) {
-                    if ($this->processTikTokOrderFeesEnhanced($channel_id, $order, $orderDetails, $shop_id)) {
+                if ($transactionData) {
+                    if ($this->processTikTokOrderTransactions($channel_id, $order, $transactionData, $shop_id)) {
                         $successCount++;
+                        Yii::info("✓ Success: {$order->order_id}", __METHOD__);
+                    } else {
+                        $failCount++;
+                        Yii::warning("✗ Failed to process: {$order->order_id}", __METHOD__);
                     }
                 } else {
-                    // Fallback: Estimated fees
-                    Yii::warning("Using estimated fees for {$order->order_id}", __METHOD__);
-//                    if ($this->createEstimatedFeesForOrder($channel_id, $order, $shop_id)) {
-//                        $successCount++;
-//                    }
+                    $failCount++;
+                    Yii::warning("✗ No transaction data: {$order->order_id}", __METHOD__);
+
+                    // Fallback: Use estimated fees
+                    if ($this->createEstimatedFeesForOrder($channel_id, $order, $shop_id)) {
+                        Yii::info("Created estimated fees for {$order->order_id}", __METHOD__);
+                    }
                 }
 
-                usleep(300000);
+                usleep(300000); // 0.3 seconds delay
 
             } catch (\Exception $e) {
+                $failCount++;
                 Yii::error("Error: " . $e->getMessage(), __METHOD__);
                 continue;
             }
 
+            // Progress report
             if ($count % 10 == 0) {
-                Yii::info("Progress: {$count}/" . count($orders) . " (Success: {$successCount})", __METHOD__);
+                Yii::info("Progress: {$count}/" . count($orders) . " (Success: {$successCount}, Skip: {$skipCount}, Fail: {$failCount})", __METHOD__);
             }
         }
 
-        Yii::info("Complete: {$successCount}/" . count($orders) . " orders processed", __METHOD__);
+        Yii::info("=== Sync Complete ===", __METHOD__);
+        Yii::info("Total: " . count($orders), __METHOD__);
+        Yii::info("Success: {$successCount}", __METHOD__);
+        Yii::info("Skipped: {$skipCount}", __METHOD__);
+        Yii::info("Failed: {$failCount}", __METHOD__);
+
         return $successCount;
+    }
+
+    /**
+     * Main sync function - updated to use Finance API
+     */
+    private function syncTikTokTransactionFeesV2($channel, $fromTime = null, $toTime = null)
+    {
+        $channel_id = is_object($channel) ? $channel->id : (int)$channel;
+
+        if (is_int($channel)) {
+            $channel = OnlineChannel::findOne($channel_id);
+            if (!$channel) {
+                Yii::error("Channel not found: $channel_id", __METHOD__);
+                return 0;
+            }
+        }
+
+        if ($fromTime === null) {
+            $fromTime = strtotime('-30 day');
+        }
+        if ($toTime === null) {
+            $toTime = time();
+        }
+
+        Yii::info("=== Starting TikTok Fee Sync (Finance API) ===", __METHOD__);
+        Yii::info("Period: " . date('Y-m-d', $fromTime) . " to " . date('Y-m-d', $toTime), __METHOD__);
+
+        // Use Finance API method
+        $totalCount = $this->syncTikTokOrderIncomeFinanceAPI($channel, $fromTime, $toTime);
+
+        Yii::info("Total synced: {$totalCount} orders", __METHOD__);
+        return $totalCount;
     }
 }
