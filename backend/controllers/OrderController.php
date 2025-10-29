@@ -273,6 +273,16 @@ class OrderController extends Controller
         return $this->redirect(['index']);
     }
 
+    public function actionSyncTest(){
+        try{
+            $service = new \backend\services\TestSyncService();
+            $res = $service->syncTikTokTransactionFees(2);
+        }catch (\Exception $e){
+            Yii::$app->session->setFlash('error', $e->getMessage());
+            echo $e->getMessage();
+        }
+    }
+
     protected function findModel($id)
     {
         if (($model = Order::findOne($id)) !== null) {
