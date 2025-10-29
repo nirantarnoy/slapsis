@@ -273,7 +273,7 @@ class OrderController extends Controller
         return $this->redirect(['index']);
     }
 
-    public function actionSyncTest(){
+    public function actionSyncTestNew(){
         try{
             $service = new \backend\services\TestSyncService();
             $resx = $service->syncTikTokTransactionFeesx(2);
