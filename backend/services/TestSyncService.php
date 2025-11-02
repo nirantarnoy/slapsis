@@ -737,10 +737,27 @@ class TestSyncService
                 ? (string)$transaction['status']
                 : 'COMPLETED';
 
-            // Order reference
-            $order_sn = $transaction['order_sn'] ?? null;
+            // Order reference - VALIDATE BEFORE SETTING
+            $order_sn = $transaction['order_sn'] ?? $transaction['order_id'] ?? null;
+
             if (!empty($order_sn)) {
-                $feeTransaction->order_sn = (string)$order_sn;
+                $order_sn = (string)$order_sn;
+
+                // Check if order exists in system
+                $orderExists = Order::find()
+                    ->where(['order_sn' => $order_sn])
+                    ->orWhere(['order_id' => $order_sn])
+                    ->exists();
+
+                if ($orderExists) {
+                    // Order found - set it
+                    $feeTransaction->order_sn = $order_sn;
+                    Yii::debug("Order found for transaction: $order_sn", __METHOD__);
+                } else {
+                    // Order not found - store in reason but don't set order_sn
+                    $feeTransaction->reason .= " [Order: $order_sn]";
+                    Yii::debug("Order not in system: $order_sn (stored in reason)", __METHOD__);
+                }
             }
 
             // Transaction date
@@ -757,7 +774,23 @@ class TestSyncService
                 Yii::info("Saved: $transaction_id (Type: {$feeTransaction->transaction_type}, Amount: $amount)", __METHOD__);
                 return true;
             } else {
-                Yii::error("Failed to save $transaction_id: " . Json::encode($feeTransaction->errors), __METHOD__);
+                $errors = Json::encode($feeTransaction->errors);
+                Yii::error("Failed to save $transaction_id: $errors", __METHOD__);
+
+                // Try to save without order_sn if validation failed on order_sn
+                if (isset($feeTransaction->errors['order_sn'])) {
+                    Yii::warning("Retrying save without order_sn for $transaction_id", __METHOD__);
+                    if (!empty($feeTransaction->order_sn)) {
+                        $feeTransaction->reason .= " [Failed Order: {$feeTransaction->order_sn}]";
+                        $feeTransaction->order_sn = null;
+
+                        if ($feeTransaction->save()) {
+                            Yii::info("Saved without order_sn: $transaction_id", __METHOD__);
+                            return true;
+                        }
+                    }
+                }
+
                 return false;
             }
 
@@ -1664,6 +1697,21 @@ class TestSyncService
                 $errors = Json::encode($feeTransaction->errors);
                 Yii::error("✗ Failed to save $transaction_id: $errors", __METHOD__);
                 Yii::debug("Transaction data: " . Json::encode($transaction), __METHOD__);
+
+                // Try to save without order_sn if validation failed on order_sn
+                if (isset($feeTransaction->errors['order_sn'])) {
+                    Yii::warning("Retrying save without order_sn for $transaction_id", __METHOD__);
+                    if (!empty($feeTransaction->order_sn)) {
+                        $feeTransaction->reason .= " [Failed Order: {$feeTransaction->order_sn}]";
+                        $feeTransaction->order_sn = null;
+
+                        if ($feeTransaction->save()) {
+                            Yii::info("✓ Saved without order_sn: $transaction_id", __METHOD__);
+                            return true;
+                        }
+                    }
+                }
+
                 return false;
             }
 
@@ -1878,11 +1926,5 @@ class TestSyncService
 
         return $results;
     }
-
-
-
-
-
-
 
 }
