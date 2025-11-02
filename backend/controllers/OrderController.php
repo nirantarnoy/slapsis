@@ -243,7 +243,7 @@ class OrderController extends Controller
 //                "ดึงข้อมูล Sync Settlement เรียบร้อยแล้ว จำนวน {$result['transaction_count']} รายการ"
 //            );
             Yii::$app->session->setFlash('success',
-                "ดึงข้อมูล Shopee Sync Settlement เรียบร้อยแล้ว จำนวน {$result['period']['to']} รายการ"
+                "ดึงข้อมูล Shopee Sync Settlement เรียบร้อยแล้ว จำนวน {$result['transaction_count']} รายการ"
             );
             print_r($result);return;
         } catch (\Exception $e) {
