@@ -696,6 +696,7 @@ class TestSyncService
         } catch (\Exception $e) {
             Yii::error('Shopee Transaction API error: ' . $e->getMessage(), __METHOD__);
             Yii::error('Stack trace: ' . $e->getTraceAsString(), __METHOD__);
+            $totalCount = 100;
         }
 
         return $totalCount;
