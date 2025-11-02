@@ -773,99 +773,99 @@ class TestSyncService
      * @param array $transaction
      * @return string
      */
-    private function categorizeShopeeTransaction($transaction)
-    {
-        $type = strtolower($transaction['transaction_type'] ?? '');
-        $reason = strtolower($transaction['reason'] ?? '');
-        $amount = (float)($transaction['amount'] ?? 0);
-
-        // Only categorize expenses (negative amounts)
-        if ($amount >= 0) {
-            return 'INCOME';
-        }
-
-        // Shopee transaction types
-        // Commission fees
-        if (strpos($type, 'commission') !== false ||
-            strpos($reason, 'commission') !== false ||
-            strpos($reason, 'seller commission') !== false) {
-            return 'COMMISSION_FEE';
-        }
-
-        // Transaction fees
-        if (strpos($type, 'transaction_fee') !== false ||
-            strpos($reason, 'transaction fee') !== false ||
-            strpos($reason, 'payment fee') !== false) {
-            return 'TRANSACTION_FEE';
-        }
-
-        // Service fees
-        if (strpos($type, 'service_fee') !== false ||
-            strpos($reason, 'service fee') !== false ||
-            strpos($reason, 'platform fee') !== false) {
-            return 'SERVICE_FEE';
-        }
-
-        // Shipping fees
-        if (strpos($type, 'shipping') !== false ||
-            strpos($reason, 'shipping') !== false ||
-            strpos($reason, 'logistic') !== false ||
-            strpos($reason, 'delivery') !== false) {
-            return 'SHIPPING_FEE';
-        }
-
-        // Campaign/Marketing fees
-        if (strpos($type, 'campaign') !== false ||
-            strpos($type, 'ads') !== false ||
-            strpos($type, 'marketing') !== false ||
-            strpos($reason, 'promotion') !== false ||
-            strpos($reason, 'voucher') !== false ||
-            strpos($reason, 'discount') !== false ||
-            strpos($reason, 'flash sale') !== false ||
-            strpos($reason, 'campaign') !== false) {
-            return 'CAMPAIGN_FEE';
-        }
-
-        // Penalty/Fine
-        if (strpos($type, 'penalty') !== false ||
-            strpos($type, 'fine') !== false ||
-            strpos($reason, 'penalty') !== false ||
-            strpos($reason, 'fine') !== false ||
-            strpos($reason, 'violation') !== false) {
-            return 'PENALTY_FEE';
-        }
-
-        // Refund
-        if (strpos($type, 'refund') !== false ||
-            strpos($type, 'return') !== false ||
-            strpos($reason, 'refund') !== false ||
-            strpos($reason, 'return') !== false) {
-            return 'REFUND';
-        }
-
-        // Adjustment
-        if (strpos($type, 'adjustment') !== false ||
-            strpos($reason, 'adjustment') !== false ||
-            strpos($reason, 'correction') !== false) {
-            return 'ADJUSTMENT';
-        }
-
-        // Withdrawal
-        if (strpos($type, 'withdrawal') !== false ||
-            strpos($type, 'payout') !== false ||
-            strpos($reason, 'withdrawal') !== false ||
-            strpos($reason, 'transfer') !== false) {
-            return 'WITHDRAWAL';
-        }
-
-        // Payment fee (separate from transaction fee)
-        if (strpos($type, 'payment') !== false && strpos($type, 'fee') !== false) {
-            return 'PAYMENT_FEE';
-        }
-
-        // Others
-        return 'OTHER';
-    }
+//    private function categorizeShopeeTransaction($transaction)
+//    {
+//        $type = strtolower($transaction['transaction_type'] ?? '');
+//        $reason = strtolower($transaction['reason'] ?? '');
+//        $amount = (float)($transaction['amount'] ?? 0);
+//
+//        // Only categorize expenses (negative amounts)
+//        if ($amount >= 0) {
+//            return 'INCOME';
+//        }
+//
+//        // Shopee transaction types
+//        // Commission fees
+//        if (strpos($type, 'commission') !== false ||
+//            strpos($reason, 'commission') !== false ||
+//            strpos($reason, 'seller commission') !== false) {
+//            return 'COMMISSION_FEE';
+//        }
+//
+//        // Transaction fees
+//        if (strpos($type, 'transaction_fee') !== false ||
+//            strpos($reason, 'transaction fee') !== false ||
+//            strpos($reason, 'payment fee') !== false) {
+//            return 'TRANSACTION_FEE';
+//        }
+//
+//        // Service fees
+//        if (strpos($type, 'service_fee') !== false ||
+//            strpos($reason, 'service fee') !== false ||
+//            strpos($reason, 'platform fee') !== false) {
+//            return 'SERVICE_FEE';
+//        }
+//
+//        // Shipping fees
+//        if (strpos($type, 'shipping') !== false ||
+//            strpos($reason, 'shipping') !== false ||
+//            strpos($reason, 'logistic') !== false ||
+//            strpos($reason, 'delivery') !== false) {
+//            return 'SHIPPING_FEE';
+//        }
+//
+//        // Campaign/Marketing fees
+//        if (strpos($type, 'campaign') !== false ||
+//            strpos($type, 'ads') !== false ||
+//            strpos($type, 'marketing') !== false ||
+//            strpos($reason, 'promotion') !== false ||
+//            strpos($reason, 'voucher') !== false ||
+//            strpos($reason, 'discount') !== false ||
+//            strpos($reason, 'flash sale') !== false ||
+//            strpos($reason, 'campaign') !== false) {
+//            return 'CAMPAIGN_FEE';
+//        }
+//
+//        // Penalty/Fine
+//        if (strpos($type, 'penalty') !== false ||
+//            strpos($type, 'fine') !== false ||
+//            strpos($reason, 'penalty') !== false ||
+//            strpos($reason, 'fine') !== false ||
+//            strpos($reason, 'violation') !== false) {
+//            return 'PENALTY_FEE';
+//        }
+//
+//        // Refund
+//        if (strpos($type, 'refund') !== false ||
+//            strpos($type, 'return') !== false ||
+//            strpos($reason, 'refund') !== false ||
+//            strpos($reason, 'return') !== false) {
+//            return 'REFUND';
+//        }
+//
+//        // Adjustment
+//        if (strpos($type, 'adjustment') !== false ||
+//            strpos($reason, 'adjustment') !== false ||
+//            strpos($reason, 'correction') !== false) {
+//            return 'ADJUSTMENT';
+//        }
+//
+//        // Withdrawal
+//        if (strpos($type, 'withdrawal') !== false ||
+//            strpos($type, 'payout') !== false ||
+//            strpos($reason, 'withdrawal') !== false ||
+//            strpos($reason, 'transfer') !== false) {
+//            return 'WITHDRAWAL';
+//        }
+//
+//        // Payment fee (separate from transaction fee)
+//        if (strpos($type, 'payment') !== false && strpos($type, 'fee') !== false) {
+//            return 'PAYMENT_FEE';
+//        }
+//
+//        // Others
+//        return 'OTHER';
+//    }
 
     /**
      * Sync Shopee order income details using Order Income API
@@ -1394,4 +1394,478 @@ class TestSyncService
 
         return $summary;
     }
+
+
+
+    private function syncShopeeWalletTransactionsOfficial($channel, $fromTime, $toTime)
+    {
+        $channel_id = is_object($channel) ? $channel->id : (int)$channel;
+
+        if (is_int($channel)) {
+            $channel = OnlineChannel::findOne($channel_id);
+            if (!$channel) {
+                Yii::error("Channel not found: $channel_id", __METHOD__);
+                return 0;
+            }
+        }
+
+        $tokenModel = ShopeeToken::find()
+            ->where(['status' => 'active'])
+            ->orderBy(['created_at' => SORT_DESC])
+            ->one();
+
+        if (!$tokenModel) {
+            Yii::warning('No active Shopee token found', __METHOD__);
+            return 0;
+        }
+
+        // Check token expiry
+        if (strtotime($tokenModel->expires_at) < time()) {
+            if (!$this->refreshShopeeToken($tokenModel)) {
+                Yii::warning('Failed to refresh Shopee token', __METHOD__);
+                return 0;
+            }
+        }
+
+        $partner_id = 2012399;
+        $partner_key = 'shpk72476151525864414e4b6e475449626679624f695a696162696570417043';
+        $shop_id = $tokenModel->shop_id;
+        $access_token = $tokenModel->access_token;
+
+        Yii::info("=== Syncing Shopee Wallet Transactions (Official API) ===", __METHOD__);
+        Yii::info("Period: " . date('Y-m-d H:i:s', $fromTime) . " to " . date('Y-m-d H:i:s', $toTime), __METHOD__);
+        Yii::info("Shop ID: $shop_id", __METHOD__);
+
+        $totalCount = 0;
+        $page_no = 1;
+        $page_size = 100; // Max 100 per request
+
+        try {
+            do {
+                $timestamp = time();
+
+                // Official API endpoint (GET method)
+                $path = "/api/v2/payment/get_wallet_transaction_list";
+
+                // Generate sign according to documentation
+                // Format: partner_id + path + timestamp + access_token + shop_id
+                $base_string = $partner_id . $path . $timestamp . $access_token . $shop_id;
+                $sign = hash_hmac('sha256', $base_string, $partner_key);
+
+                // Query parameters (all in URL for GET request)
+                $params = [
+                    'partner_id' => (int)$partner_id,
+                    'shop_id' => (int)$shop_id,
+                    'sign' => $sign,
+                    'timestamp' => $timestamp,
+                    'access_token' => $access_token,
+                    'transaction_time_from' => (int)$fromTime,
+                    'transaction_time_to' => (int)$toTime,
+                    'page_no' => $page_no,
+                    'page_size' => $page_size,
+                ];
+
+                Yii::info("Fetching page $page_no (size: $page_size)", __METHOD__);
+                Yii::debug("Query params: " . Json::encode($params), __METHOD__);
+
+                // Use GET method (as per documentation)
+                $response = $this->httpClient->get('https://partner.shopeemobile.com' . $path, [
+                    'query' => $params,
+                    'timeout' => 30,
+                    'http_errors' => false,
+                ]);
+
+                $statusCode = $response->getStatusCode();
+                $rawBody = (string)$response->getBody();
+
+                Yii::debug("Response Status: $statusCode", __METHOD__);
+                Yii::debug("Response Body: " . substr($rawBody, 0, 1000), __METHOD__);
+
+                if ($statusCode !== 200) {
+                    Yii::error("HTTP Error: $statusCode", __METHOD__);
+                    Yii::error("Response: $rawBody", __METHOD__);
+                    break;
+                }
+
+                $data = Json::decode($rawBody);
+
+                // Check API error
+                if (isset($data['error']) && !empty($data['error'])) {
+                    Yii::error("Shopee API Error: {$data['error']}", __METHOD__);
+                    if (isset($data['message'])) {
+                        Yii::error("Error message: {$data['message']}", __METHOD__);
+                    }
+                    break;
+                }
+
+                // Get response data
+                $response_data = $data['response'] ?? [];
+                $transactionList = $response_data['transaction_list'] ?? [];
+                $more = $response_data['more'] ?? false;
+
+                if (empty($transactionList)) {
+                    Yii::info('No more transactions found', __METHOD__);
+                    break;
+                }
+
+                Yii::info("Processing " . count($transactionList) . " transactions from page $page_no", __METHOD__);
+
+                // Process each transaction
+                $pageSuccess = 0;
+                $pageSkip = 0;
+                $pageFail = 0;
+
+                foreach ($transactionList as $transaction) {
+                    $result = $this->processShopeeWalletTransactionSafe($channel_id, $transaction, $shop_id);
+
+                    if ($result === true) {
+                        $totalCount++;
+                        $pageSuccess++;
+                    } elseif ($result === 'skip') {
+                        $pageSkip++;
+                    } else {
+                        $pageFail++;
+                    }
+                }
+
+                Yii::info("Page $page_no: Success=$pageSuccess, Skip=$pageSkip, Fail=$pageFail", __METHOD__);
+
+                // Check if has more pages
+                if (!$more) {
+                    Yii::info("No more pages", __METHOD__);
+                    break;
+                }
+
+                $page_no++;
+                usleep(300000); // 0.3 second delay between pages
+
+            } while (true);
+
+            Yii::info("✓ Total synced: $totalCount wallet transactions", __METHOD__);
+
+        } catch (\Exception $e) {
+            Yii::error('Exception in wallet transaction sync: ' . $e->getMessage(), __METHOD__);
+            Yii::error('Stack trace: ' . $e->getTraceAsString(), __METHOD__);
+        }
+
+        return $totalCount;
+    }
+
+    /**
+     * Process Shopee wallet transaction safely (with order validation)
+     * @param int $channel_id
+     * @param array $transaction
+     * @param string $shop_id
+     * @return bool|string true=saved, 'skip'=already exists, false=failed
+     */
+    private function processShopeeWalletTransactionSafe($channel_id, $transaction, $shop_id)
+    {
+        try {
+            // Extract transaction ID
+            $transaction_id = $transaction['transaction_id'] ?? null;
+            if (empty($transaction_id)) {
+                Yii::warning("Missing transaction_id in: " . Json::encode($transaction), __METHOD__);
+                return false;
+            }
+
+            $transaction_id = (string)$transaction_id;
+
+            // Check if already exists
+            $existing = ShopeeTransaction::findOne(['transaction_id' => $transaction_id]);
+            if ($existing) {
+                Yii::debug("Transaction exists: $transaction_id", __METHOD__);
+                return 'skip';
+            }
+
+            // Create new transaction record
+            $feeTransaction = new ShopeeTransaction();
+            $feeTransaction->transaction_id = $transaction_id;
+            $feeTransaction->channel_id = $channel_id;
+            $feeTransaction->shop_id = (string)$shop_id;
+
+            // Transaction type
+            $transaction_type = $transaction['transaction_type'] ?? 'UNKNOWN';
+            $feeTransaction->transaction_type = (string)$transaction_type;
+
+            // Reason/Description
+            $reason = $transaction['reason'] ?? $transaction['description'] ?? '';
+            if (empty($reason)) {
+                $reason = $transaction_type;
+            }
+            $feeTransaction->reason = (string)$reason;
+
+            // Amount
+            $amount = (float)($transaction['amount'] ?? 0);
+            $feeTransaction->amount = $amount;
+
+            // Current balance
+            $feeTransaction->current_balance = (float)($transaction['current_balance'] ?? 0);
+
+            // Status
+            $feeTransaction->status = isset($transaction['status'])
+                ? (string)$transaction['status']
+                : 'COMPLETED';
+
+            // Order reference - VALIDATE BEFORE SETTING
+            $order_sn = $transaction['order_sn'] ?? $transaction['order_id'] ?? null;
+
+            if (!empty($order_sn)) {
+                $order_sn = (string)$order_sn;
+
+                // Check if order exists in system
+                $orderExists = Order::find()
+                    ->where(['order_sn' => $order_sn])
+                    ->orWhere(['order_id' => $order_sn])
+                    ->exists();
+
+                if ($orderExists) {
+                    // Order found - set it
+                    $feeTransaction->order_sn = $order_sn;
+                    Yii::debug("Order found for transaction: $order_sn", __METHOD__);
+                } else {
+                    // Order not found - store in reason but don't set order_sn
+                    $feeTransaction->reason .= " [Order: $order_sn]";
+                    Yii::debug("Order not in system: $order_sn (stored in reason)", __METHOD__);
+                }
+            }
+
+            // Transaction date
+            $create_time = $transaction['create_time'] ?? $transaction['transaction_time'] ?? time();
+            $feeTransaction->transaction_date = date('Y-m-d H:i:s', $create_time);
+
+            // Categorize transaction
+            $feeTransaction->fee_category = $this->categorizeShopeeTransaction($transaction);
+
+            $feeTransaction->created_at = date('Y-m-d H:i:s');
+            $feeTransaction->updated_at = date('Y-m-d H:i:s');
+
+            // Save
+            if ($feeTransaction->save()) {
+                Yii::info("✓ Saved: $transaction_id (Type: {$transaction_type}, Amount: $amount, Category: {$feeTransaction->fee_category})", __METHOD__);
+                return true;
+            } else {
+                $errors = Json::encode($feeTransaction->errors);
+                Yii::error("✗ Failed to save $transaction_id: $errors", __METHOD__);
+                Yii::debug("Transaction data: " . Json::encode($transaction), __METHOD__);
+                return false;
+            }
+
+        } catch (\Exception $e) {
+            Yii::error('Exception processing transaction: ' . $e->getMessage(), __METHOD__);
+            Yii::error('Transaction data: ' . Json::encode($transaction), __METHOD__);
+            return false;
+        }
+    }
+
+    /**
+     * Categorize Shopee transaction (enhanced version)
+     */
+    private function categorizeShopeeTransaction($transaction)
+    {
+        $type = strtoupper($transaction['transaction_type'] ?? '');
+        $reason = strtolower($transaction['reason'] ?? $transaction['description'] ?? '');
+        $amount = (float)($transaction['amount'] ?? 0);
+
+        // Income (positive amounts)
+        if ($amount > 0) {
+            if (strpos($reason, 'order') !== false ||
+                strpos($reason, 'payment') !== false ||
+                strpos($type, 'ORDER') !== false) {
+                return 'ORDER_INCOME';
+            }
+            if (strpos($reason, 'refund') !== false ||
+                strpos($type, 'REFUND') !== false) {
+                return 'REFUND_RECEIVED';
+            }
+            if (strpos($reason, 'adjustment') !== false ||
+                strpos($reason, 'compensation') !== false) {
+                return 'ADJUSTMENT_IN';
+            }
+            return 'INCOME';
+        }
+
+        // Expenses (negative amounts)
+        // Commission
+        if (strpos($type, 'COMMISSION') !== false ||
+            strpos($reason, 'commission') !== false ||
+            strpos($reason, 'seller commission') !== false) {
+            return 'COMMISSION_FEE';
+        }
+
+        // Transaction fee
+        if (strpos($type, 'TRANSACTION_FEE') !== false ||
+            strpos($type, 'PAYMENT_FEE') !== false ||
+            strpos($reason, 'transaction fee') !== false ||
+            strpos($reason, 'payment fee') !== false) {
+            return 'TRANSACTION_FEE';
+        }
+
+        // Service fee
+        if (strpos($type, 'SERVICE_FEE') !== false ||
+            strpos($reason, 'service fee') !== false ||
+            strpos($reason, 'platform fee') !== false) {
+            return 'SERVICE_FEE';
+        }
+
+        // Shipping
+        if (strpos($type, 'SHIPPING') !== false ||
+            strpos($reason, 'shipping') !== false ||
+            strpos($reason, 'logistic') !== false ||
+            strpos($reason, 'delivery') !== false) {
+            return 'SHIPPING_FEE';
+        }
+
+        // Campaign/Marketing
+        if (strpos($type, 'CAMPAIGN') !== false ||
+            strpos($type, 'PROMOTION') !== false ||
+            strpos($type, 'ADS') !== false ||
+            strpos($reason, 'voucher') !== false ||
+            strpos($reason, 'discount') !== false ||
+            strpos($reason, 'flash sale') !== false ||
+            strpos($reason, 'campaign') !== false ||
+            strpos($reason, 'promotion') !== false ||
+            strpos($reason, 'marketing') !== false) {
+            return 'CAMPAIGN_FEE';
+        }
+
+        // Penalty
+        if (strpos($type, 'PENALTY') !== false ||
+            strpos($type, 'FINE') !== false ||
+            strpos($reason, 'penalty') !== false ||
+            strpos($reason, 'fine') !== false ||
+            strpos($reason, 'violation') !== false) {
+            return 'PENALTY_FEE';
+        }
+
+        // Refund (outgoing)
+        if (strpos($type, 'REFUND') !== false ||
+            strpos($type, 'RETURN') !== false ||
+            strpos($reason, 'refund') !== false ||
+            strpos($reason, 'return') !== false) {
+            return 'REFUND';
+        }
+
+        // Adjustment
+        if (strpos($type, 'ADJUSTMENT') !== false ||
+            strpos($reason, 'adjustment') !== false ||
+            strpos($reason, 'correction') !== false) {
+            return 'ADJUSTMENT';
+        }
+
+        // Withdrawal/Payout
+        if (strpos($type, 'WITHDRAWAL') !== false ||
+            strpos($type, 'PAYOUT') !== false ||
+            strpos($reason, 'withdrawal') !== false ||
+            strpos($reason, 'payout') !== false ||
+            strpos($reason, 'transfer') !== false) {
+            return 'WITHDRAWAL';
+        }
+
+        // Reversal
+        if (strpos($type, 'REVERSAL') !== false ||
+            strpos($reason, 'reversal') !== false ||
+            strpos($reason, 'reverse') !== false) {
+            return 'REVERSAL';
+        }
+
+        // Other
+        return 'OTHER';
+    }
+
+    /**
+     * Main Shopee sync function - Updated with official API
+     */
+    public function syncMonthlyShopeeFeesOfficial($channel, $year = null, $month = null)
+    {
+        if ($year === null) {
+            $year = (int)date('Y');
+        }
+        if ($month === null) {
+            $month = (int)date('m');
+        }
+
+        $fromTime = strtotime("$year-$month-01 00:00:00");
+        if ($month == 12) {
+            $toTime = strtotime(($year + 1) . "-01-01 00:00:00") - 1;
+        } else {
+            $toTime = strtotime("$year-" . ($month + 1) . "-01 00:00:00") - 1;
+        }
+
+        Yii::info("=== Syncing Shopee fees for {$year}-{$month} (Official API) ===", __METHOD__);
+
+        $results = [
+            'success' => true,
+            'platform' => 'Shopee',
+            'api_version' => 'v2 (Official)',
+            'period' => [
+                'year' => $year,
+                'month' => $month,
+                'from' => date('Y-m-d H:i:s', $fromTime),
+                'to' => date('Y-m-d H:i:s', $toTime),
+            ]
+        ];
+
+        try {
+            // 1. Sync wallet transactions (Official API)
+            Yii::info('Step 1: Syncing wallet transactions (Official API)...', __METHOD__);
+            $transactionCount = $this->syncShopeeWalletTransactionsOfficial($channel, $fromTime, $toTime);
+            $results['transaction_count'] = $transactionCount;
+            Yii::info("✓ Synced {$transactionCount} wallet transactions", __METHOD__);
+
+            // 2. Sync order income details
+            Yii::info('Step 2: Syncing order income details...', __METHOD__);
+            $orderIncomeCount = $this->syncShopeeOrderIncomeV2($channel, $fromTime, $toTime);
+            $results['order_income_count'] = $orderIncomeCount;
+            Yii::info("✓ Updated {$orderIncomeCount} orders with income details", __METHOD__);
+
+            // 3. Sync settlements/payouts
+            Yii::info('Step 3: Syncing settlements...', __METHOD__);
+            try {
+                $settlementCount = $this->syncShopeeSettlementsFixed($channel, $fromTime, $toTime);
+            } catch (\Exception $e) {
+                Yii::warning('Settlement API error, using fallback: ' . $e->getMessage(), __METHOD__);
+                $settlementCount = $this->syncShopeePayoutFromTransactions($channel, $fromTime, $toTime);
+            }
+            $results['settlement_count'] = $settlementCount;
+            Yii::info("✓ Synced {$settlementCount} settlements", __METHOD__);
+
+            // 4-6. Calculate summaries
+            Yii::info('Step 4: Calculating summaries...', __METHOD__);
+            $results['transaction_summary'] = $this->calculateFeeSummary($channel, $fromTime, $toTime);
+            $results['order_summary'] = $this->calculateOrderFeeSummary($channel, $fromTime, $toTime);
+            $results['settlement_summary'] = $this->calculateSettlementSummary($channel, $fromTime, $toTime);
+
+            $results['grand_summary'] = [
+                'total_revenue' => $results['order_summary']['total_revenue'],
+                'total_buyer_paid' => $results['order_summary']['total_buyer_paid'],
+                'total_all_fees' => $results['order_summary']['total_all_fees'],
+                'total_actual_income' => $results['order_summary']['total_actual_income'],
+                'total_settlements_received' => $results['settlement_summary']['total_net_amount'],
+                'fee_percentage' => $results['order_summary']['fee_percentage'],
+                'total_orders' => $results['order_summary']['total_orders'],
+                'total_settlements' => $results['settlement_summary']['total_settlements'],
+            ];
+
+            Yii::info("=== Sync completed successfully ===", __METHOD__);
+            Yii::info("Wallet transactions: {$transactionCount}", __METHOD__);
+            Yii::info("Orders updated: {$orderIncomeCount}", __METHOD__);
+            Yii::info("Settlements: {$settlementCount}", __METHOD__);
+            Yii::info("Total fees: " . number_format($results['transaction_summary']['total_fees'], 2), __METHOD__);
+
+        } catch (\Exception $e) {
+            $results['success'] = false;
+            $results['error'] = $e->getMessage();
+            Yii::error("Sync failed: " . $e->getMessage(), __METHOD__);
+            Yii::error("Stack trace: " . $e->getTraceAsString(), __METHOD__);
+        }
+
+        return $results;
+    }
+
+
+
+
+
+
+
 }
