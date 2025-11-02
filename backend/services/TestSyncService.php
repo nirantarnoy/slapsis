@@ -699,7 +699,7 @@ class TestSyncService
             //$totalCount = 100;
         }
 
-        return $data;// $totalCount;
+        return $totalCount;
     }
 
     /**
