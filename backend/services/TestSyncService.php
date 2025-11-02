@@ -699,7 +699,7 @@ class TestSyncService
             //$totalCount = 100;
         }
 
-        return $data;// $totalCount;
+        return count($transactionList);// $data;// $totalCount;
     }
 
     /**
@@ -1231,8 +1231,8 @@ class TestSyncService
             // 1. Sync wallet transactions (V2)
             Yii::info('Step 1: Syncing wallet transactions (V2)...', __METHOD__);
             $transactionCount = $this->syncShopeeTransactionFeesV2($channel, $fromTime, $toTime);
-            $results['transaction_count'] = $transactionCount;
-            Yii::info("✓ Synced {$transactionCount} transactions", __METHOD__);
+//            $results['transaction_count'] = $transactionCount;
+//            Yii::info("✓ Synced {$transactionCount} transactions", __METHOD__);
 
 //            // 2. Sync order income details (V2)
 //            Yii::info('Step 2: Syncing order income details (V2)...', __METHOD__);
@@ -1270,7 +1270,7 @@ class TestSyncService
             Yii::error("Sync failed: " . $e->getMessage(), __METHOD__);
         }
 
-        return $results;
+        return $transactionCount;
     }
 
     private function calculateOrderFeeSummary($channel, $fromTime, $toTime)
