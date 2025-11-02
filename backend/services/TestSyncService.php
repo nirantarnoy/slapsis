@@ -1256,28 +1256,28 @@ class TestSyncService
             $orderIncomeCount = $this->syncShopeeOrderIncomeV2($channel, $fromTime, $toTime);
             $results['order_income_count'] = $orderIncomeCount;
             Yii::info("✓ Updated {$orderIncomeCount} orders", __METHOD__);
-//
-//            // 3. Sync settlements
-//            Yii::info('Step 3: Syncing settlements...', __METHOD__);
-//            $settlementCount = $this->syncShopeeSettlements($channel, $fromTime, $toTime);
-//            $results['settlement_count'] = $settlementCount;
-//            Yii::info("✓ Synced {$settlementCount} settlements", __METHOD__);
-//
-//            // 4-6. Calculate summaries (use existing functions)
-//            $results['transaction_summary'] = $this->calculateFeeSummary($channel, $fromTime, $toTime);
-//            $results['order_summary'] = $this->calculateOrderFeeSummary($channel, $fromTime, $toTime);
-//            $results['settlement_summary'] = $this->calculateSettlementSummary($channel, $fromTime, $toTime);
-//
-//            $results['grand_summary'] = [
-//                'total_revenue' => $results['order_summary']['total_revenue'],
-//                'total_buyer_paid' => $results['order_summary']['total_buyer_paid'],
-//                'total_all_fees' => $results['order_summary']['total_all_fees'],
-//                'total_actual_income' => $results['order_summary']['total_actual_income'],
-//                'total_settlements_received' => $results['settlement_summary']['total_net_amount'],
-//                'fee_percentage' => $results['order_summary']['fee_percentage'],
-//                'total_orders' => $results['order_summary']['total_orders'],
-//                'total_settlements' => $results['settlement_summary']['total_settlements'],
-//            ];
+
+            // 3. Sync settlements
+            Yii::info('Step 3: Syncing settlements...', __METHOD__);
+            $settlementCount = $this->syncShopeeSettlements($channel, $fromTime, $toTime);
+            $results['settlement_count'] = $settlementCount;
+            Yii::info("✓ Synced {$settlementCount} settlements", __METHOD__);
+
+            // 4-6. Calculate summaries (use existing functions)
+            $results['transaction_summary'] = $this->calculateFeeSummary($channel, $fromTime, $toTime);
+            $results['order_summary'] = $this->calculateOrderFeeSummary($channel, $fromTime, $toTime);
+            $results['settlement_summary'] = $this->calculateSettlementSummary($channel, $fromTime, $toTime);
+
+            $results['grand_summary'] = [
+                'total_revenue' => $results['order_summary']['total_revenue'],
+                'total_buyer_paid' => $results['order_summary']['total_buyer_paid'],
+                'total_all_fees' => $results['order_summary']['total_all_fees'],
+                'total_actual_income' => $results['order_summary']['total_actual_income'],
+                'total_settlements_received' => $results['settlement_summary']['total_net_amount'],
+                'fee_percentage' => $results['order_summary']['fee_percentage'],
+                'total_orders' => $results['order_summary']['total_orders'],
+                'total_settlements' => $results['settlement_summary']['total_settlements'],
+            ];
 
             Yii::info("=== Sync completed ===", __METHOD__);
 
