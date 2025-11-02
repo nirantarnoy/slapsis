@@ -670,12 +670,12 @@ class TestSyncService
                 $pageFail = 0;
 
                 foreach ($transactionList as $transaction) {
-                   // if ($this->processShopeeWalletTransaction($channel_id, $transaction, $shop_id)) {
+                    if ($this->processShopeeWalletTransaction($channel_id, $transaction, $shop_id)) {
                         $totalCount++;
                         $pageSuccess++;
-//                    } else {
-//                        $pageFail++;
-//                    }
+                    } else {
+                        $pageFail++;
+                    }
                 }
 
                 Yii::info("Page $page_no result: Success=$pageSuccess, Fail=$pageFail", __METHOD__);
@@ -699,7 +699,7 @@ class TestSyncService
             //$totalCount = 100;
         }
 
-        return  $totalCount;
+        return $data;// $totalCount;
     }
 
     /**
