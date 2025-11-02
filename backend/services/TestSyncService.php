@@ -587,8 +587,9 @@ class TestSyncService
         $shop_id = $tokenModel->shop_id;
         $access_token = $tokenModel->access_token;
 
-        Yii::info("=== Syncing Shopee Wallet Transactions ===", __METHOD__);
+        Yii::info("=== Syncing Shopee Wallet Transactions (V2) ===", __METHOD__);
         Yii::info("Period: " . date('Y-m-d H:i:s', $fromTime) . " to " . date('Y-m-d H:i:s', $toTime), __METHOD__);
+        Yii::info("Shop ID: $shop_id", __METHOD__);
 
         $totalCount = 0;
         $page_no = 1;
@@ -597,52 +598,57 @@ class TestSyncService
         try {
             do {
                 $timestamp = time();
+
+                // ✅ Use GET method as per Shopee API documentation
                 $path = "/api/v2/payment/get_wallet_transaction_list";
 
                 // Generate sign
                 $base_string = $partner_id . $path . $timestamp . $access_token . $shop_id;
                 $sign = hash_hmac('sha256', $base_string, $partner_key);
 
+                // ✅ All parameters in query string for GET request
                 $params = [
                     'partner_id' => (int)$partner_id,
                     'shop_id' => (int)$shop_id,
                     'sign' => $sign,
                     'timestamp' => $timestamp,
                     'access_token' => $access_token,
-                ];
-
-                $body = [
                     'transaction_time_from' => (int)$fromTime,
                     'transaction_time_to' => (int)$toTime,
                     'page_no' => $page_no,
                     'page_size' => $page_size,
                 ];
 
-                Yii::info("Fetching page $page_no (page_size: $page_size)", __METHOD__);
+                Yii::info("Fetching page $page_no (size: $page_size)", __METHOD__);
+                Yii::debug("Request params: " . Json::encode($params), __METHOD__);
 
-                $response = $this->httpClient->post('https://partner.shopeemobile.com' . $path, [
+                // ✅ Use GET method (not POST)
+                $response = $this->httpClient->get('https://partner.shopeemobile.com' . $path, [
                     'query' => $params,
-                    'json' => $body,
                     'timeout' => 30,
-                    'headers' => [
-                        'Content-Type' => 'application/json',
-                    ]
+                    'http_errors' => false,
                 ]);
 
                 $statusCode = $response->getStatusCode();
+                $rawBody = (string)$response->getBody();
+
+                Yii::info("Response Status: $statusCode", __METHOD__);
+                Yii::debug("Response body: " . substr($rawBody, 0, 1000), __METHOD__);
+
                 if ($statusCode !== 200) {
                     Yii::error("HTTP Error: $statusCode", __METHOD__);
+                    Yii::error("Response: $rawBody", __METHOD__);
                     break;
                 }
-
-                $rawBody = (string)$response->getBody();
-                Yii::debug("Response body: " . substr($rawBody, 0, 500), __METHOD__);
 
                 $data = Json::decode($rawBody);
 
                 // Check API error
-                if (!empty($data['error'])) {
-                    Yii::error("Shopee API Error: {$data['error']} - " . ($data['message'] ?? 'Unknown'), __METHOD__);
+                if (isset($data['error']) && !empty($data['error'])) {
+                    Yii::error("Shopee API Error: {$data['error']}", __METHOD__);
+                    if (isset($data['message'])) {
+                        Yii::error("Error message: {$data['message']}", __METHOD__);
+                    }
                     break;
                 }
 
@@ -657,14 +663,22 @@ class TestSyncService
                     break;
                 }
 
-                Yii::info("Processing " . count($transactionList) . " transactions", __METHOD__);
+                Yii::info("Processing " . count($transactionList) . " transactions from page $page_no", __METHOD__);
 
                 // Process each transaction
+                $pageSuccess = 0;
+                $pageFail = 0;
+
                 foreach ($transactionList as $transaction) {
                     if ($this->processShopeeWalletTransaction($channel_id, $transaction, $shop_id)) {
                         $totalCount++;
+                        $pageSuccess++;
+                    } else {
+                        $pageFail++;
                     }
                 }
+
+                Yii::info("Page $page_no result: Success=$pageSuccess, Fail=$pageFail", __METHOD__);
 
                 // Check if has more pages
                 if (!$more) {
@@ -673,7 +687,7 @@ class TestSyncService
                 }
 
                 $page_no++;
-                usleep(200000); // 0.2 second delay
+                usleep(300000); // 0.3 second delay
 
             } while (true);
 
