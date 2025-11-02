@@ -639,8 +639,6 @@ class TestSyncService
                     Yii::error("HTTP Error: $statusCode", __METHOD__);
                     Yii::error("Response: $rawBody", __METHOD__);
                     break;
-                }else{
-                    $totalCount = 100;
                 }
 
                 $data = Json::decode($rawBody);
@@ -701,7 +699,7 @@ class TestSyncService
             //$totalCount = 100;
         }
 
-        return $totalCount;
+        return $data;// $totalCount;
     }
 
     /**
