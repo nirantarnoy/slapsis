@@ -1258,8 +1258,8 @@ class TestSyncService
 //            Yii::info("✓ Updated {$orderIncomeCount} orders", __METHOD__);
 
             Yii::info('Step 1: Syncing wallet transactions (Official API)...', __METHOD__);
-            $transactionCount = $this->syncShopeeWalletTransactionsOfficial($channel, $fromTime, $toTime);
-            $results['transaction_count'] = $transactionCount;
+            $orderIncomeCount = $this->syncShopeeWalletTransactionsOfficial($channel, $fromTime, $toTime);
+            $results['order_income_count'] = $orderIncomeCount;
             Yii::info("✓ Synced {$transactionCount} wallet transactions", __METHOD__);
 
             // 3. Sync settlements
