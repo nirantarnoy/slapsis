@@ -29,52 +29,52 @@ class TestSyncService
     }
 
     ///////// IMPROVED TIKTOK FEE TRANSACTION WITH DEBUGGING
-     private function refreshTikTokToken($tokenModel)
-        {
-            try {
-                $appKey = '6h9n461r774e1';
-                $appSecret = '1c45a0c25224293abd7de681049f90de3363389a';
-                $refreshToken = $tokenModel->refresh_token;
+    private function refreshTikTokToken($tokenModel)
+    {
+        try {
+            $appKey = '6h9n461r774e1';
+            $appSecret = '1c45a0c25224293abd7de681049f90de3363389a';
+            $refreshToken = $tokenModel->refresh_token;
 
-                // Parameters ตาม API document
-                $params = [
-                    'app_key' => $appKey,
-                    'app_secret' => $appSecret,
-                    'refresh_token' => $refreshToken,
-                    'grant_type' => 'refresh_token',
-                ];
+            // Parameters ตาม API document
+            $params = [
+                'app_key' => $appKey,
+                'app_secret' => $appSecret,
+                'refresh_token' => $refreshToken,
+                'grant_type' => 'refresh_token',
+            ];
 
-                // ใช้ GET request ตาม API document
-                $url = 'https://auth.tiktok-shops.com/api/v2/token/refresh';
-                $getUrl = $url . '?' . http_build_query($params);
+            // ใช้ GET request ตาม API document
+            $url = 'https://auth.tiktok-shops.com/api/v2/token/refresh';
+            $getUrl = $url . '?' . http_build_query($params);
 
-                $client = new \GuzzleHttp\Client(['timeout' => 30]);
+            $client = new \GuzzleHttp\Client(['timeout' => 30]);
 
-                $response = $client->get($getUrl, [
-                    'headers' => [
-                        'User-Agent' => 'YourApp/1.0',
-                        'Accept' => 'application/json',
-                    ]
-                ]);
+            $response = $client->get($getUrl, [
+                'headers' => [
+                    'User-Agent' => 'YourApp/1.0',
+                    'Accept' => 'application/json',
+                ]
+            ]);
 
-                $body = $response->getBody()->getContents();
-                $data = json_decode($body, true);
+            $body = $response->getBody()->getContents();
+            $data = json_decode($body, true);
 
-                if (isset($data['data']['access_token'])) {
-                    $tokenModel->access_token = $data['data']['access_token'];
-                    $tokenModel->refresh_token = $data['data']['refresh_token'];
-                    $tokenModel->expires_at = date('Y-m-d H:i:s', time() + $data['data']['access_token_expire_in']);
-                    $tokenModel->updated_at = date('Y-m-d H:i:s');
+            if (isset($data['data']['access_token'])) {
+                $tokenModel->access_token = $data['data']['access_token'];
+                $tokenModel->refresh_token = $data['data']['refresh_token'];
+                $tokenModel->expires_at = date('Y-m-d H:i:s', time() + $data['data']['access_token_expire_in']);
+                $tokenModel->updated_at = date('Y-m-d H:i:s');
 
-                    return $tokenModel->save();
-                }
-
-            } catch (\Exception $e) {
-                Yii::error('Failed to refresh TikTok token: ' . $e->getMessage(), __METHOD__);
+                return $tokenModel->save();
             }
 
-            return false;
+        } catch (\Exception $e) {
+            Yii::error('Failed to refresh TikTok token: ' . $e->getMessage(), __METHOD__);
         }
+
+        return false;
+    }
 
     /**
      * Main function to sync TikTok fees
@@ -1280,83 +1280,100 @@ class TestSyncService
 
         return $summary;
     }
+    /**
+     * Sync Shopee settlements from wallet transactions
+     * Since get_settlement_list API doesn't exist, we extract settlement data from wallet transactions
+     */
     private function syncShopeeSettlements($channel, $fromTime, $toTime)
     {
-        $tokenModel = ShopeeToken::find()
-            ->where(['status' => 'active'])
-            ->orderBy(['created_at' => SORT_DESC])
-            ->one();
+        $channel_id = is_object($channel) ? $channel->id : (int)$channel;
 
-        if (!$tokenModel) {
-            Yii::warning('No active Shopee token found for channel: ' . $channel, __METHOD__);
+        Yii::info("=== Syncing Shopee Settlements from Wallet Transactions ===", __METHOD__);
+
+        // Get all withdrawal/payout transactions from wallet transactions that were already synced
+        $payoutTransactions = ShopeeTransaction::find()
+            ->where(['channel_id' => $channel_id])
+            ->andWhere(['>=', 'transaction_date', date('Y-m-d H:i:s', $fromTime)])
+            ->andWhere(['<=', 'transaction_date', date('Y-m-d H:i:s', $toTime)])
+            ->andWhere(['fee_category' => 'WITHDRAWAL'])
+            ->all();
+
+        if (empty($payoutTransactions)) {
+            Yii::info('No payout/withdrawal transactions found in the period', __METHOD__);
             return 0;
         }
 
-        if (strtotime($tokenModel->expires_at) < time()) {
-            if (!$this->refreshShopeeToken($tokenModel)) {
-                return 0;
-            }
-        }
-
-        $partner_id = 2012399;
-        $partner_key = 'shpk72476151525864414e4b6e475449626679624f695a696162696570417043';
-        $shop_id = $tokenModel->shop_id;
-        $access_token = $tokenModel->access_token;
+        Yii::info('Found ' . count($payoutTransactions) . ' payout transactions', __METHOD__);
 
         $count = 0;
 
-        try {
-            $timestamp = time();
-            $path = "/api/v2/payment/get_settlement_list";
-            $base_string = $partner_id . $path . $timestamp . $access_token . $shop_id;
-            $sign = hash_hmac('sha256', $base_string, $partner_key);
+        foreach ($payoutTransactions as $trans) {
+            try {
+                // Check if settlement already exists
+                $existing = ShopeeSettlement::find()
+                    ->where([
+                        'channel_id' => $channel_id,
+                        'transaction_id' => $trans->transaction_id,
+                    ])
+                    ->one();
 
-            $params = [
-                'partner_id' => (int)$partner_id,
-                'shop_id' => (int)$shop_id,
-                'sign' => $sign,
-                'timestamp' => $timestamp,
-                'access_token' => $access_token,
-            ];
-
-            $body = [
-                'payout_time_from' => (int)$fromTime,
-                'payout_time_to' => (int)$toTime,
-            ];
-
-            $response = $this->httpClient->post('https://partner.shopeemobile.com' . $path, [
-                'query' => $params,
-                'json' => $body,
-                'timeout' => 30
-            ]);
-
-            if ($response->getStatusCode() !== 200) {
-                Yii::error("HTTP Error getting settlement list: {$response->getStatusCode()}", __METHOD__);
-                return 0;
-            }
-
-            $rawBody = (string)$response->getBody();
-            $data = Json::decode($rawBody);
-
-            if (!empty($data['error'])) {
-                Yii::error("Shopee API Error getting settlement list: {$data['error']}", __METHOD__);
-                return 0;
-            }
-
-            $settlementList = $data['response']['settlement_list'] ?? [];
-
-            foreach ($settlementList as $settlement) {
-                if ($this->processShopeeSettlement($channel, $settlement, $shop_id)) {
-                    $count++;
+                if ($existing) {
+                    Yii::debug("Settlement already exists for transaction: {$trans->transaction_id}", __METHOD__);
+                    continue;
                 }
+
+                // Create settlement from transaction
+                $settlement = new ShopeeSettlement();
+                $settlement->channel_id = $channel_id;
+                $settlement->shop_id = $trans->shop_id;
+                $settlement->transaction_id = $trans->transaction_id;
+                $settlement->settlement_no = $trans->transaction_id; // Use transaction ID as settlement number
+
+                // Payout amount is the absolute value of withdrawal amount
+                $payoutAmount = abs($trans->amount);
+                $settlement->settlement_amount = $payoutAmount;
+
+                // Try to get related order fees to calculate settlement fee
+                // Settlement fee = sum of all fees for orders in this payout period
+                $relatedFees = ShopeeTransaction::find()
+                    ->where(['channel_id' => $channel_id])
+                    ->andWhere(['<', 'amount', 0]) // negative amounts = fees
+                    ->andWhere(['!=', 'fee_category', 'WITHDRAWAL'])
+                    ->andWhere(['>=', 'transaction_date', date('Y-m-d H:i:s', strtotime($trans->transaction_date) - 86400 * 7)]) // 7 days before payout
+                    ->andWhere(['<=', 'transaction_date', $trans->transaction_date])
+                    ->sum('ABS(amount)');
+
+                $settlement->settlement_fee = $relatedFees ?: 0;
+                $settlement->net_settlement_amount = $payoutAmount;
+
+                $settlement->payout_time = $trans->transaction_date;
+                $settlement->status = 'completed';
+
+                // Count related orders
+                $orderCount = Order::find()
+                    ->where(['channel_id' => $channel_id])
+                    ->andWhere(['>=', 'order_date', date('Y-m-d H:i:s', strtotime($trans->transaction_date) - 86400 * 7)])
+                    ->andWhere(['<=', 'order_date', $trans->transaction_date])
+                    ->count();
+
+                $settlement->order_count = $orderCount;
+                $settlement->created_at = date('Y-m-d H:i:s');
+                $settlement->updated_at = date('Y-m-d H:i:s');
+
+                if ($settlement->save()) {
+                    $count++;
+                    Yii::info("✓ Created settlement from transaction: {$trans->transaction_id}, Amount: {$payoutAmount}", __METHOD__);
+                } else {
+                    Yii::error("Failed to save settlement: " . Json::encode($settlement->errors), __METHOD__);
+                }
+
+            } catch (\Exception $e) {
+                Yii::error("Error processing settlement for transaction {$trans->transaction_id}: " . $e->getMessage(), __METHOD__);
+                continue;
             }
-
-            Yii::info("Synced {$count} settlements", __METHOD__);
-
-        } catch (\Exception $e) {
-            Yii::error('Error syncing settlements: ' . $e->getMessage(), __METHOD__);
         }
 
+        Yii::info("✓ Created {$count} settlements from wallet transactions", __METHOD__);
         return $count;
     }
     private function calculateSettlementSummary($channel, $fromTime, $toTime)
