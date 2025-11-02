@@ -238,17 +238,17 @@ class OrderController extends Controller
 
             $service = new \backend\services\TestSyncService();
             $result = $service->syncMonthlyShopeeFeesV2($channelId);
-             echo "COUNT IS ".$result;return;
+          //   echo "COUNT IS ".$result;return;
 //            Yii::$app->session->setFlash('success',
 //                "ดึงข้อมูล Sync Settlement เรียบร้อยแล้ว จำนวน {$result['transaction_count']} รายการ"
 //            );
 //            Yii::$app->session->setFlash('success',
 //                "ดึงข้อมูล Shopee Sync Settlement เรียบร้อยแล้ว จำนวน {$result['transaction_count']} รายการ"
 //            );
-//            echo '<pre>';
-//            print_r($result);
-//            echo '</pre>';
-//            return;
+            echo '<pre>';
+            print_r($result);
+            echo '</pre>';
+            return;
         } catch (\Exception $e) {
             Yii::$app->session->setFlash('error', 'Sync Monthly Shopee Free เกิดข้อผิดพลาด: ' . $e->getMessage());
         }

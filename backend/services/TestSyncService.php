@@ -670,12 +670,12 @@ class TestSyncService
                 $pageFail = 0;
 
                 foreach ($transactionList as $transaction) {
-                    if ($this->processShopeeWalletTransaction($channel_id, $transaction, $shop_id)) {
+                   // if ($this->processShopeeWalletTransaction($channel_id, $transaction, $shop_id)) {
                         $totalCount++;
                         $pageSuccess++;
-                    } else {
-                        $pageFail++;
-                    }
+//                    } else {
+//                        $pageFail++;
+//                    }
                 }
 
                 Yii::info("Page $page_no result: Success=$pageSuccess, Fail=$pageFail", __METHOD__);
@@ -699,7 +699,7 @@ class TestSyncService
             //$totalCount = 100;
         }
 
-        return count($transactionList);// $data;// $totalCount;
+        return  $totalCount;
     }
 
     /**
@@ -1231,8 +1231,8 @@ class TestSyncService
             // 1. Sync wallet transactions (V2)
             Yii::info('Step 1: Syncing wallet transactions (V2)...', __METHOD__);
             $transactionCount = $this->syncShopeeTransactionFeesV2($channel, $fromTime, $toTime);
-//            $results['transaction_count'] = $transactionCount;
-//            Yii::info("✓ Synced {$transactionCount} transactions", __METHOD__);
+            $results['transaction_count'] = $transactionCount;
+            Yii::info("✓ Synced {$transactionCount} transactions", __METHOD__);
 
 //            // 2. Sync order income details (V2)
 //            Yii::info('Step 2: Syncing order income details (V2)...', __METHOD__);
@@ -1270,7 +1270,7 @@ class TestSyncService
             Yii::error("Sync failed: " . $e->getMessage(), __METHOD__);
         }
 
-        return $transactionCount;
+        return $results;
     }
 
     private function calculateOrderFeeSummary($channel, $fromTime, $toTime)
