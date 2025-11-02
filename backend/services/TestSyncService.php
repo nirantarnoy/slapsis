@@ -639,6 +639,8 @@ class TestSyncService
                     Yii::error("HTTP Error: $statusCode", __METHOD__);
                     Yii::error("Response: $rawBody", __METHOD__);
                     break;
+                }else{
+                    $totalCount = 100;
                 }
 
                 $data = Json::decode($rawBody);
@@ -696,7 +698,7 @@ class TestSyncService
         } catch (\Exception $e) {
             Yii::error('Shopee Transaction API error: ' . $e->getMessage(), __METHOD__);
             Yii::error('Stack trace: ' . $e->getTraceAsString(), __METHOD__);
-            $totalCount = 100;
+            //$totalCount = 100;
         }
 
         return $totalCount;
