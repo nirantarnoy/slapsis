@@ -732,13 +732,16 @@ class TestSyncService
             $feeTransaction->channel_id = $channel_id;
             $feeTransaction->shop_id = (string)$shop_id;
 
-            // Transaction type และ reason
+            // Transaction type
             $transaction_type = $transaction['transaction_type'] ?? 'UNKNOWN';
             $feeTransaction->transaction_type = (string)$transaction_type;
 
-            $feeTransaction->reason = isset($transaction['reason'])
-                ? (string)$transaction['reason']
-                : $transaction_type;
+            // Reason - use description if reason is empty
+            $reason = $transaction['reason'] ?? '';
+            if (empty($reason)) {
+                $reason = $transaction['description'] ?? $transaction_type;
+            }
+            $feeTransaction->reason = (string)$reason;
 
             // Amount
             $amount = (float)($transaction['amount'] ?? 0);
@@ -785,12 +788,22 @@ class TestSyncService
             $feeTransaction->created_at = date('Y-m-d H:i:s');
             $feeTransaction->updated_at = date('Y-m-d H:i:s');
 
+            // Debug: Log transaction data before save
+            Yii::debug("Attempting to save transaction:", __METHOD__);
+            Yii::debug("  ID: {$transaction_id}", __METHOD__);
+            Yii::debug("  Type: {$feeTransaction->transaction_type}", __METHOD__);
+            Yii::debug("  Amount: {$feeTransaction->amount}", __METHOD__);
+            Yii::debug("  Reason: {$feeTransaction->reason}", __METHOD__);
+            Yii::debug("  Order SN: " . ($feeTransaction->order_sn ?? 'NULL'), __METHOD__);
+            Yii::debug("  Category: {$feeTransaction->fee_category}", __METHOD__);
+
             if ($feeTransaction->save()) {
-                Yii::info("Saved: $transaction_id (Type: {$feeTransaction->transaction_type}, Amount: $amount)", __METHOD__);
+                Yii::info("✓ Saved: $transaction_id (Type: {$feeTransaction->transaction_type}, Amount: $amount, Category: {$feeTransaction->fee_category})", __METHOD__);
                 return true;
             } else {
                 $errors = Json::encode($feeTransaction->errors);
-                Yii::error("Failed to save $transaction_id: $errors", __METHOD__);
+                Yii::error("✗ Failed to save $transaction_id: $errors", __METHOD__);
+                Yii::debug("Transaction data: " . Json::encode($transaction), __METHOD__);
 
                 // Try to save without order_sn if validation failed on order_sn
                 if (isset($feeTransaction->errors['order_sn'])) {
@@ -800,8 +813,10 @@ class TestSyncService
                         $feeTransaction->order_sn = null;
 
                         if ($feeTransaction->save()) {
-                            Yii::info("Saved without order_sn: $transaction_id", __METHOD__);
+                            Yii::info("✓ Saved without order_sn: $transaction_id", __METHOD__);
                             return true;
+                        } else {
+                            Yii::error("✗ Still failed after removing order_sn: " . Json::encode($feeTransaction->errors), __METHOD__);
                         }
                     }
                 }
