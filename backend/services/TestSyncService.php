@@ -1007,6 +1007,8 @@ class TestSyncService
                     $access_token
                 );
 
+                Yii::info("Processing " . count($incomeDetails) . " income details", __METHOD__);
+
                 if ($incomeDetails) {
                     if ($this->processShopeeOrderIncome($channel_id, $order, $incomeDetails)) {
                         $successCount++;
