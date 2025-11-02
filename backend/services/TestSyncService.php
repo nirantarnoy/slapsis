@@ -1189,7 +1189,7 @@ class TestSyncService
             $year = (int)date('Y');
         }
         if ($month === null) {
-            $month = (int)date('m');
+            $month = (int)date('m')-1;
         }
 
         $fromTime = strtotime("$year-$month-01 00:00:00");
