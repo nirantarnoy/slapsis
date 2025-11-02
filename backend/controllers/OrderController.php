@@ -240,7 +240,7 @@ class OrderController extends Controller
             $result = $service->syncMonthlyShopeeFeesV2($channelId);
           //   echo "COUNT IS ".$result;return;
             Yii::$app->session->setFlash('success',
-                "ดึงข้อมูล Sync Settlement เรียบร้อยแล้ว จำนวน {$result['transaction_count']} รายการ"
+                "ดึงข้อมูล Sync Settlement เรียบร้อยแล้ว จำนวน {$result['order_income_count']} รายการ"
             );
 //            Yii::$app->session->setFlash('success',
 //                "ดึงข้อมูล Shopee Sync Settlement เรียบร้อยแล้ว จำนวน {$result['transaction_count']} รายการ"
