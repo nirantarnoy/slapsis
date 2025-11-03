@@ -271,7 +271,7 @@ class OrderController extends Controller
             Yii::$app->session->setFlash('success',
                 "ดึงข้อมูล Tiktok Sync Settlement เรียบร้อยแล้ว จำนวน {$result['period']['to']} รายการ"
             );
-            print_r($result);return;
+           // print_r($result);return;
         } catch (\Exception $e) {
             Yii::$app->session->setFlash('error', 'Sync Monthly Tiktok Free เกิดข้อผิดพลาด: ' . $e->getMessage());
         }
