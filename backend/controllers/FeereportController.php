@@ -68,7 +68,7 @@ class FeereportController extends Controller
                     'platform_discount',
                     'tax_amount',
                     'revenue_amount',
-                    'vat_and_tax_total',
+                    'fee_and_tax_total',
                     'settlement_amount',
                     'referral_fee',
                     'credit_card_fee',
