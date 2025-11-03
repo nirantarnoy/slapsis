@@ -236,7 +236,7 @@ class OrderController extends Controller
 //            $service = new \backend\services\OrderSyncService();
 //            $result = $service->syncMonthlyShopeeFees($channelId);
 
-            $service = new \backend\services\TestSyncService();
+            $service = new \backend\services\NewTestSyncShopeeService();
             $result = $service->syncMonthlyShopeeFeesV2($channelId);
           //   echo "COUNT IS ".$result;return;
             Yii::$app->session->setFlash('success',
