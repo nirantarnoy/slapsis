@@ -410,6 +410,12 @@ class NewTestSyncShopeeService
                     case 'SHIPPING_FEE':
                         $shipping_fee += $amount;
                         break;
+                    case 'AMS_COMMISSION_FEE_DEDUCT':
+                        $commission_fee += $amount;
+                        break;
+                    case 'ESCROW_VERIFIED_MINUS':
+                        $service_fee += $amount;
+                        break;
                 }
             }
 
