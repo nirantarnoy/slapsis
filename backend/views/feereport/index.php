@@ -4,6 +4,7 @@ use yii\helpers\Html;
 use yii\widgets\ActiveForm;
 use yii\grid\GridView;
 use yii\helpers\Url;
+use yii\bootstrap4\LinkPager;
 
 $this->title = 'รายงานค่าธรรมเนียม';
 $this->params['breadcrumbs'][] = $this->title;
@@ -176,6 +177,7 @@ $reportTypes = [
                                 'contentOptions' => ['style' => 'width: 100px'],
                             ],
                         ],
+                        'pager' => ['class' => LinkPager::className()],
                     ]); ?>
 
                 <?php else: ?>
