@@ -87,6 +87,17 @@
                     </a>
                 </li>
                 <?php //endif;?>
+                <?php //if(\Yii::$app->user->can('site/index')):?>
+                <li class="nav-item">
+                    <a href="<?=\Yii\helpers\Url::to(['feereport/index',true])?>" class="nav-link feereport">
+                        <i class="nav-icon fas fa-list"></i>
+                        <p>
+                            ค่าธรรมเนียม
+                            <!--                                <i class="right fas fa-angle-left"></i>-->
+                        </p>
+                    </a>
+                </li>
+                <?php //endif;?>
 
                 <?php if(\Yii::$app->user->can('department/index') || \Yii::$app->user->can('position/index') || \Yii::$app->user->can('employee/index')):?>
                 <li class="nav-item has-treeview has-sub">
