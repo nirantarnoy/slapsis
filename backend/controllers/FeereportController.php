@@ -9,7 +9,7 @@ use backend\models\Order;
 use yii\data\ActiveDataProvider;
 use yii\db\Expression;
 
-class FeeReportController extends Controller
+class FeereportController extends Controller
 {
     public function behaviors()
     {
