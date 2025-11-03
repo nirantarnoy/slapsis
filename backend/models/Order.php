@@ -87,4 +87,33 @@ class Order extends \yii\db\ActiveRecord
         }
         return false;
     }
+
+    public function getChannelName()
+    {
+        $channels = [
+            1 => 'Shopee',
+            2 => 'TikTok',
+        ];
+        return isset($channels[$this->channel_id]) ? $channels[$this->channel_id] : 'Unknown';
+    }
+
+    /**
+     * Calculate total fees
+     */
+    public function getTotalFees()
+    {
+        return $this->commission_fee + $this->transaction_fee +
+            $this->service_fee + $this->payment_fee;
+    }
+
+    /**
+     * Get profit percentage
+     */
+    public function getProfitPercentage()
+    {
+        if ($this->total_amount > 0) {
+            return ($this->actual_income / $this->total_amount) * 100;
+        }
+        return 0;
+    }
 }
