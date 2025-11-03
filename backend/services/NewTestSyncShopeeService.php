@@ -1106,6 +1106,7 @@ class NewTestSyncShopeeService
         // Transaction fee
         if (strpos($type, 'TRANSACTION_FEE') !== false ||
             strpos($type, 'PAYMENT_FEE') !== false ||
+            strpos($type, 'transaction_fee') !== false ||
             strpos($reason, 'transaction fee') !== false ||
             strpos($reason, 'payment fee') !== false) {
             return 'TRANSACTION_FEE';
