@@ -225,7 +225,8 @@ $reportTypes = [
                                 $totalShipping += isset($row['total_shipping_cost']) ? $row['total_shipping_cost'] : 0;
                                 $totalPlatform += isset($row['total_platform_discount']) ? $row['total_platform_discount'] : 0;
                                 $totalTax += isset($row['total_tax']) ? $row['total_tax'] : 0;
-                                $totalIncome += $row['total_income'];
+                               // $totalIncome += $row['total_income'];
+                                $line_total_income =  ($row['total_sales'] - ($row['total_commission'] + $row['total_transaction_fee'] + $row['total_service_fee'] + $row['total_payment_fee'] + $row['total_shipping_cost'] + $row['total_platform_discount'] + $row['total_tax']));
                                 ?>
                                 <tr>
                                     <td class="text-center"><?= $no++ ?></td>
@@ -241,10 +242,13 @@ $reportTypes = [
                                     <td class="text-right"><?= number_format(isset($row['total_platform_discount']) ? $row['total_platform_discount'] : 0, 2) ?></td>
                                     <td class="text-right"><?= number_format(isset($row['total_tax']) ? $row['total_tax'] : 0, 2) ?></td>
                                     <td class="text-right" style="font-weight: bold; background-color: #e8f5e9;">
-                                        <?= number_format($row['total_income'], 2) ?>
+                                        <?= number_format($line_total_income, 2) ?>
                                     </td>
                                 </tr>
                             <?php endforeach; ?>
+                            <?php
+                            $totalIncome = ($totalSales - ($totalCommission + $totalTransaction + $totalService + $totalPayment + $totalShipping + $totalPlatform + $totalTax));
+                            ?>
                             </tbody>
                             <tfoot class="table-info">
                             <tr style="font-weight: bold;">
