@@ -547,11 +547,11 @@ class NewTestSyncShopeeService
             $results['order_income_count'] = $orderIncomeCount;
             Yii::info("✓ Updated {$orderIncomeCount} orders", __METHOD__);
 
-            // 3. Sync settlements
-            Yii::info('Step 3: Syncing settlements...', __METHOD__);
-            $settlementCount = $this->syncShopeeSettlements($channel, $fromTime, $toTime);
-            $results['settlement_count'] = $settlementCount;
-            Yii::info("✓ Synced {$settlementCount} settlements", __METHOD__);
+//            // 3. Sync settlements
+//            Yii::info('Step 3: Syncing settlements...', __METHOD__);
+//            $settlementCount = $this->syncShopeeSettlements($channel, $fromTime, $toTime);
+//            $results['settlement_count'] = $settlementCount;
+//            Yii::info("✓ Synced {$settlementCount} settlements", __METHOD__);
 
             // 4-6. Calculate summaries (use existing functions)
             $results['transaction_summary'] = $this->calculateFeeSummary($channel, $fromTime, $toTime);
@@ -668,7 +668,7 @@ class NewTestSyncShopeeService
                 $existing = ShopeeSettlement::find()
                     ->where([
                         'channel_id' => $channel_id,
-                        'transaction_id' => $trans->transaction_id,
+                        'settlement_id' => $trans->transaction_id,
                     ])
                     ->one();
 
@@ -1186,90 +1186,5 @@ class NewTestSyncShopeeService
     /**
      * Main Shopee sync function - Updated with official API
      */
-    public function syncMonthlyShopeeFeesOfficial($channel, $year = null, $month = null)
-    {
-        if ($year === null) {
-            $year = (int)date('Y');
-        }
-        if ($month === null) {
-            $month = (int)date('m');
-        }
 
-        $fromTime = strtotime("$year-$month-01 00:00:00");
-        if ($month == 12) {
-            $toTime = strtotime(($year + 1) . "-01-01 00:00:00") - 1;
-        } else {
-            $toTime = strtotime("$year-" . ($month + 1) . "-01 00:00:00") - 1;
-        }
-
-        Yii::info("=== Syncing Shopee fees for {$year}-{$month} (Official API) ===", __METHOD__);
-
-        $results = [
-            'success' => true,
-            'platform' => 'Shopee',
-            'api_version' => 'v2 (Official)',
-            'period' => [
-                'year' => $year,
-                'month' => $month,
-                'from' => date('Y-m-d H:i:s', $fromTime),
-                'to' => date('Y-m-d H:i:s', $toTime),
-            ]
-        ];
-
-        try {
-            // 1. Sync wallet transactions (Official API)
-            Yii::info('Step 1: Syncing wallet transactions (Official API)...', __METHOD__);
-            $transactionCount = $this->syncShopeeWalletTransactionsOfficial($channel, $fromTime, $toTime);
-            $results['transaction_count'] = $transactionCount;
-            Yii::info("✓ Synced {$transactionCount} wallet transactions", __METHOD__);
-
-            // 2. Sync order income details
-            Yii::info('Step 2: Syncing order income details...', __METHOD__);
-            $orderIncomeCount = $this->syncShopeeOrderIncomeV2($channel, $fromTime, $toTime);
-            $results['order_income_count'] = $orderIncomeCount;
-            Yii::info("✓ Updated {$orderIncomeCount} orders with income details", __METHOD__);
-
-            // 3. Sync settlements/payouts
-            Yii::info('Step 3: Syncing settlements...', __METHOD__);
-            try {
-                $settlementCount = $this->syncShopeeSettlementsFixed($channel, $fromTime, $toTime);
-            } catch (\Exception $e) {
-                Yii::warning('Settlement API error, using fallback: ' . $e->getMessage(), __METHOD__);
-                $settlementCount = $this->syncShopeePayoutFromTransactions($channel, $fromTime, $toTime);
-            }
-            $results['settlement_count'] = $settlementCount;
-            Yii::info("✓ Synced {$settlementCount} settlements", __METHOD__);
-
-            // 4-6. Calculate summaries
-            Yii::info('Step 4: Calculating summaries...', __METHOD__);
-            $results['transaction_summary'] = $this->calculateFeeSummary($channel, $fromTime, $toTime);
-            $results['order_summary'] = $this->calculateOrderFeeSummary($channel, $fromTime, $toTime);
-            $results['settlement_summary'] = $this->calculateSettlementSummary($channel, $fromTime, $toTime);
-
-            $results['grand_summary'] = [
-                'total_revenue' => $results['order_summary']['total_revenue'],
-                'total_buyer_paid' => $results['order_summary']['total_buyer_paid'],
-                'total_all_fees' => $results['order_summary']['total_all_fees'],
-                'total_actual_income' => $results['order_summary']['total_actual_income'],
-                'total_settlements_received' => $results['settlement_summary']['total_net_amount'],
-                'fee_percentage' => $results['order_summary']['fee_percentage'],
-                'total_orders' => $results['order_summary']['total_orders'],
-                'total_settlements' => $results['settlement_summary']['total_settlements'],
-            ];
-
-            Yii::info("=== Sync completed successfully ===", __METHOD__);
-            Yii::info("Wallet transactions: {$transactionCount}", __METHOD__);
-            Yii::info("Orders updated: {$orderIncomeCount}", __METHOD__);
-            Yii::info("Settlements: {$settlementCount}", __METHOD__);
-            Yii::info("Total fees: " . number_format($results['transaction_summary']['total_fees'], 2), __METHOD__);
-
-        } catch (\Exception $e) {
-            $results['success'] = false;
-            $results['error'] = $e->getMessage();
-            Yii::error("Sync failed: " . $e->getMessage(), __METHOD__);
-            Yii::error("Stack trace: " . $e->getTraceAsString(), __METHOD__);
-        }
-
-        return $results;
-    }
 }
