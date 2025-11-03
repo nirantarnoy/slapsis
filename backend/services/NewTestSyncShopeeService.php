@@ -1398,26 +1398,29 @@ class NewTestSyncShopeeService
             return 'REVERSAL';
         }
 
-        if(strpos($type, 'PAID_ADS_CHARGE ') !== false){
+        if(strpos($type, 'PAID_ADS_CHARGE') !== false){
             return 'PAID_ADS_CHARGE';
         }
-        if(strpos($type, 'PAID_ADS_REFUND  ') !== false){
-            return 'PAID_ADS_REFUND ';
+        if(strpos($type, 'PAID_ADS_REFUND') !== false){
+            return 'PAID_ADS_REFUND';
         }
-        if(strpos($type, 'AFFILIATE_ADS_SELLER_FEE   ') !== false){
-            return 'AFFILIATE_ADS_SELLER_FEE ';
+        if(strpos($type, 'AFFILIATE_ADS_SELLER_FEE') !== false){
+            return 'AFFILIATE_ADS_SELLER_FEE';
         }
-        if(strpos($type, 'AFFILIATE_ADS_SELLER_FEE_REFUND  ') !== false){
-            return 'AFFILIATE_ADS_SELLER_FEE_REFUND  ';
+        if(strpos($type, 'AFFILIATE_ADS_SELLER_FEE_REFUND') !== false){
+            return 'AFFILIATE_ADS_SELLER_FEE_REFUND';
         }
-        if(strpos($type, 'AFFILIATE_FEE_DEDUCT  ') !== false){
-            return 'AFFILIATE_FEE_DEDUCT  ';
+        if(strpos($type, 'AFFILIATE_FEE_DEDUCT') !== false){
+            return 'AFFILIATE_FEE_DEDUCT';
         }
-        if(strpos($type, 'SHOPEE_WALLET_PAY  ') !== false){
-            return 'SHOPEE_WALLET_PAY   ';
+        if(strpos($type, 'SHOPEE_WALLET_PAY') !== false){
+            return 'SHOPEE_WALLET_PAY';
         }
-        if(strpos($type, 'AFFILIATE_COMMISSION_FEE_ADD   ') !== false){
-            return 'AFFILIATE_COMMISSION_FEE_ADD    ';
+        if(strpos($type, 'AFFILIATE_COMMISSION_FEE_ADD') !== false){
+            return 'AFFILIATE_COMMISSION_FEE_ADD';
+        }
+        if(strpos($type, 'CROSS_MERCHANT_ADJUSTMENT_DEDUCT') !== false){
+            return 'CROSS_MERCHANT_ADJUSTMENT_DEDUCT';
         }
 
         // Other
