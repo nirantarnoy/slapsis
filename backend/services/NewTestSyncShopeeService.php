@@ -1047,6 +1047,143 @@ class NewTestSyncShopeeService
     /**
      * Categorize Shopee transaction (enhanced version with transaction_tab_type support)
      */
+//    private function categorizeShopeeTransaction($transaction)
+//    {
+//        $type = strtoupper($transaction['transaction_type'] ?? '');
+//        $reason = strtolower($transaction['reason'] ?? $transaction['description'] ?? '');
+//        $amount = (float)($transaction['amount'] ?? 0);
+//        $tab_type = strtolower($transaction['transaction_tab_type'] ?? '');
+//
+//        // Use transaction_tab_type if available (more accurate)
+//        if (!empty($tab_type)) {
+//            if (strpos($tab_type, 'wallet_order_income') !== false ||
+//                strpos($tab_type, 'order_income') !== false) {
+//                return 'ORDER_INCOME';
+//            }
+//            if (strpos($tab_type, 'wallet_adjustment') !== false ||
+//                strpos($tab_type, 'adjustment') !== false) {
+//                return $amount > 0 ? 'ADJUSTMENT_IN' : 'ADJUSTMENT';
+//            }
+//            if (strpos($tab_type, 'wallet_withdrawals') !== false ||
+//                strpos($tab_type, 'withdrawal') !== false) {
+//                return 'WITHDRAWAL';
+//            }
+//            if (strpos($tab_type, 'refund') !== false) {
+//                return $amount > 0 ? 'REFUND_RECEIVED' : 'REFUND';
+//            }
+//        }
+//
+//        // Income (positive amounts)
+//        if ($amount > 0) {
+//            if (strpos($reason, 'order') !== false ||
+//                strpos($reason, 'payment') !== false ||
+//                strpos($reason, 'คำสั่งซื้อ') !== false ||
+//                strpos($type, 'ORDER') !== false ||
+//                strpos($type, 'ESCROW') !== false) {
+//                return 'ORDER_INCOME';
+//            }
+//            if (strpos($reason, 'refund') !== false ||
+//                strpos($reason, 'คืนเงิน') !== false ||
+//                strpos($type, 'REFUND') !== false) {
+//                return 'REFUND_RECEIVED';
+//            }
+//            if (strpos($reason, 'adjustment') !== false ||
+//                strpos($reason, 'compensation') !== false ||
+//                strpos($reason, 'ชดเชย') !== false) {
+//                return 'ADJUSTMENT_IN';
+//            }
+//            return 'INCOME';
+//        }
+//
+//        // Expenses (negative amounts)
+//        // Commission
+//        if (strpos($type, 'COMMISSION') !== false ||
+//            strpos($reason, 'commission') !== false ||
+//            strpos($reason, 'seller commission') !== false) {
+//            return 'COMMISSION_FEE';
+//        }
+//
+//        // Transaction fee
+//        if (strpos($type, 'TRANSACTION_FEE') !== false ||
+//            strpos($type, 'PAYMENT_FEE') !== false ||
+//            strpos($type, 'transaction_fee') !== false ||
+//            strpos($reason, 'transaction fee') !== false ||
+//            strpos($reason, 'payment fee') !== false) {
+//            return 'TRANSACTION_FEE';
+//        }
+//
+//        // Service fee
+//        if (strpos($type, 'SERVICE_FEE') !== false ||
+//            strpos($reason, 'service fee') !== false ||
+//            strpos($reason, 'platform fee') !== false) {
+//            return 'SERVICE_FEE';
+//        }
+//
+//        // Shipping
+//        if (strpos($type, 'SHIPPING') !== false ||
+//            strpos($reason, 'shipping') !== false ||
+//            strpos($reason, 'logistic') !== false ||
+//            strpos($reason, 'delivery') !== false) {
+//            return 'SHIPPING_FEE';
+//        }
+//
+//        // Campaign/Marketing
+//        if (strpos($type, 'CAMPAIGN') !== false ||
+//            strpos($type, 'PROMOTION') !== false ||
+//            strpos($type, 'ADS') !== false ||
+//            strpos($reason, 'voucher') !== false ||
+//            strpos($reason, 'discount') !== false ||
+//            strpos($reason, 'flash sale') !== false ||
+//            strpos($reason, 'campaign') !== false ||
+//            strpos($reason, 'promotion') !== false ||
+//            strpos($reason, 'marketing') !== false) {
+//            return 'CAMPAIGN_FEE';
+//        }
+//
+//        // Penalty
+//        if (strpos($type, 'PENALTY') !== false ||
+//            strpos($type, 'FINE') !== false ||
+//            strpos($reason, 'penalty') !== false ||
+//            strpos($reason, 'fine') !== false ||
+//            strpos($reason, 'violation') !== false) {
+//            return 'PENALTY_FEE';
+//        }
+//
+//        // Refund (outgoing)
+//        if (strpos($type, 'REFUND') !== false ||
+//            strpos($type, 'RETURN') !== false ||
+//            strpos($reason, 'refund') !== false ||
+//            strpos($reason, 'return') !== false) {
+//            return 'REFUND';
+//        }
+//
+//        // Adjustment
+//        if (strpos($type, 'ADJUSTMENT') !== false ||
+//            strpos($reason, 'adjustment') !== false ||
+//            strpos($reason, 'correction') !== false) {
+//            return 'ADJUSTMENT';
+//        }
+//
+//        // Withdrawal/Payout
+//        if (strpos($type, 'WITHDRAWAL') !== false ||
+//            strpos($type, 'PAYOUT') !== false ||
+//            strpos($reason, 'withdrawal') !== false ||
+//            strpos($reason, 'payout') !== false ||
+//            strpos($reason, 'transfer') !== false) {
+//            return 'WITHDRAWAL';
+//        }
+//
+//        // Reversal
+//        if (strpos($type, 'REVERSAL') !== false ||
+//            strpos($reason, 'reversal') !== false ||
+//            strpos($reason, 'reverse') !== false) {
+//            return 'REVERSAL';
+//        }
+//
+//        // Other
+//        return 'OTHER';
+//    }
+
     private function categorizeShopeeTransaction($transaction)
     {
         $type = strtoupper($transaction['transaction_type'] ?? '');
@@ -1071,6 +1208,87 @@ class NewTestSyncShopeeService
             if (strpos($tab_type, 'refund') !== false) {
                 return $amount > 0 ? 'REFUND_RECEIVED' : 'REFUND';
             }
+        }
+
+        // Check transaction_type first (most accurate)
+        // Escrow - Order Income
+        if ($type === 'ESCROW_VERIFIED_ADD' || $type === '101') {
+            return 'ORDER_INCOME';
+        }
+        if ($type === 'ESCROW_VERIFIED_MINUS' || $type === '102') {
+            return 'ORDER_DEDUCTION';
+        }
+
+        // Withdrawal
+        if ($type === 'WITHDRAWAL_CREATED' || $type === '201' ||
+            $type === 'WITHDRAWAL_COMPLETED' || $type === '202') {
+            return 'WITHDRAWAL';
+        }
+        if ($type === 'WITHDRAWAL_CANCELLED' || $type === '203') {
+            return 'WITHDRAWAL_CANCELLED';
+        }
+
+        // Refund Income
+        if ($type === 'REFUND_VERIFIED_ADD' || $type === '301' ||
+            $type === 'AUTO_REFUND_ADD' || $type === '302' ||
+            $type === 'SPM_REFUND_ADD' || $type === '504' ||
+            $type === 'APM_REFUND_ADD' || $type === '505' ||
+            $type === 'DP_REFUND_VERIFIED_ADD' || $type === '701') {
+            return 'REFUND_RECEIVED';
+        }
+
+        // Adjustments - Income
+        if ($type === 'ADJUSTMENT_ADD' || $type === '401' ||
+            $type === 'FBS_ADJUSTMENT_ADD' || $type === '404' ||
+            $type === 'ADJUSTMENT_CENTER_ADD' || $type === '406' ||
+            $type === 'AFFILIATE_COMMISSION_FEE_ADD' || $type === '412' ||
+            $type === 'CROSS_MERCHANT_ADJUSTMENT_ADD' || $type === '413' ||
+            $type === 'SELLER_COMPENSATE_ADD' || $type === '415' ||
+            $type === 'CAMPAIGN_PACKAGE_ADD' || $type === '416' ||
+            $type === 'PAID_ADS_REFUND' || $type === '451' ||
+            $type === 'AFFILIATE_ADS_SELLER_FEE_REFUND' || $type === '456' ||
+            $type === 'SPM_DISBURSE_ADD' || $type === '802') {
+            return 'ADJUSTMENT_IN';
+        }
+
+        // Adjustments - Deductions
+        if ($type === 'ADJUSTMENT_MINUS' || $type === '402' ||
+            $type === 'FBS_ADJUSTMENT_MINUS' || $type === '405' ||
+            $type === 'ADJUSTMENT_CENTER_DEDUCT' || $type === '407' ||
+            $type === 'ESCROW_ADJUSTMENT_FOR_FD_DEDUCT' || $type === '408' ||
+            $type === 'PERCEPTION_VAT_TAX_DEDUCT' || $type === '409' ||
+            $type === 'ADJUSTMENT_FOR_RR_AFTER_ESCROW_VERIFIED' || $type === '411' ||
+            $type === 'CROSS_MERCHANT_ADJUSTMENT_DEDUCT' || $type === '414' ||
+            $type === 'CAMPAIGN_PACKAGE_MINUS' || $type === '417') {
+            return 'ADJUSTMENT';
+        }
+
+        // Fast Escrow
+        if ($type === 'FAST_ESCROW_DISBURSE' || $type === '452' ||
+            $type === 'FAST_ESCROW_DISBURSE_REMAIN' || $type === '459') {
+            return 'FAST_ESCROW_INCOME';
+        }
+        if ($type === 'FAST_ESCROW_DEDUCT' || $type === '458') {
+            return 'FAST_ESCROW_DEDUCT';
+        }
+
+        // Marketing/Campaign Fees
+        if ($type === 'PAID_ADS_CHARGE' || $type === '450' ||
+            $type === 'AFFILIATE_ADS_SELLER_FEE' || $type === '455' ||
+            $type === 'AFFILIATE_FEE_DEDUCT' || $type === '460') {
+            return 'CAMPAIGN_FEE';
+        }
+
+        // Payment Methods (Shopee Wallet, SPM, APM)
+        if ($type === 'SHOPEE_WALLET_PAY' || $type === '501' ||
+            $type === 'SPM_DEDUCT' || $type === '502' ||
+            $type === 'APM_DEDUCT' || $type === '503') {
+            return 'PAYMENT_DEDUCTION';
+        }
+
+        // Seller Loan
+        if ($type === 'SPM_DEDUCT_DIRECT' || $type === '801') {
+            return 'LOAN_REPAYMENT';
         }
 
         // Income (positive amounts)
