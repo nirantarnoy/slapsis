@@ -1,7 +1,12 @@
 {
     "name": "yiisoft/yii2-app-advanced",
     "description": "Yii 2 Advanced Project Template",
-    "keywords": ["yii2", "framework", "advanced", "project template"],
+    "keywords": [
+        "yii2",
+        "framework",
+        "advanced",
+        "project template"
+    ],
     "homepage": "https://www.yiiframework.com/",
     "type": "project",
     "license": "BSD-3-Clause",
@@ -37,8 +42,8 @@
         "ext-intl": "*",
         "phpoffice/phpspreadsheet": "^1.24",
         "guzzlehttp/guzzle": "^7.0",
-        "kartik-v/yii2-widget-fileinput": "dev-master"
-
+        "kartik-v/yii2-widget-fileinput": "dev-master",
+        "kartik-v/yii2-field-range": "dev-master"
     },
     "require-dev": {
         "yiisoft/yii2-debug": "~2.1.0",
@@ -55,14 +60,23 @@
     },
     "autoload-dev": {
         "psr-4": {
-            "common\\tests\\": ["common/tests/", "common/tests/_support"],
-            "backend\\tests\\": ["backend/tests/", "backend/tests/_support"],
-            "frontend\\tests\\": ["frontend/tests/", "frontend/tests/_support"]
+            "common\\tests\\": [
+                "common/tests/",
+                "common/tests/_support"
+            ],
+            "backend\\tests\\": [
+                "backend/tests/",
+                "backend/tests/_support"
+            ],
+            "frontend\\tests\\": [
+                "frontend/tests/",
+                "frontend/tests/_support"
+            ]
         }
     },
     "config": {
         "allow-plugins": {
-            "yiisoft/yii2-composer" : true
+            "yiisoft/yii2-composer": true
         },
         "process-timeout": 1800,
         "fxp-asset": {
