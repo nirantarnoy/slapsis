@@ -73,6 +73,7 @@ class ShopeeIncomeSearch extends ShopeeIncomeDetails
         $query = ShopeeIncomeDetails::find();
 
         if (!empty($this->order_sn)) {
+            $this->order_sn = trim($this->order_sn);
             $query->andFilterWhere(['like', 'order_sn', $this->order_sn]);
         }
 

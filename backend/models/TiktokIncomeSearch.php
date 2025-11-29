@@ -78,6 +78,7 @@ class TiktokIncomeSearch extends TiktokIncomeDetails
         $query = TiktokIncomeDetails::find();
 
         if (!empty($this->order_id)) {
+            $this->order_id = trim($this->order_id);
             $query->andFilterWhere(['like', 'order_id', $this->order_id]);
         }
 
