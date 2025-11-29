@@ -3538,6 +3538,8 @@ class OrderSyncService
      */
     public function syncMonthlyTikTokFees($channel, $year = null, $month = null)
     {
+        ini_set('memory_limit', -1);
+        ini_set('max_execution_time', 0);
         $channel_id = is_object($channel) ? $channel->id : (int)$channel;
 
         if (is_int($channel)) {
