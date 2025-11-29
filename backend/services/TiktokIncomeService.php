@@ -96,7 +96,13 @@ class TiktokIncomeService
         }
 
         if ($tokenModel->expires_at && strtotime($tokenModel->expires_at) < time()) {
-            $this->refreshTikTokToken($tokenModel);
+            if ($this->refreshTikTokToken($tokenModel)) {
+                // Reload model to get new token
+                $tokenModel->refresh();
+            } else {
+                Yii::error('Failed to refresh TikTok token', __METHOD__);
+                return false;
+            }
         }
         
         // Ensure shop cipher is available
@@ -125,7 +131,7 @@ class TiktokIncomeService
 
         $sign = $this->generateSign($this->appSecret, $queryParams, $path);
         $queryParams['sign'] = $sign;
-        $queryParams['access_token'] = $accessToken;
+        $queryParams['access_token'] = $accessToken; // access_token is NOT part of signature calculation
 
         $url = 'https://open-api.tiktokglobalshop.com' . $path . '?' . http_build_query($queryParams);
 
@@ -254,7 +260,8 @@ class TiktokIncomeService
                 $tokenModel->refresh_token = $data['data']['refresh_token'];
                 $tokenModel->expires_at = date('Y-m-d H:i:s', time() + $data['data']['access_token_expire_in']);
                 $tokenModel->updated_at = date('Y-m-d H:i:s');
-                return $tokenModel->save();
+                $tokenModel->save();
+                return true;
             }
             return false;
         } catch (\Exception $e) {
