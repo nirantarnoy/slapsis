@@ -60,10 +60,11 @@ class TiktokIncomeService
             // Assuming order_id in DB is the actual TikTok Order ID or contains it.
             // If unique_order_id is 'ORDERID_ITEMID', we need to extract ORDERID.
             // Based on OrderSyncService: $unique_order_id = $order_id . '_' . $item['id'];
-            $parts = explode('_', $order_id);
-            $actualOrderId = $parts[0];
+           
+           // $parts = explode('_', $order_id);
+           // $actualOrderId = $parts[0];
 
-            if ($this->syncOrderIncome($actualOrderId)) {
+            if ($this->syncOrderIncome($order_id)) {
                 $count++;
             }
             // Sleep slightly to respect rate limits
