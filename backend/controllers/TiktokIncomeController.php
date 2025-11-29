@@ -41,7 +41,7 @@ class TiktokIncomeController extends Controller
         // Calculate Summary
         $summary = $this->calculateSummary($data);
 
-        return $this->render('report', [
+        return $this->render('index', [
             'searchModel' => $searchModel,
             'data' => $data,
             'summary' => $summary,
