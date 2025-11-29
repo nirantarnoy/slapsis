@@ -37,10 +37,16 @@ class ShopeeIncomeService
             return 0;
         }
 
+        // Get list of already synced orders
+        $syncedOrderSns = ShopeeIncomeDetails::find()
+            ->select('order_sn')
+            ->column();
+
         $orderSns = Order::find()
             ->select('order_sn')
             ->where(['channel_id' => $shopeeChannel->id])
             ->andWhere(['IS NOT', 'order_sn', null])
+            ->andWhere(['NOT IN', 'order_sn', $syncedOrderSns])
             ->distinct()
             ->column();
 
@@ -144,33 +150,44 @@ class ShopeeIncomeService
             }
 
             // Map fields with multiple possible keys
+            // Based on actual log, many fields are inside 'order_income' array
+            $income = $detail['order_income'] ?? [];
+
             $model->buyer_user_name = $detail['buyer_user_name'] ?? $detail['buyer_username'] ?? null;
-            $model->buyer_total_amount = $detail['buyer_total_amount'] ?? $detail['buyer_paid_amount'] ?? $detail['total_amount'] ?? 0;
-            $model->original_price = $detail['original_price'] ?? $detail['order_original_price'] ?? 0;
-            $model->seller_return_refund_amount = $detail['seller_return_refund_amount'] ?? 0;
-            $model->shipping_fee_discount_from_3pl = $detail['shipping_fee_discount_from_3pl'] ?? 0;
-            $model->seller_shipping_discount = $detail['seller_shipping_discount'] ?? 0;
-            $model->drc_adjustable_refund = $detail['drc_adjustable_refund'] ?? 0;
-            $model->cost_of_goods_sold = $detail['cost_of_goods_sold'] ?? 0;
-            $model->original_cost_of_goods_sold = $detail['original_cost_of_goods_sold'] ?? 0;
-            $model->original_shopee_discount = $detail['original_shopee_discount'] ?? 0;
-            $model->seller_coin_cash_back = $detail['seller_coin_cash_back'] ?? 0;
-            $model->shopee_shipping_rebate = $detail['shopee_shipping_rebate'] ?? 0;
-            $model->commission_fee = $detail['commission_fee'] ?? 0;
-            $model->transaction_fee = $detail['transaction_fee'] ?? 0;
-            $model->service_fee = $detail['service_fee'] ?? 0;
-            $model->seller_voucher_code = $detail['seller_voucher_code'] ?? 0;
-            $model->shopee_voucher_code = $detail['shopee_voucher_code'] ?? 0;
-            $model->escrow_amount = $detail['escrow_amount'] ?? $detail['estimated_seller_receive_amount'] ?? 0;
-            $model->exchange_rate = $detail['exchange_rate'] ?? 0;
-            $model->reverse_shipping_fee = $detail['reverse_shipping_fee'] ?? 0;
-            $model->final_shipping_fee = $detail['final_shipping_fee'] ?? $detail['actual_shipping_fee'] ?? 0;
-            $model->actual_shipping_fee = $detail['actual_shipping_fee'] ?? 0;
-            $model->order_chargeable_weight = $detail['order_chargeable_weight'] ?? 0;
-            $model->payment_promotion_amount = $detail['payment_promotion_amount'] ?? 0;
-            $model->cross_border_tax = $detail['cross_border_tax'] ?? 0;
-            $model->shipping_fee_paid_by_buyer = $detail['shipping_fee_paid_by_buyer'] ?? 0;
-            $model->items = $detail['items'] ?? $detail['order_income']['items'] ?? [];
+            
+            // Map from 'order_income' if available, otherwise fallback to root or other keys
+            $model->buyer_total_amount = $income['buyer_total_amount'] ?? $detail['buyer_total_amount'] ?? $detail['buyer_paid_amount'] ?? $detail['total_amount'] ?? 0;
+            $model->original_price = $income['original_price'] ?? $detail['original_price'] ?? $detail['order_original_price'] ?? 0;
+            $model->seller_return_refund_amount = $income['seller_return_refund'] ?? $detail['seller_return_refund_amount'] ?? 0;
+            $model->shipping_fee_discount_from_3pl = $income['shipping_fee_discount_from_3pl'] ?? $detail['shipping_fee_discount_from_3pl'] ?? 0;
+            $model->seller_shipping_discount = $income['seller_shipping_discount'] ?? $detail['seller_shipping_discount'] ?? 0;
+            $model->drc_adjustable_refund = $income['drc_adjustable_refund'] ?? $detail['drc_adjustable_refund'] ?? 0;
+            $model->cost_of_goods_sold = $income['cost_of_goods_sold'] ?? $detail['cost_of_goods_sold'] ?? 0;
+            $model->original_cost_of_goods_sold = $income['original_cost_of_goods_sold'] ?? $detail['original_cost_of_goods_sold'] ?? 0;
+            $model->original_shopee_discount = $income['original_shopee_discount'] ?? $detail['original_shopee_discount'] ?? 0;
+            $model->seller_coin_cash_back = $income['seller_coin_cash_back'] ?? $detail['seller_coin_cash_back'] ?? 0;
+            $model->shopee_shipping_rebate = $income['shopee_shipping_rebate'] ?? $detail['shopee_shipping_rebate'] ?? 0;
+            $model->commission_fee = $income['commission_fee'] ?? $detail['commission_fee'] ?? 0;
+            $model->transaction_fee = $income['transaction_fee'] ?? $detail['transaction_fee'] ?? 0;
+            $model->service_fee = $income['service_fee'] ?? $detail['service_fee'] ?? 0;
+            
+            // Voucher codes might be arrays or strings, handle accordingly if needed, but for now cast to float/string as per DB
+            // DB expects decimal, but API returns array for seller_voucher_code in log: "seller_voucher_code":[]
+            // If it's an array, we might need to sum values or take the first one. 
+            // However, the log shows "voucher_from_seller":0 and "voucher_from_shopee":16 in order_income. Let's use those.
+            $model->seller_voucher_code = $income['voucher_from_seller'] ?? $detail['seller_voucher_code'] ?? 0;
+            $model->shopee_voucher_code = $income['voucher_from_shopee'] ?? $detail['shopee_voucher_code'] ?? 0;
+            
+            $model->escrow_amount = $income['escrow_amount'] ?? $detail['escrow_amount'] ?? $detail['estimated_seller_receive_amount'] ?? 0;
+            $model->exchange_rate = $detail['exchange_rate'] ?? 1; // Default to 1 if not present
+            $model->reverse_shipping_fee = $income['reverse_shipping_fee'] ?? $detail['reverse_shipping_fee'] ?? 0;
+            $model->final_shipping_fee = $income['final_shipping_fee'] ?? $detail['final_shipping_fee'] ?? $detail['actual_shipping_fee'] ?? 0;
+            $model->actual_shipping_fee = $income['actual_shipping_fee'] ?? $detail['actual_shipping_fee'] ?? 0;
+            $model->order_chargeable_weight = $income['order_chargeable_weight'] ?? $detail['order_chargeable_weight'] ?? 0;
+            $model->payment_promotion_amount = $income['payment_promotion'] ?? $detail['payment_promotion_amount'] ?? 0;
+            $model->cross_border_tax = $income['cross_border_tax'] ?? $detail['cross_border_tax'] ?? 0;
+            $model->shipping_fee_paid_by_buyer = $income['buyer_paid_shipping_fee'] ?? $detail['shipping_fee_paid_by_buyer'] ?? 0;
+            $model->items = $income['items'] ?? $detail['items'] ?? [];
             
             $model->updated_at = date('Y-m-d H:i:s');
 
