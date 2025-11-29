@@ -107,11 +107,58 @@ class TiktokIncomeService
         
         // Ensure shop cipher is available
         if (empty($tokenModel->shop_cipher)) {
-             // Logic to fetch cipher if needed, similar to OrderSyncService
-             // For now assume it's there or handled elsewhere
+            $this->fetchShopCipher($tokenModel);
         }
 
         return $this->fetchAndSaveSettlementDetail($tokenModel, $order_id);
+    }
+
+    private function fetchShopCipher($tokenModel)
+    {
+        $timestamp = time();
+        $path = '/authorization/202309/shops';
+
+        $params = [
+            'app_key' => $this->appKey,
+            'timestamp' => $timestamp,
+        ];
+
+        $sign = $this->generateSign($this->appSecret, $params, $path);
+        
+        $url = 'https://open-api.tiktokglobalshop.com' . $path . '?' . http_build_query($params) . '&sign=' . $sign;
+
+        try {
+            $response = $this->httpClient->get($url, [
+                'headers' => [
+                    'Content-Type' => 'application/json',
+                    'x-tts-access-token' => $tokenModel->access_token,
+                ],
+            ]);
+
+            $result = Json::decode($response->getBody()->getContents());
+
+            if (isset($result['code']) && $result['code'] !== 0) {
+                Yii::error("TikTok API error fetching cipher: [{$result['code']}] " . ($result['message'] ?? ''), __METHOD__);
+                return null;
+            }
+
+            if (!empty($result['data']['shops'][0]['cipher'])) {
+                $shopCipher = $result['data']['shops'][0]['cipher'];
+                $shopName = $result['data']['shops'][0]['name'] ?? '';
+
+                $tokenModel->shop_cipher = $shopCipher;
+                $tokenModel->shop_name = $shopName;
+                $tokenModel->updated_at = date('Y-m-d H:i:s');
+                $tokenModel->save(false);
+
+                Yii::info("✅ Shop cipher updated: {$shopCipher}", __METHOD__);
+                return $shopCipher;
+            }
+        } catch (\Exception $e) {
+            Yii::error("Exception fetching shop cipher: " . $e->getMessage(), __METHOD__);
+        }
+
+        return null;
     }
 
     private function fetchAndSaveSettlementDetail($tokenModel, $order_id)
