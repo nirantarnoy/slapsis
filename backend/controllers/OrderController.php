@@ -284,6 +284,11 @@ class OrderController extends Controller
 //$service->syncOrderIncome($order_no);
 $service->syncAllOrders();
     }
+    public function actionTiktokIncome(){
+        $service = new \backend\services\TiktokIncomeService();
+//$service->syncOrderIncome($order_no);
+$service->syncAllOrders();
+    }
 
     protected function findModel($id)
     {
