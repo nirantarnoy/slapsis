@@ -43,11 +43,11 @@ class TiktokIncomeController extends Controller
         $summary = $this->calculateSummary($data);
         
         // Debug
-        // echo '<pre>';
-        // print_r($data[0]->attributes); 
-        // print_r($summary);
-        // echo '</pre>';
-        // exit;
+        echo '<pre>';
+        print_r($data[0]->attributes); 
+        print_r($summary);
+        echo '</pre>';
+        exit;
 
         return $this->render('report', [
             'searchModel' => $searchModel,
