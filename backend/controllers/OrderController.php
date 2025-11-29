@@ -279,7 +279,7 @@ class OrderController extends Controller
         return $this->redirect(['index']);
     }
 
-    public function actionShopeeIncome($order_no){
+    public function actionShopeeIncome(){
         $service = new \backend\services\ShopeeIncomeService();
 //$service->syncOrderIncome($order_no);
 $service->syncAllOrders();
