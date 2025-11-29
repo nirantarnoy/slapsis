@@ -3,23 +3,22 @@
 use yii\helpers\Html;
 
 /* @var $this yii\web\View */
-/* @var $searchModel backend\models\TiktokIncomeSearch */
+/* @var $searchModel backend\models\ShopeeIncomeSearch */
 /* @var $summary array */
 
-$this->title = 'สรุปรายได้ TikTok Shop';
-$this->params['breadcrumbs'][] = ['label' => 'รายงานรายได้ TikTok Shop', 'url' => ['index']];
+$this->title = 'สรุปรายได้ Shopee';
+$this->params['breadcrumbs'][] = ['label' => 'รายงานรายได้ Shopee', 'url' => ['index']];
 $this->params['breadcrumbs'][] = $this->title;
 ?>
-<div class="tiktok-income-report">
-
+<div class="shopee-income-report">
     
     <div class="panel panel-default">
         <div class="panel-heading">
             <h3 class="panel-title">เงื่อนไขการค้นหา</h3>
         </div>
         <div class="panel-body">
-            <?php if ($searchModel->order_id): ?>
-                <p><strong>เลขคำสั่งซื้อ:</strong> <?= Html::encode($searchModel->order_id) ?></p>
+            <?php if ($searchModel->order_sn): ?>
+                <p><strong>เลขคำสั่งซื้อ:</strong> <?= Html::encode($searchModel->order_sn) ?></p>
             <?php endif; ?>
             <?php if ($searchModel->start_date && $searchModel->end_date): ?>
                 <p><strong>ช่วงวันที่:</strong> <?= Html::encode($searchModel->start_date) ?> ถึง <?= Html::encode($searchModel->end_date) ?></p>
