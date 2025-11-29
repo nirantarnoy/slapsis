@@ -13,8 +13,6 @@ $this->params['breadcrumbs'][] = $this->title;
 ?>
 <div class="shopee-income-index">
 
-    <h1><?= Html::encode($this->title) ?></h1>
-
     <div class="shopee-income-search">
         <?php $form = ActiveForm::begin([
             'action' => ['report'],

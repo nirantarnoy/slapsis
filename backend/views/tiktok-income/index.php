@@ -13,7 +13,6 @@ $this->params['breadcrumbs'][] = $this->title;
 ?>
 <div class="tiktok-income-index">
 
-    <h1><?= Html::encode($this->title) ?></h1>
 
     <div class="tiktok-income-search">
         <?php $form = ActiveForm::begin([
