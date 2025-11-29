@@ -133,6 +133,7 @@ class ShopeeIncomeService
             }
 
             $detail = $data['response'];
+            Yii::info("Shopee Income Detail for $order_sn: " . Json::encode($detail), __METHOD__);
             
             // Save to database
             $model = ShopeeIncomeDetails::findOne(['order_sn' => $order_sn]);
@@ -142,9 +143,10 @@ class ShopeeIncomeService
                 $model->created_at = date('Y-m-d H:i:s');
             }
 
-            $model->buyer_user_name = $detail['buyer_user_name'] ?? null;
-            $model->buyer_total_amount = $detail['buyer_total_amount'] ?? 0;
-            $model->original_price = $detail['original_price'] ?? 0;
+            // Map fields with multiple possible keys
+            $model->buyer_user_name = $detail['buyer_user_name'] ?? $detail['buyer_username'] ?? null;
+            $model->buyer_total_amount = $detail['buyer_total_amount'] ?? $detail['buyer_paid_amount'] ?? $detail['total_amount'] ?? 0;
+            $model->original_price = $detail['original_price'] ?? $detail['order_original_price'] ?? 0;
             $model->seller_return_refund_amount = $detail['seller_return_refund_amount'] ?? 0;
             $model->shipping_fee_discount_from_3pl = $detail['shipping_fee_discount_from_3pl'] ?? 0;
             $model->seller_shipping_discount = $detail['seller_shipping_discount'] ?? 0;
@@ -159,16 +161,16 @@ class ShopeeIncomeService
             $model->service_fee = $detail['service_fee'] ?? 0;
             $model->seller_voucher_code = $detail['seller_voucher_code'] ?? 0;
             $model->shopee_voucher_code = $detail['shopee_voucher_code'] ?? 0;
-            $model->escrow_amount = $detail['escrow_amount'] ?? 0;
+            $model->escrow_amount = $detail['escrow_amount'] ?? $detail['estimated_seller_receive_amount'] ?? 0;
             $model->exchange_rate = $detail['exchange_rate'] ?? 0;
             $model->reverse_shipping_fee = $detail['reverse_shipping_fee'] ?? 0;
-            $model->final_shipping_fee = $detail['final_shipping_fee'] ?? 0;
+            $model->final_shipping_fee = $detail['final_shipping_fee'] ?? $detail['actual_shipping_fee'] ?? 0;
             $model->actual_shipping_fee = $detail['actual_shipping_fee'] ?? 0;
             $model->order_chargeable_weight = $detail['order_chargeable_weight'] ?? 0;
             $model->payment_promotion_amount = $detail['payment_promotion_amount'] ?? 0;
             $model->cross_border_tax = $detail['cross_border_tax'] ?? 0;
             $model->shipping_fee_paid_by_buyer = $detail['shipping_fee_paid_by_buyer'] ?? 0;
-            $model->items = $detail['items'] ?? [];
+            $model->items = $detail['items'] ?? $detail['order_income']['items'] ?? [];
             
             $model->updated_at = date('Y-m-d H:i:s');
 
