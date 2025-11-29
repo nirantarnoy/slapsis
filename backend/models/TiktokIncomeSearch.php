@@ -78,7 +78,7 @@ class TiktokIncomeSearch extends TiktokIncomeDetails
         $query = TiktokIncomeDetails::find();
 
         if (!empty($this->order_id)) {
-            $query->andWhere(['order_id' => $this->order_id]);
+            $query->andFilterWhere(['like', 'order_id', $this->order_id]);
         }
 
         if (!empty($this->start_date) && !empty($this->end_date)) {

@@ -10,6 +10,7 @@ use yii\db\ActiveRecord;
  *
  * @property int $id
  * @property string $order_id
+ * @property string|null $order_date
  * @property float|null $settlement_amount
  * @property float|null $revenue_amount
  * @property float|null $shipping_cost_amount
@@ -39,7 +40,7 @@ class TiktokIncomeDetails extends ActiveRecord
         return [
             [['order_id'], 'required'],
             [['settlement_amount', 'revenue_amount', 'shipping_cost_amount', 'fee_and_tax_amount', 'adjustment_amount', 'actual_shipping_fee_amount', 'affiliate_commission_amount', 'customer_payment_amount', 'customer_refund_amount', 'gross_sales_amount', 'gross_sales_refund_amount', 'net_sales_amount', 'platform_commission_amount', 'platform_discount_amount', 'platform_discount_refund_amount', 'platform_shipping_fee_discount_amount', 'sales_tax_amount', 'sales_tax_payment_amount', 'sales_tax_refund_amount', 'shipping_fee_amount', 'shipping_fee_subsidy_amount', 'transaction_fee_amount'], 'number'],
-            [['statement_transactions', 'sku_transactions', 'created_at', 'updated_at'], 'safe'],
+            [['statement_transactions', 'sku_transactions', 'created_at', 'updated_at', 'order_date'], 'safe'],
             [['order_id'], 'string', 'max' => 100],
             [['currency'], 'string', 'max' => 10],
             [['order_id'], 'unique'],
@@ -54,6 +55,7 @@ class TiktokIncomeDetails extends ActiveRecord
         return [
             'id' => 'ID',
             'order_id' => 'Order ID',
+            'order_date' => 'Order Date',
             'settlement_amount' => 'Settlement Amount',
             'revenue_amount' => 'Revenue Amount',
             'shipping_cost_amount' => 'Shipping Cost Amount',

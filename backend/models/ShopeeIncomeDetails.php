@@ -10,6 +10,7 @@ use yii\db\ActiveRecord;
  *
  * @property int $id
  * @property string $order_sn
+ * @property string|null $order_date
  * @property string|null $buyer_user_name
  * @property float|null $buyer_total_amount
  * @property float|null $original_price
@@ -56,7 +57,7 @@ class ShopeeIncomeDetails extends ActiveRecord
         return [
             [['order_sn'], 'required'],
             [['buyer_total_amount', 'original_price', 'seller_return_refund_amount', 'shipping_fee_discount_from_3pl', 'seller_shipping_discount', 'drc_adjustable_refund', 'cost_of_goods_sold', 'original_cost_of_goods_sold', 'original_shopee_discount', 'seller_coin_cash_back', 'shopee_shipping_rebate', 'commission_fee', 'transaction_fee', 'service_fee', 'seller_voucher_code', 'shopee_voucher_code', 'escrow_amount', 'exchange_rate', 'reverse_shipping_fee', 'final_shipping_fee', 'actual_shipping_fee', 'order_chargeable_weight', 'payment_promotion_amount', 'cross_border_tax', 'shipping_fee_paid_by_buyer'], 'number'],
-            [['created_at', 'updated_at', 'items'], 'safe'],
+            [['created_at', 'updated_at', 'items', 'order_date'], 'safe'],
             [['order_sn'], 'string', 'max' => 50],
             [['buyer_user_name'], 'string', 'max' => 100],
             [['order_sn'], 'unique'],
@@ -71,6 +72,7 @@ class ShopeeIncomeDetails extends ActiveRecord
         return [
             'id' => 'ID',
             'order_sn' => 'Order SN',
+            'order_date' => 'Order Date',
             'buyer_user_name' => 'Buyer User Name',
             'buyer_total_amount' => 'Buyer Total Amount',
             'original_price' => 'Original Price',
