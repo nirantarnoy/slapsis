@@ -16,9 +16,6 @@ $this->title = 'เปรียบเทียบรายได้ Shopee vs Ti
 $this->params['breadcrumbs'][] = $this->title;
 ?>
 <div class="income-compare-index">
-
-    <h1><?= Html::encode($this->title) ?></h1>
-
     <div class="panel panel-default">
         <div class="panel-body">
             <?php $form = ActiveForm::begin([
