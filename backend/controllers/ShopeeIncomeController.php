@@ -158,10 +158,11 @@ class ShopeeIncomeController extends Controller
                 'Original Price' => 0,
                 'Shipping Fee Paid by Buyer' => 0,
                 'Shopee Shipping Rebate' => 0,
-                'Seller Shipping Discount' => 0, // Sometimes positive in logic, but usually a cost or offset
-                'Seller Voucher Code' => 0, // Income from voucher? Or cost? Usually cost to seller if seller voucher.
-                'Shopee Voucher Code' => 0, // Income if Shopee pays
-                'Cost of Goods Sold' => 0, // This is usually the product price
+                'Seller Shipping Discount' => 0, 
+                'Seller Voucher Code' => 0, 
+                'Shopee Voucher Code' => 0, 
+                'Cost of Goods Sold' => 0,
+                'Seller Coin Cash Back' => 0, // Added missing key
             ],
             'expense' => [
                 'Commission Fee' => 0,
