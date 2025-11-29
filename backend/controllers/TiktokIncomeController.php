@@ -37,6 +37,7 @@ class TiktokIncomeController extends Controller
     {
         $searchModel = new TiktokIncomeSearch();
         $data = $searchModel->getReportData(Yii::$app->request->queryParams);
+        print_r($data);return;
         
         // Calculate Summary
         $summary = $this->calculateSummary($data);
