@@ -126,11 +126,11 @@ class TiktokIncomeService
         $queryParams = [
             'app_key' => $this->appKey,
             'timestamp' => $timestamp,
-            'access_token' => $accessToken,
         ];
 
         $sign = $this->generateSign($this->appSecret, $queryParams, $path);
         $queryParams['sign'] = $sign;
+        $queryParams['access_token'] = $accessToken;
 
         $url = 'https://open-api.tiktokglobalshop.com' . $path . '?' . http_build_query($queryParams);
 
