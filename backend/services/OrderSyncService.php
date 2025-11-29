@@ -2592,7 +2592,7 @@ class OrderSyncService
 
         // Default to last 30 days if not specified
         if ($fromTime === null) {
-            $fromTime = strtotime('-1 day');
+            $fromTime = strtotime('-30 day');
         }
         if ($toTime === null) {
             $toTime = time();
@@ -3194,6 +3194,175 @@ class OrderSyncService
     /**
      * Process TikTok Order Fees from Order Details
      * @param int $channel_id
+     * @param Order $order
+     * @param array $orderDetails
+     * @param string $shop_id
+     * @return bool
+     */
+    private function processTikTokOrderFees($channel_id, $order, $orderDetails, $shop_id)
+    {
+        try {
+            // Extract fee information from order details
+            $payment = $orderDetails['payment'] ?? [];
+
+            Yii::debug("Processing TikTok order fees for order: " . $order->order_id, __METHOD__);
+            Yii::debug("Payment data: " . Json::encode($payment), __METHOD__);
+
+            // TikTok Fee Structure
+            // platform_fee = commission + transaction fee รวมกัน
+            // ต้องแยกออกจากกัน
+
+            $subtotal = (float)($payment['subtotal'] ?? 0);
+            $platform_discount = (float)($payment['platform_discount'] ?? 0);
+            $seller_discount = (float)($payment['seller_discount'] ?? 0);
+            $shipping_fee = (float)($payment['shipping_fee'] ?? 0);
+            $shipping_fee_seller_discount = (float)($payment['shipping_fee_seller_discount'] ?? 0);
+            $shipping_fee_platform_discount = (float)($payment['shipping_fee_platform_discount'] ?? 0);
+            $buyer_service_fee = (float)($payment['buyer_service_fee'] ?? 0);
+            $taxes = (float)($payment['taxes'] ?? 0);
+            $original_shipping_fee = (float)($payment['original_shipping_fee'] ?? 0);
+            $seller_incentive = (float)($payment['seller_incentive'] ?? 0);
+            $platform_incentive = (float)($payment['platform_incentive'] ?? 0);
+
+            // ค่าธรรมเนียมหลัก
+            $total_fee = (float)($payment['total_fee'] ?? 0); // รวมค่าธรรมเนียมทั้งหมด
+            $commission_fee = (float)($payment['commission_fee'] ?? 0);
+            $transaction_fee = (float)($payment['transaction_fee'] ?? 0);
+            $affiliate_commission = (float)($payment['affiliate_commission'] ?? 0);
+            $affiliate_partner_commission = (float)($payment['affiliate_partner_commission'] ?? 0);
+            $retail_delivery_fee = (float)($payment['retail_delivery_fee'] ?? 0);
+            $shipping_insurance_fee = (float)($payment['shipping_insurance_fee'] ?? 0);
+            $small_order_cost = (float)($payment['small_order_cost'] ?? 0);
+
+            // ยอดที่ seller ได้รับ
+            $seller_income = (float)($payment['seller_income'] ?? 0);
+
+            // สร้าง transaction สำหรับแต่ละประเภทค่าธรรมเนียม
+            $fees = [];
+
+            if ($commission_fee > 0) {
+                $fees['COMMISSION_FEE'] = $commission_fee;
+            }
+
+            if ($transaction_fee > 0) {
+                $fees['TRANSACTION_FEE'] = $transaction_fee;
+            }
+
+            if ($affiliate_commission > 0) {
+                $fees['AFFILIATE_FEE'] = $affiliate_commission;
+            }
+
+            if ($affiliate_partner_commission > 0) {
+                $fees['AFFILIATE_FEE'] = ($fees['AFFILIATE_FEE'] ?? 0) + $affiliate_partner_commission;
+            }
+
+            if ($shipping_fee_seller_discount > 0) {
+                $fees['SHIPPING_FEE'] = $shipping_fee_seller_discount;
+            }
+
+            if ($retail_delivery_fee > 0) {
+                $fees['SERVICE_FEE'] = $retail_delivery_fee;
+            }
+
+            if ($shipping_insurance_fee > 0) {
+                $fees['SERVICE_FEE'] = ($fees['SERVICE_FEE'] ?? 0) + $shipping_insurance_fee;
+            }
+
+            if ($small_order_cost > 0) {
+                $fees['SERVICE_FEE'] = ($fees['SERVICE_FEE'] ?? 0) + $small_order_cost;
+            }
+
+            // ถ้าไม่มีการแยก แต่มี total_fee ให้ใช้ total_fee
+            if (empty($fees) && $total_fee > 0) {
+                $fees['COMMISSION_FEE'] = $total_fee;
+            }
+
+            Yii::info("Order {$order->order_id} fees breakdown: " . Json::encode($fees), __METHOD__);
+
+            $transactionCreated = false;
+
+            // สร้าง transaction สำหรับแต่ละ fee
+            foreach ($fees as $category => $amount) {
+                if ($amount > 0) {
+                    $transaction_id = 'TT_' . $order->order_id . '_' . $category;
+
+                    // เช็คว่ามีอยู่แล้วหรือไม่
+                    $existing = ShopeeTransaction::findOne(['transaction_id' => $transaction_id]);
+                    if ($existing) {
+                        continue;
+                    }
+
+                    $feeTransaction = new ShopeeTransaction();
+                    $feeTransaction->transaction_id = $transaction_id;
+                    $feeTransaction->channel_id = $channel_id;
+                    $feeTransaction->shop_id = (string)$shop_id;
+                    $feeTransaction->transaction_type = 'ORDER_FEE';
+                    $feeTransaction->status = 'COMPLETED';
+                    $feeTransaction->reason = str_replace('_', ' ', $category) . ' for order ' . $order->order_id;
+                    $feeTransaction->amount = -$amount; // ติดลบเพราะเป็นค่าใช้จ่าย
+                    $feeTransaction->current_balance = 0;
+                    $feeTransaction->order_sn = $order->order_id;
+                    $feeTransaction->transaction_date = $order->order_date;
+                    $feeTransaction->fee_category = $category;
+                    $feeTransaction->created_at = date('Y-m-d H:i:s');
+                    $feeTransaction->updated_at = date('Y-m-d H:i:s');
+
+                    if ($feeTransaction->save()) {
+                        $transactionCreated = true;
+                        Yii::info("Created TikTok transaction: $transaction_id, Amount: -$amount", __METHOD__);
+                    } else {
+                        Yii::error("Failed to save TikTok transaction: " . Json::encode($feeTransaction->errors), __METHOD__);
+                    }
+                }
+            }
+
+            // อัพเดทค่าธรรมเนียมใน order
+            $order->commission_fee = $fees['COMMISSION_FEE'] ?? 0;
+            $order->transaction_fee = $fees['TRANSACTION_FEE'] ?? 0;
+            $order->payment_fee = $fees['AFFILIATE_FEE'] ?? 0; // ใช้ field payment_fee เก็บ affiliate
+            $order->service_fee = $fees['SERVICE_FEE'] ?? 0;
+
+            // ค่าส่งที่ seller รับผิดชอบ
+            if (isset($fees['SHIPPING_FEE'])) {
+                // เก็บไว้ใน seller_discount field
+                $order->seller_discount = ($order->seller_discount ?? 0) + $fees['SHIPPING_FEE'];
+            }
+
+            // คำนวณ actual income
+            if ($seller_income > 0) {
+                $order->actual_income = $seller_income;
+            } else {
+                $total_fees = array_sum($fees);
+                $order->actual_income = $order->total_amount - $total_fees;
+            }
+
+            // buyer paid amount
+            $order->buyer_paid_amount = $subtotal + $shipping_fee - $platform_discount - $seller_discount + $taxes + $buyer_service_fee;
+
+            // ส่วนลด
+            $order->seller_discount = $seller_discount + $shipping_fee_seller_discount;
+            $order->shopee_discount = $platform_discount + $shipping_fee_platform_discount;
+
+            $order->updated_at = date('Y-m-d H:i:s');
+
+            if ($order->save(false)) {
+                Yii::info("Updated order {$order->order_id} with fees: Commission={$order->commission_fee}, Transaction={$order->transaction_fee}, Service={$order->service_fee}, Income={$order->actual_income}", __METHOD__);
+            } else {
+                Yii::error("Failed to update order: " . Json::encode($order->errors), __METHOD__);
+            }
+
+            return $transactionCreated;
+
+        } catch (\Exception $e) {
+            Yii::error("Error processing TikTok order fees for order {$order->order_id}: " . $e->getMessage(), __METHOD__);
+            Yii::error("Stack trace: " . $e->getTraceAsString(), __METHOD__);
+            return false;
+        }
+    }
+
+    /**
+     * Process TikTok Settlement
+     * @param int $channel_id
      * @param array $settlement
      * @param string $shop_id
      * @return bool
@@ -3457,15 +3626,7 @@ class OrderSyncService
         }
 
         // จัดหมวดหมู่ตามประเภทธุรกรรมของ TikTok
-        if (strpos($type, 'insurance') !== false || strpos($description, 'insurance') !== false) {
-            return 'INSURANCE_FEE';
-        } elseif (strpos($type, 'small order') !== false || strpos($description, 'small order') !== false) {
-            return 'SMALL_ORDER_FEE';
-        } elseif (strpos($type, 'retail delivery') !== false || strpos($description, 'retail delivery') !== false) {
-            return 'RETAIL_DELIVERY_FEE';
-        } elseif (strpos($type, 'affiliate partner') !== false || strpos($description, 'affiliate partner') !== false || strpos($description, 'partner commission') !== false) {
-            return 'AFFILIATE_PARTNER_FEE';
-        } elseif (strpos($type, 'commission') !== false || strpos($description, 'commission') !== false) {
+        if (strpos($type, 'commission') !== false || strpos($description, 'commission') !== false) {
             return 'COMMISSION_FEE';
         } elseif (strpos($type, 'transaction_fee') !== false || strpos($description, 'transaction fee') !== false) {
             return 'TRANSACTION_FEE';
@@ -3538,8 +3699,6 @@ class OrderSyncService
      */
     public function syncMonthlyTikTokFees($channel, $year = null, $month = null)
     {
-        ini_set('memory_limit', -1);
-        ini_set('max_execution_time', 0);
         $channel_id = is_object($channel) ? $channel->id : (int)$channel;
 
         if (is_int($channel)) {

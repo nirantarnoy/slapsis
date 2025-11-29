@@ -1,0 +1,205 @@
+<?php
+
+namespace backend\services;
+
+use backend\models\ShopeeIncomeDetails;
+use backend\models\ShopeeToken;
+use GuzzleHttp\Client;
+use Yii;
+use yii\base\Exception;
+use yii\helpers\Json;
+
+class ShopeeIncomeService
+{
+    private $httpClient;
+    private $partner_id = 2012399;
+    private $partner_key = 'shpk72476151525864414e4b6e475449626679624f695a696162696570417043';
+
+    public function __construct()
+    {
+        $this->httpClient = new Client([
+            'timeout' => 30,
+            'connect_timeout' => 10,
+        ]);
+    }
+
+    /**
+     * Sync income details for a specific order
+     * @param string $order_sn
+     * @return bool
+     */
+    public function syncOrderIncome($order_sn)
+    {
+        $tokenModel = ShopeeToken::find()
+            ->where(['status' => 'active'])
+            ->orderBy(['created_at' => SORT_DESC])
+            ->one();
+
+        if (!$tokenModel) {
+            Yii::error('No active Shopee token found', __METHOD__);
+            return false;
+        }
+
+        if (strtotime($tokenModel->expires_at) < time()) {
+            if (!$this->refreshShopeeToken($tokenModel)) {
+                Yii::error('Failed to refresh Shopee token', __METHOD__);
+                return false;
+            }
+        }
+
+        return $this->fetchAndSaveEscrowDetail($tokenModel, $order_sn);
+    }
+
+    private function fetchAndSaveEscrowDetail($tokenModel, $order_sn)
+    {
+        $shop_id = $tokenModel->shop_id;
+        $access_token = $tokenModel->access_token;
+        $timestamp = time();
+        $path = "/api/v2/payment/get_escrow_detail";
+        $base_string = $this->partner_id . $path . $timestamp . $access_token . $shop_id;
+        $sign = hash_hmac('sha256', $base_string, $this->partner_key);
+
+        try {
+            $response = $this->httpClient->get('https://partner.shopeemobile.com' . $path, [
+                'query' => [
+                    'partner_id' => (int)$this->partner_id,
+                    'shop_id' => (int)$shop_id,
+                    'sign' => $sign,
+                    'timestamp' => $timestamp,
+                    'access_token' => $access_token,
+                    'order_sn' => $order_sn
+                ]
+            ]);
+
+            if ($response->getStatusCode() !== 200) {
+                Yii::error("HTTP Error {$response->getStatusCode()} for order: $order_sn", __METHOD__);
+                return false;
+            }
+
+            $body = $response->getBody()->getContents();
+            $data = Json::decode($body);
+
+            if (!empty($data['error'])) {
+                Yii::error("Shopee API Error: {$data['error']} - " . ($data['message'] ?? 'Unknown error'), __METHOD__);
+                return false;
+            }
+
+            if (empty($data['response'])) {
+                Yii::warning("No response data for order: $order_sn", __METHOD__);
+                return false;
+            }
+
+            $detail = $data['response'];
+            
+            // Save to database
+            $model = ShopeeIncomeDetails::findOne(['order_sn' => $order_sn]);
+            if (!$model) {
+                $model = new ShopeeIncomeDetails();
+                $model->order_sn = $order_sn;
+                $model->created_at = date('Y-m-d H:i:s');
+            }
+
+            $model->buyer_user_name = $detail['buyer_user_name'] ?? null;
+            $model->buyer_total_amount = $detail['buyer_total_amount'] ?? 0;
+            $model->original_price = $detail['original_price'] ?? 0;
+            $model->seller_return_refund_amount = $detail['seller_return_refund_amount'] ?? 0;
+            $model->shipping_fee_discount_from_3pl = $detail['shipping_fee_discount_from_3pl'] ?? 0;
+            $model->seller_shipping_discount = $detail['seller_shipping_discount'] ?? 0;
+            $model->drc_adjustable_refund = $detail['drc_adjustable_refund'] ?? 0;
+            $model->cost_of_goods_sold = $detail['cost_of_goods_sold'] ?? 0;
+            $model->original_cost_of_goods_sold = $detail['original_cost_of_goods_sold'] ?? 0;
+            $model->original_shopee_discount = $detail['original_shopee_discount'] ?? 0;
+            $model->seller_coin_cash_back = $detail['seller_coin_cash_back'] ?? 0;
+            $model->shopee_shipping_rebate = $detail['shopee_shipping_rebate'] ?? 0;
+            $model->commission_fee = $detail['commission_fee'] ?? 0;
+            $model->transaction_fee = $detail['transaction_fee'] ?? 0;
+            $model->service_fee = $detail['service_fee'] ?? 0;
+            $model->seller_voucher_code = $detail['seller_voucher_code'] ?? 0;
+            $model->shopee_voucher_code = $detail['shopee_voucher_code'] ?? 0;
+            $model->escrow_amount = $detail['escrow_amount'] ?? 0;
+            $model->exchange_rate = $detail['exchange_rate'] ?? 0;
+            $model->reverse_shipping_fee = $detail['reverse_shipping_fee'] ?? 0;
+            $model->final_shipping_fee = $detail['final_shipping_fee'] ?? 0;
+            $model->actual_shipping_fee = $detail['actual_shipping_fee'] ?? 0;
+            $model->order_chargeable_weight = $detail['order_chargeable_weight'] ?? 0;
+            $model->payment_promotion_amount = $detail['payment_promotion_amount'] ?? 0;
+            $model->cross_border_tax = $detail['cross_border_tax'] ?? 0;
+            $model->shipping_fee_paid_by_buyer = $detail['shipping_fee_paid_by_buyer'] ?? 0;
+            $model->items = $detail['items'] ?? [];
+            
+            $model->updated_at = date('Y-m-d H:i:s');
+
+            if ($model->save()) {
+                Yii::info("Saved income details for order: $order_sn", __METHOD__);
+                return true;
+            } else {
+                Yii::error("Failed to save income details for order $order_sn: " . Json::encode($model->errors), __METHOD__);
+                return false;
+            }
+
+        } catch (\Exception $e) {
+            Yii::error("Exception fetching income for order $order_sn: " . $e->getMessage(), __METHOD__);
+            return false;
+        }
+    }
+
+    private function refreshShopeeToken($tokenModel)
+    {
+        try {
+            $refresh_token = $tokenModel->refresh_token;
+            $shop_id = $tokenModel->shop_id;
+
+            $timestamp = time();
+            $path = "/api/v2/auth/access_token/get";
+            $base_string = $this->partner_id . $path . $timestamp;
+            $sign = hash_hmac('sha256', $base_string, $this->partner_key);
+
+            $queryParams = [
+                'partner_id' => $this->partner_id,
+                'timestamp' => $timestamp,
+                'sign' => $sign,
+            ];
+
+            $jsonPayload = [
+                'shop_id' => (int)$shop_id,
+                'partner_id' => (int)$this->partner_id,
+                'refresh_token' => $refresh_token,
+            ];
+
+            $response = $this->httpClient->post('https://partner.shopeemobile.com' . $path, [
+                'headers' => ['Content-Type' => 'application/json'],
+                'query' => $queryParams,
+                'json' => $jsonPayload,
+                'timeout' => 30
+            ]);
+
+            if ($response->getStatusCode() !== 200) {
+                Yii::error('HTTP Error: ' . $response->getStatusCode(), __METHOD__);
+                return false;
+            }
+
+            $body = $response->getBody()->getContents();
+            $data = Json::decode($body);
+
+            if (!empty($data['error'])) {
+                Yii::error("Shopee API Error: {$data['error']} - " . ($data['message'] ?? 'Unknown error'), __METHOD__);
+                return false;
+            }
+
+            if (isset($data['access_token'])) {
+                $expiresAt = date('Y-m-d H:i:s', time() + (int)($data['expire_in'] ?? 14400));
+                $tokenModel->access_token = $data['access_token'];
+                $tokenModel->refresh_token = $data['refresh_token'];
+                $tokenModel->expires_at = $expiresAt;
+                $tokenModel->updated_at = date('Y-m-d H:i:s');
+                return $tokenModel->save();
+            }
+
+            return false;
+
+        } catch (\Exception $e) {
+            Yii::error('Failed to refresh Shopee token: ' . $e->getMessage(), __METHOD__);
+            return false;
+        }
+    }
+}

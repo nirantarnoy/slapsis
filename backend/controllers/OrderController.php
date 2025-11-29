@@ -279,6 +279,11 @@ class OrderController extends Controller
         return $this->redirect(['index']);
     }
 
+    public function actionShopeeIncome($order_no){
+        $service = new \backend\services\ShopeeIncomeService();
+$service->syncOrderIncome($order_no);
+    }
+
     protected function findModel($id)
     {
         if (($model = Order::findOne($id)) !== null) {

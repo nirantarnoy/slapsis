@@ -42,6 +42,14 @@ class ShopeeTransaction extends ActiveRecord
     const CATEGORY_WITHDRAWAL = 'WITHDRAWAL';
     const CATEGORY_OTHER = 'OTHER';
 
+    // Granular Fee Categories
+    const CATEGORY_AMS_COMMISSION = 'AMS_COMMISSION'; // Affiliate Marketing Solutions
+    const CATEGORY_AFFILIATE_COMMISSION = 'AFFILIATE_COMMISSION'; // General Affiliate
+    const CATEGORY_CCB_SERVICE_FEE = 'CCB_SERVICE_FEE'; // Coins Cashback
+    const CATEGORY_FSS_SERVICE_FEE = 'FSS_SERVICE_FEE'; // Free Shipping Special
+    const CATEGORY_VOUCHER_CODE = 'VOUCHER_CODE'; // Voucher usage
+    const CATEGORY_SHIPPING_DISCOUNT = 'SHIPPING_DISCOUNT'; // Shipping discount support
+
     /**
      * {@inheritdoc}
      */
@@ -114,28 +122,6 @@ class ShopeeTransaction extends ActiveRecord
 
     /**
      * Get all fee categories
-     *
-     * @return array
-     */
-    public static function getFeeCategoryList()
-    {
-        return [
-            self::CATEGORY_INCOME => 'รายได้',
-            self::CATEGORY_COMMISSION_FEE => 'ค่าคอมมิชชัน',
-            self::CATEGORY_TRANSACTION_FEE => 'ค่าธรรมเนียมธุรกรรม',
-            self::CATEGORY_SERVICE_FEE => 'ค่าบริการ',
-            self::CATEGORY_SHIPPING_FEE => 'ค่าขนส่ง',
-            self::CATEGORY_CAMPAIGN_FEE => 'ค่าโฆษณา/แคมเปญ',
-            self::CATEGORY_PENALTY_FEE => 'ค่าปรับ',
-            self::CATEGORY_REFUND => 'เงินคืน',
-            self::CATEGORY_ADJUSTMENT => 'ปรับปรุง',
-            self::CATEGORY_WITHDRAWAL => 'ถอนเงิน',
-            self::CATEGORY_OTHER => 'อื่นๆ',
-        ];
-    }
-
-    /**
-     * Check if transaction is expense (negative amount)
      *
      * @return bool
      */
