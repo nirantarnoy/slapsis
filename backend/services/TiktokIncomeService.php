@@ -233,17 +233,43 @@ class TiktokIncomeService
             // Let's assume for now they might be simple values or we check the log later.
             // Actually, usually TikTok API returns { "currency": "THB", "value": "100.00" } for amounts.
             
-            // Let's try to parse safely
-            $model->settlement_amount = $this->parseAmount($detail['settlement_amount'] ?? 0);
-            $model->revenue_amount = $this->parseAmount($detail['revenue_amount'] ?? 0);
-            $model->shipping_cost_amount = $this->parseAmount($detail['shipping_cost_amount'] ?? 0);
-            $model->fee_and_tax_amount = $this->parseAmount($detail['fee_and_tax_amount'] ?? 0);
-            $model->adjustment_amount = $this->parseAmount($detail['adjustment_amount'] ?? 0);
+            // Based on log, 'statement_transactions' is an array of transactions.
+            // We should probably take the first one or sum them up if multiple.
+            // Usually one order has one main settlement transaction unless split.
+            $transaction = $detail['statement_transactions'][0] ?? [];
+
+            // Map fields from the transaction object
+            // Note: API returns strings like "138.26", "-30.74"
+            $model->settlement_amount = $transaction['settlement_amount'] ?? 0;
+            $model->revenue_amount = $transaction['revenue_amount'] ?? 0;
+            $model->shipping_cost_amount = $transaction['shipping_cost_amount'] ?? 0;
+            $model->fee_and_tax_amount = $transaction['fee_amount'] ?? 0; // 'fee_amount' seems to be the total fee
+            $model->adjustment_amount = $transaction['adjustment_amount'] ?? 0;
             
-            $model->currency = $this->parseCurrency($detail['settlement_amount'] ?? '');
+            // Map additional fields
+            $model->actual_shipping_fee_amount = $transaction['actual_shipping_fee_amount'] ?? 0;
+            $model->affiliate_commission_amount = $transaction['affiliate_commission_amount'] ?? 0;
+            $model->customer_payment_amount = $transaction['customer_payment_amount'] ?? 0;
+            $model->customer_refund_amount = $transaction['customer_refund_amount'] ?? 0;
+            $model->gross_sales_amount = $transaction['gross_sales_amount'] ?? 0;
+            $model->gross_sales_refund_amount = $transaction['gross_sales_refund_amount'] ?? 0;
+            $model->net_sales_amount = $transaction['net_sales_amount'] ?? 0;
+            $model->platform_commission_amount = $transaction['platform_commission_amount'] ?? 0;
+            $model->platform_discount_amount = $transaction['platform_discount_amount'] ?? 0;
+            $model->platform_discount_refund_amount = $transaction['platform_discount_refund_amount'] ?? 0;
+            $model->platform_shipping_fee_discount_amount = $transaction['platform_shipping_fee_discount_amount'] ?? 0;
+            $model->sales_tax_amount = $transaction['sales_tax_amount'] ?? 0;
+            $model->sales_tax_payment_amount = $transaction['sales_tax_payment_amount'] ?? 0;
+            $model->sales_tax_refund_amount = $transaction['sales_tax_refund_amount'] ?? 0;
+            $model->shipping_fee_amount = $transaction['shipping_fee_amount'] ?? 0;
+            $model->shipping_fee_subsidy_amount = $transaction['shipping_fee_subsidy_amount'] ?? 0;
+            $model->transaction_fee_amount = $transaction['transaction_fee_amount'] ?? 0;
+            
+            $model->currency = $transaction['currency'] ?? 'THB';
 
             $model->statement_transactions = $detail['statement_transactions'] ?? [];
-            $model->sku_transactions = $detail['sku_statement_transactions'] ?? $detail['sku_transactions'] ?? [];
+            // sku_statement_transactions is inside each transaction object in the log
+            $model->sku_transactions = $transaction['sku_statement_transactions'] ?? [];
             
             $model->updated_at = date('Y-m-d H:i:s');
 
