@@ -221,6 +221,15 @@ class TiktokIncomeService
                 $model->created_at = date('Y-m-d H:i:s');
             }
 
+            // Fetch order_date from Order table
+            // Note: order_id in TiktokIncomeDetails is the pure order ID.
+            // Order table might have order_id as pure ID or combined. 
+            // Based on syncAllOrders, we query Order by order_id.
+            $order = Order::findOne(['order_id' => $order_id]);
+            if ($order) {
+                $model->order_date = $order->order_date;
+            }
+
             $model->settlement_amount = $detail['settlement_amount'] ?? 0;
             $model->revenue_amount = $detail['revenue_amount'] ?? 0;
             $model->shipping_cost_amount = $detail['shipping_cost_amount'] ?? 0;

@@ -66,7 +66,7 @@ class TiktokIncomeSearch extends TiktokIncomeDetails
             // The model has 'created_at'. Let's use that for now, or 'updated_at'.
             // Actually, usually reports are based on 'created_at' of the record or the order date.
             // Let's use created_at for now.
-            $query->andFilterWhere(['between', 'created_at', $this->start_date . ' 00:00:00', $this->end_date . ' 23:59:59']);
+            $query->andFilterWhere(['between', 'order_date', $this->start_date . ' 00:00:00', $this->end_date . ' 23:59:59']);
         }
 
         return $dataProvider;
@@ -82,7 +82,7 @@ class TiktokIncomeSearch extends TiktokIncomeDetails
         }
 
         if (!empty($this->start_date) && !empty($this->end_date)) {
-            $query->andFilterWhere(['between', 'created_at', $this->start_date . ' 00:00:00', $this->end_date . ' 23:59:59']);
+            $query->andFilterWhere(['between', 'order_date', $this->start_date . ' 00:00:00', $this->end_date . ' 23:59:59']);
         }
 
         return $query->all();

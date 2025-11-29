@@ -17,11 +17,11 @@ class IncomeCompareController extends Controller
 
         // Fetch Data
         $shopeeData = ShopeeIncomeDetails::find()
-            ->where(['between', 'created_at', $startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+            ->where(['between', 'order_date', $startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->all();
 
         $tiktokData = TiktokIncomeDetails::find()
-            ->where(['between', 'created_at', $startDate . ' 00:00:00', $endDate . ' 23:59:59'])
+            ->where(['between', 'order_date', $startDate . ' 00:00:00', $endDate . ' 23:59:59'])
             ->all();
 
         // Process Data
@@ -47,7 +47,7 @@ class IncomeCompareController extends Controller
         $daily = [];
 
         foreach ($data as $item) {
-            $date = date('Y-m-d', strtotime($item->created_at));
+            $date = date('Y-m-d', strtotime($item->order_date));
             
             // Income
             $income = $item->cost_of_goods_sold + 
@@ -89,7 +89,7 @@ class IncomeCompareController extends Controller
         $daily = [];
 
         foreach ($data as $item) {
-            $date = date('Y-m-d', strtotime($item->created_at));
+            $date = date('Y-m-d', strtotime($item->order_date));
 
             // Income
             $income = $item->gross_sales_amount + 

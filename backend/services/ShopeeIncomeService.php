@@ -149,6 +149,11 @@ class ShopeeIncomeService
                 $model->created_at = date('Y-m-d H:i:s');
             }
 
+            $order = Order::findOne(['order_sn' => $order_sn]);
+            if ($order) {
+                $model->order_date = $order->order_date;
+            }
+
             // Map fields with multiple possible keys
             // Based on actual log, many fields are inside 'order_income' array
             $income = $detail['order_income'] ?? [];
