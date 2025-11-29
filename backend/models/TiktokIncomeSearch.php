@@ -82,7 +82,7 @@ class TiktokIncomeSearch extends TiktokIncomeDetails
         }
 
         if (!empty($this->start_date) && !empty($this->end_date)) {
-            $query->andFilterWhere(['between', 'order_date', $this->start_date . ' 00:00:00', $this->end_date . ' 23:59:59']);
+            $query->andFilterWhere(['between', 'order_datex', $this->start_date . ' 00:00:00', $this->end_date . ' 23:59:59']);
         }
 
         return $query->all();
