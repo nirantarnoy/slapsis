@@ -125,6 +125,7 @@ class TiktokIncomeService
         
         $queryParams = [
             'app_key' => $this->appKey,
+            'shop_cipher' => $shopCipher,
             'timestamp' => $timestamp,
         ];
 
