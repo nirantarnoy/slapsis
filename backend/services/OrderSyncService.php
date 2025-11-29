@@ -2592,7 +2592,7 @@ class OrderSyncService
 
         // Default to last 30 days if not specified
         if ($fromTime === null) {
-            $fromTime = strtotime('-30 day');
+            $fromTime = strtotime('-1 day');
         }
         if ($toTime === null) {
             $toTime = time();
