@@ -2,6 +2,8 @@
 
 namespace backend\services;
 
+use backend\models\OnlineChannel;
+use backend\models\Order;
 use backend\models\ShopeeIncomeDetails;
 use backend\models\ShopeeToken;
 use GuzzleHttp\Client;
@@ -21,6 +23,47 @@ class ShopeeIncomeService
             'timeout' => 30,
             'connect_timeout' => 10,
         ]);
+    }
+
+    /**
+     * Sync income details for all Shopee orders
+     * @return int
+     */
+    public function syncAllOrders()
+    {
+        $shopeeChannel = OnlineChannel::findOne(['name' => 'Shopee']);
+        if (!$shopeeChannel) {
+            Yii::error('Shopee channel not found', __METHOD__);
+            return 0;
+        }
+
+        $orderSns = Order::find()
+            ->select('order_sn')
+            ->where(['channel_id' => $shopeeChannel->id])
+            ->andWhere(['IS NOT', 'order_sn', null])
+            ->distinct()
+            ->column();
+
+        $count = 0;
+        $total = count($orderSns);
+        Yii::info("Found {$total} Shopee orders to sync income details", __METHOD__);
+
+        foreach ($orderSns as $index => $order_sn) {
+            if (empty($order_sn)) continue;
+           
+            if ($this->syncOrderIncome($order_sn)) {
+                $count++;
+            }
+            // Sleep slightly to respect rate limits
+            usleep(200000); // 0.2s
+
+            if ($count >=10){
+                return $count;
+            }
+        }
+
+        Yii::info("Synced income details for {$count}/{$total} orders", __METHOD__);
+        return $count;
     }
 
     /**

@@ -281,7 +281,8 @@ class OrderController extends Controller
 
     public function actionShopeeIncome($order_no){
         $service = new \backend\services\ShopeeIncomeService();
-$service->syncOrderIncome($order_no);
+//$service->syncOrderIncome($order_no);
+$service->syncAllOrders();
     }
 
     protected function findModel($id)
