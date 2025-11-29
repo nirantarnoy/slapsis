@@ -15,6 +15,7 @@ use miloschuman\highcharts\Highcharts;
 $this->title = 'เปรียบเทียบรายได้ Shopee vs TikTok';
 $this->params['breadcrumbs'][] = $this->title;
 ?>
+<br />
 <div class="income-compare-index">
     <div class="panel panel-default">
         <div class="panel-body">
@@ -96,7 +97,7 @@ $this->params['breadcrumbs'][] = $this->title;
             </div>
         </div>
     </div>
-
+<br />
     <div class="row">
         <div class="col-md-12">
             <div class="box box-primary">
@@ -121,7 +122,7 @@ $this->params['breadcrumbs'][] = $this->title;
             </div>
         </div>
     </div>
-
+<br />
     <div class="row">
         <div class="col-md-6">
             <div class="box box-success">
