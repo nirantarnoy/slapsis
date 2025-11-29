@@ -125,9 +125,8 @@ class TiktokIncomeService
         
         $queryParams = [
             'app_key' => $this->appKey,
-            'shop_cipher' => $shopCipher,
             'timestamp' => $timestamp,
-            'access_token' => $accessToken, // Add access_token to params for signature
+            'access_token' => $accessToken,
         ];
 
         $sign = $this->generateSign($this->appSecret, $queryParams, $path);
