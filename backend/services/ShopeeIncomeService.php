@@ -57,7 +57,7 @@ class ShopeeIncomeService
             // Sleep slightly to respect rate limits
             usleep(200000); // 0.2s
 
-            if ($count >=10){
+            if ($count >=50){
                 return $count;
             }
         }
