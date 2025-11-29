@@ -45,7 +45,7 @@ $this->params['breadcrumbs'][] = $this->title;
             <?php ActiveForm::end(); ?>
         </div>
     </div>
-
+<br />
     <div class="row">
         <!-- Shopee Summary -->
         <div class="col-md-6">
