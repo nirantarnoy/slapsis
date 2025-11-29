@@ -158,11 +158,9 @@ class ShopeeIncomeController extends Controller
                 'Original Price' => 0,
                 'Shipping Fee Paid by Buyer' => 0,
                 'Shopee Shipping Rebate' => 0,
-                'Seller Shipping Discount' => 0, 
-                'Seller Voucher Code' => 0, 
                 'Shopee Voucher Code' => 0, 
                 'Cost of Goods Sold' => 0,
-                'Seller Coin Cash Back' => 0, // Added missing key
+                'Seller Coin Cash Back' => 0,
             ],
             'expense' => [
                 'Commission Fee' => 0,
@@ -176,6 +174,8 @@ class ShopeeIncomeController extends Controller
                 'DRC Adjustable Refund' => 0,
                 'Payment Promotion Amount' => 0,
                 'Cross Border Tax' => 0,
+                'Seller Shipping Discount' => 0, 
+                'Seller Voucher Code' => 0, 
             ],
             'total_income' => 0,
             'total_expense' => 0,
