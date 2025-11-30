@@ -61,11 +61,18 @@ class TiktokIncomeService
                 ->column();
 
             $count = 0;
+            $attempts = 0;
             $total = count($candidateOrderIds);
             Yii::info("Found {$total} candidate TikTok orders. Checking against " . count($syncedMap) . " synced orders.", __METHOD__);
 
             foreach ($candidateOrderIds as $order_id) {
                 if (empty($order_id)) continue;
+                
+                $attempts++;
+                if ($attempts > 100) {
+                    Yii::info("Reached maximum sync attempts (100) for this run.", __METHOD__);
+                    break;
+                }
 
                 $parts = explode('_', $order_id);
                 $actualOrderId = $parts[0];
@@ -287,10 +294,8 @@ class TiktokIncomeService
             $transactions = $detail['statement_transactions'] ?? [];
             
             if (empty($transactions)) {
-                 Yii::warning("No statement transactions found for order: $order_id", __METHOD__);
-                 // Even if empty, we might want to save the record with 0s to avoid re-syncing indefinitely?
-                 // Or maybe return false to try again later?
-                 // Let's save with 0s but mark as synced.
+                 Yii::warning("No statement transactions found for order: $order_id (Order might not be settled yet)", __METHOD__);
+                 return false;
             }
 
             $transaction = $transactions[0] ?? [];
