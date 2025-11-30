@@ -281,36 +281,54 @@ class TiktokIncomeService
             // Usually one order has one main settlement transaction unless split.
             $transaction = $detail['statement_transactions'][0] ?? [];
 
+            // Based on log, 'statement_transactions' is an array of transactions.
+            // We should probably take the first one or sum them up if multiple.
+            // Usually one order has one main settlement transaction unless split.
+            $transactions = $detail['statement_transactions'] ?? [];
+            
+            if (empty($transactions)) {
+                 Yii::warning("No statement transactions found for order: $order_id", __METHOD__);
+                 // Even if empty, we might want to save the record with 0s to avoid re-syncing indefinitely?
+                 // Or maybe return false to try again later?
+                 // Let's save with 0s but mark as synced.
+            }
+
+            $transaction = $transactions[0] ?? [];
+
+            // Helper to safely get amount
+            $getAmount = function($key) use ($transaction) {
+                return isset($transaction[$key]) ? floatval($transaction[$key]) : 0.0;
+            };
+
             // Map fields from the transaction object
-            // Note: API returns strings like "138.26", "-30.74"
-            $model->settlement_amount = $transaction['settlement_amount'] ?? 0;
-            $model->revenue_amount = $transaction['revenue_amount'] ?? 0;
-            $model->shipping_cost_amount = $transaction['shipping_cost_amount'] ?? 0;
-            $model->fee_and_tax_amount = $transaction['fee_amount'] ?? 0; // 'fee_amount' seems to be the total fee
-            $model->adjustment_amount = $transaction['adjustment_amount'] ?? 0;
+            $model->settlement_amount = $getAmount('settlement_amount');
+            $model->revenue_amount = $getAmount('revenue_amount');
+            $model->shipping_cost_amount = $getAmount('shipping_cost_amount');
+            $model->fee_and_tax_amount = $getAmount('fee_amount'); 
+            $model->adjustment_amount = $getAmount('adjustment_amount');
             
             // Map additional fields
-            $model->actual_shipping_fee_amount = $transaction['actual_shipping_fee_amount'] ?? 0;
-            $model->affiliate_commission_amount = $transaction['affiliate_commission_amount'] ?? 0;
-            $model->customer_payment_amount = $transaction['customer_payment_amount'] ?? 0;
-            $model->customer_refund_amount = $transaction['customer_refund_amount'] ?? 0;
-            $model->gross_sales_amount = $transaction['gross_sales_amount'] ?? 0;
-            $model->gross_sales_refund_amount = $transaction['gross_sales_refund_amount'] ?? 0;
-            $model->net_sales_amount = $transaction['net_sales_amount'] ?? 0;
-            $model->platform_commission_amount = $transaction['platform_commission_amount'] ?? 0;
-            $model->platform_discount_amount = $transaction['platform_discount_amount'] ?? 0;
-            $model->platform_discount_refund_amount = $transaction['platform_discount_refund_amount'] ?? 0;
-            $model->platform_shipping_fee_discount_amount = $transaction['platform_shipping_fee_discount_amount'] ?? 0;
-            $model->sales_tax_amount = $transaction['sales_tax_amount'] ?? 0;
-            $model->sales_tax_payment_amount = $transaction['sales_tax_payment_amount'] ?? 0;
-            $model->sales_tax_refund_amount = $transaction['sales_tax_refund_amount'] ?? 0;
-            $model->shipping_fee_amount = $transaction['shipping_fee_amount'] ?? 0;
-            $model->shipping_fee_subsidy_amount = $transaction['shipping_fee_subsidy_amount'] ?? 0;
-            $model->transaction_fee_amount = $transaction['transaction_fee_amount'] ?? 0;
+            $model->actual_shipping_fee_amount = $getAmount('actual_shipping_fee_amount');
+            $model->affiliate_commission_amount = $getAmount('affiliate_commission_amount');
+            $model->customer_payment_amount = $getAmount('customer_payment_amount');
+            $model->customer_refund_amount = $getAmount('customer_refund_amount');
+            $model->gross_sales_amount = $getAmount('gross_sales_amount');
+            $model->gross_sales_refund_amount = $getAmount('gross_sales_refund_amount');
+            $model->net_sales_amount = $getAmount('net_sales_amount');
+            $model->platform_commission_amount = $getAmount('platform_commission_amount');
+            $model->platform_discount_amount = $getAmount('platform_discount_amount');
+            $model->platform_discount_refund_amount = $getAmount('platform_discount_refund_amount');
+            $model->platform_shipping_fee_discount_amount = $getAmount('platform_shipping_fee_discount_amount');
+            $model->sales_tax_amount = $getAmount('sales_tax_amount');
+            $model->sales_tax_payment_amount = $getAmount('sales_tax_payment_amount');
+            $model->sales_tax_refund_amount = $getAmount('sales_tax_refund_amount');
+            $model->shipping_fee_amount = $getAmount('shipping_fee_amount');
+            $model->shipping_fee_subsidy_amount = $getAmount('shipping_fee_subsidy_amount');
+            $model->transaction_fee_amount = $getAmount('transaction_fee_amount');
             
             $model->currency = $transaction['currency'] ?? 'THB';
 
-            $model->statement_transactions = $detail['statement_transactions'] ?? [];
+            $model->statement_transactions = $transactions;
             // sku_statement_transactions is inside each transaction object in the log
             $model->sku_transactions = $transaction['sku_statement_transactions'] ?? [];
             
