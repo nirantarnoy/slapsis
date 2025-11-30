@@ -45,7 +45,6 @@ class TiktokIncomeService
             }
 
             // Get list of already synced orders
-            // Get list of already synced orders
             $syncedOrderIds = TiktokIncomeDetails::find()
                 ->select('order_id')
                 ->column();
@@ -59,32 +58,30 @@ class TiktokIncomeService
                 ->distinct()
                 ->orderBy(['id' => SORT_DESC])
                 ->column();
-
-            $count = 0;
-            $attempts = 0;
-            $total = count($candidateOrderIds);
-            Yii::info("Found {$total} candidate TikTok orders. Checking against " . count($syncedMap) . " synced orders.", __METHOD__);
-
+                
+            // Filter pending orders (PHP side)
+            $pendingOrderIds = [];
             foreach ($candidateOrderIds as $order_id) {
                 if (empty($order_id)) continue;
+                $parts = explode('_', $order_id);
+                $actualOrderId = $parts[0];
                 
-                $attempts++;
-                if ($attempts > 100) {
-                    Yii::info("Reached maximum sync attempts (100) for this run.", __METHOD__);
-                    break;
+                if (!isset($syncedMap[$actualOrderId])) {
+                    $pendingOrderIds[] = $order_id;
                 }
+            }
 
+            $count = 0;
+            $totalPending = count($pendingOrderIds);
+            Yii::info("Found " . count($candidateOrderIds) . " total orders. Pending sync: {$totalPending}", __METHOD__);
+
+            foreach ($pendingOrderIds as $order_id) {
                 $parts = explode('_', $order_id);
                 $actualOrderId = $parts[0];
 
-                // Check if already synced
-                if (isset($syncedMap[$actualOrderId])) {
-                    continue;
-                }
-
                 if ($this->syncOrderIncome($actualOrderId, $order_id)) {
                     $count++;
-                    $syncedMap[$actualOrderId] = true; // Mark as synced
+                    // $syncedMap[$actualOrderId] = true; // No longer needed as we iterate pending list
                 }
                 
                 // Sleep slightly to respect rate limits
@@ -94,8 +91,8 @@ class TiktokIncomeService
                     break;
                 }
             }
-
-            Yii::info("Synced income details for {$count}/{$total} orders", __METHOD__);
+            
+            Yii::info("Synced income details for {$count}/{$totalPending} pending orders", __METHOD__);
             
             $log->end_time = date('Y-m-d H:i:s', strtotime('+7 hours'));
             $log->status = SyncLog::STATUS_SUCCESS;
