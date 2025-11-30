@@ -55,7 +55,6 @@ class TiktokIncomeService
                 ->andWhere(['IS NOT', 'order_id', null])
                 ->andWhere(['NOT IN', 'order_id', $syncedOrderIds])
                 ->distinct()
-                ->orderBy(['id' => SORT_DESC])
                 ->column();
 
             $count = 0;
