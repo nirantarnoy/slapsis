@@ -49,7 +49,7 @@ class TiktokIncomeController extends Controller
         // echo '</pre>';
         // exit;
 
-        return $this->render('report', [
+        return $this->render('index', [
             'searchModel' => $searchModel,
             'data' => $data,
             'summary' => $summary,
