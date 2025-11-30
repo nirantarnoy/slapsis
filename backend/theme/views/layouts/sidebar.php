@@ -115,6 +115,14 @@
                         </p>
                     </a>
                 </li>
+                 <li class="nav-item">
+                    <a href="<?=\Yii\helpers\Url::to(['sync-log/index',true])?>" class="nav-link sync-log">
+                        <i class="nav-icon fas fa-history"></i>
+                        <p>
+                            ประวัติการ Sync
+                        </p>
+                    </a>
+                </li>
                 <?php //endif;?>
 
                 <?php if(\Yii::$app->user->can('department/index') || \Yii::$app->user->can('position/index') || \Yii::$app->user->can('employee/index')):?>

@@ -9,6 +9,7 @@ use backend\models\TiktokToken;
 use GuzzleHttp\Client;
 use Yii;
 use yii\helpers\Json;
+use common\models\SyncLog;
 
 class TiktokIncomeService
 {
@@ -30,53 +31,76 @@ class TiktokIncomeService
      */
     public function syncAllOrders()
     {
-        $tiktokChannel = OnlineChannel::findOne(['name' => 'Tiktok']);
-        if (!$tiktokChannel) {
-            Yii::error('Tiktok channel not found', __METHOD__);
+        $log = new SyncLog();
+        $log->type = SyncLog::TYPE_INCOME;
+        $log->platform = SyncLog::PLATFORM_TIKTOK;
+        $log->start_time = date('Y-m-d H:i:s');
+        $log->status = SyncLog::STATUS_PENDING;
+        $log->save();
+
+        try {
+            $tiktokChannel = OnlineChannel::findOne(['name' => 'Tiktok']);
+            if (!$tiktokChannel) {
+                throw new \Exception('Tiktok channel not found');
+            }
+
+            // Get list of already synced orders
+            $syncedOrderIds = TiktokIncomeDetails::find()
+                ->select('order_id')
+                ->column();
+
+            $orderIds = Order::find()
+                ->select('order_id')
+                ->where(['channel_id' => $tiktokChannel->id])
+                ->andWhere(['IS NOT', 'order_id', null])
+                ->andWhere(['NOT IN', 'order_id', $syncedOrderIds])
+                ->distinct()
+                ->column();
+
+            $count = 0;
+            $total = count($orderIds);
+            Yii::info("Found {$total} TikTok orders to sync income details", __METHOD__);
+
+            foreach ($orderIds as $index => $order_id) {
+                if (empty($order_id)) continue;
+
+                // order_id in DB might be combined like 'ORDERID_ITEMID', but API needs pure Order ID
+                // Assuming order_id in DB is the actual TikTok Order ID or contains it.
+                // If unique_order_id is 'ORDERID_ITEMID', we need to extract ORDERID.
+                // Based on OrderSyncService: $unique_order_id = $order_id . '_' . $item['id'];
+            
+            $parts = explode('_', $order_id);
+            $actualOrderId = $parts[0];
+
+                if ($this->syncOrderIncome($actualOrderId,$order_id)) {
+                    $count++;
+                }
+                // Sleep slightly to respect rate limits
+                usleep(200000); // 0.2s
+                
+                if ($count >= 20) {
+                    break;
+                }
+            }
+
+            Yii::info("Synced income details for {$count}/{$total} orders", __METHOD__);
+            
+            $log->end_time = date('Y-m-d H:i:s');
+            $log->status = SyncLog::STATUS_SUCCESS;
+            $log->total_records = $count;
+            $log->save();
+
+            return $count;
+
+        } catch (\Exception $e) {
+            $log->end_time = date('Y-m-d H:i:s');
+            $log->status = SyncLog::STATUS_FAILED;
+            $log->message = $e->getMessage();
+            $log->save();
+            
+            Yii::error('Tiktok income sync error: ' . $e->getMessage(), __METHOD__);
             return 0;
         }
-
-        // Get list of already synced orders
-        $syncedOrderIds = TiktokIncomeDetails::find()
-            ->select('order_id')
-            ->column();
-
-        $orderIds = Order::find()
-            ->select('order_id')
-            ->where(['channel_id' => $tiktokChannel->id])
-            ->andWhere(['IS NOT', 'order_id', null])
-            ->andWhere(['NOT IN', 'order_id', $syncedOrderIds])
-            ->distinct()
-            ->column();
-
-        $count = 0;
-        $total = count($orderIds);
-        Yii::info("Found {$total} TikTok orders to sync income details", __METHOD__);
-
-        foreach ($orderIds as $index => $order_id) {
-            if (empty($order_id)) continue;
-
-            // order_id in DB might be combined like 'ORDERID_ITEMID', but API needs pure Order ID
-            // Assuming order_id in DB is the actual TikTok Order ID or contains it.
-            // If unique_order_id is 'ORDERID_ITEMID', we need to extract ORDERID.
-            // Based on OrderSyncService: $unique_order_id = $order_id . '_' . $item['id'];
-           
-           $parts = explode('_', $order_id);
-           $actualOrderId = $parts[0];
-
-            if ($this->syncOrderIncome($actualOrderId,$order_id)) {
-                $count++;
-            }
-            // Sleep slightly to respect rate limits
-            usleep(200000); // 0.2s
-            
-            if ($count >= 20) {
-                return $count;
-            }
-        }
-
-        Yii::info("Synced income details for {$count}/{$total} orders", __METHOD__);
-        return $count;
     }
 
     /**

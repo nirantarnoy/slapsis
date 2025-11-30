@@ -16,6 +16,7 @@ use backend\models\TiktokToken;
 use yii\base\Exception;
 use GuzzleHttp\Client;
 use yii\helpers\Json;
+use common\models\SyncLog;
 
 class OrderSyncService
 {
@@ -53,16 +54,36 @@ class OrderSyncService
         $errors = [];
 
         foreach ($channels as $channel) {
+            $log = new SyncLog();
+            $log->type = SyncLog::TYPE_ORDER;
+            $log->platform = strtolower($channel->name);
+            $log->start_time = date('Y-m-d H:i:s');
+            $log->status = SyncLog::STATUS_PENDING;
+            $log->save();
+
             try {
+                $count = 0;
                 switch ($channel->name) {
                     case 'Tiktok':
-                        $totalSynced += $this->syncTikTokOrders($channel);
+                        $count = $this->syncTikTokOrders($channel);
                         break;
                     case 'Shopee':
-                        $totalSynced += $this->syncShopeeOrders($channel);
+                        $count = $this->syncShopeeOrders($channel);
                         break;
                 }
+                $totalSynced += $count;
+
+                $log->end_time = date('Y-m-d H:i:s');
+                $log->status = SyncLog::STATUS_SUCCESS;
+                $log->total_records = $count;
+                $log->save();
+
             } catch (\Exception $e) {
+                $log->end_time = date('Y-m-d H:i:s');
+                $log->status = SyncLog::STATUS_FAILED;
+                $log->message = $e->getMessage();
+                $log->save();
+
                 $errors[] = $channel->name . ': ' . $e->getMessage();
                 Yii::error('Order sync error for ' . $channel->name . ': ' . $e->getMessage(), __METHOD__);
             }

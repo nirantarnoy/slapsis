@@ -10,6 +10,7 @@ use GuzzleHttp\Client;
 use Yii;
 use yii\base\Exception;
 use yii\helpers\Json;
+use common\models\SyncLog;
 
 class ShopeeIncomeService
 {
@@ -31,45 +32,68 @@ class ShopeeIncomeService
      */
     public function syncAllOrders()
     {
-        $shopeeChannel = OnlineChannel::findOne(['name' => 'Shopee']);
-        if (!$shopeeChannel) {
-            Yii::error('Shopee channel not found', __METHOD__);
+        $log = new SyncLog();
+        $log->type = SyncLog::TYPE_INCOME;
+        $log->platform = SyncLog::PLATFORM_SHOPEE;
+        $log->start_time = date('Y-m-d H:i:s');
+        $log->status = SyncLog::STATUS_PENDING;
+        $log->save();
+
+        try {
+            $shopeeChannel = OnlineChannel::findOne(['name' => 'Shopee']);
+            if (!$shopeeChannel) {
+                throw new \Exception('Shopee channel not found');
+            }
+
+            // Get list of already synced orders
+            $syncedOrderSns = ShopeeIncomeDetails::find()
+                ->select('order_sn')
+                ->column();
+
+            $orderSns = Order::find()
+                ->select('order_sn')
+                ->where(['channel_id' => $shopeeChannel->id])
+                ->andWhere(['IS NOT', 'order_sn', null])
+                ->andWhere(['NOT IN', 'order_sn', $syncedOrderSns])
+                ->distinct()
+                ->column();
+
+            $count = 0;
+            $total = count($orderSns);
+            Yii::info("Found {$total} Shopee orders to sync income details", __METHOD__);
+
+            foreach ($orderSns as $index => $order_sn) {
+                if (empty($order_sn)) continue;
+            
+                if ($this->syncOrderIncome($order_sn)) {
+                    $count++;
+                }
+                // Sleep slightly to respect rate limits
+                usleep(200000); // 0.2s
+
+                if ($count >=50){
+                    break;
+                }
+            }
+
+            Yii::info("Synced income details for {$count}/{$total} orders", __METHOD__);
+
+            $log->end_time = date('Y-m-d H:i:s');
+            $log->status = SyncLog::STATUS_SUCCESS;
+            $log->total_records = $count;
+            $log->save();
+
+            return $count;
+
+        } catch (\Exception $e) {
+            $log->end_time = date('Y-m-d H:i:s');
+            $log->status = SyncLog::STATUS_FAILED;
+            $log->message = $e->getMessage();
+            $log->save();
+
+            Yii::error('Shopee income sync error: ' . $e->getMessage(), __METHOD__);
             return 0;
         }
-
-        // Get list of already synced orders
-        $syncedOrderSns = ShopeeIncomeDetails::find()
-            ->select('order_sn')
-            ->column();
-
-        $orderSns = Order::find()
-            ->select('order_sn')
-            ->where(['channel_id' => $shopeeChannel->id])
-            ->andWhere(['IS NOT', 'order_sn', null])
-            ->andWhere(['NOT IN', 'order_sn', $syncedOrderSns])
-            ->distinct()
-            ->column();
-
-        $count = 0;
-        $total = count($orderSns);
-        Yii::info("Found {$total} Shopee orders to sync income details", __METHOD__);
-
-        foreach ($orderSns as $index => $order_sn) {
-            if (empty($order_sn)) continue;
-           
-            if ($this->syncOrderIncome($order_sn)) {
-                $count++;
-            }
-            // Sleep slightly to respect rate limits
-            usleep(200000); // 0.2s
-
-            if ($count >=50){
-                return $count;
-            }
-        }
-
-        Yii::info("Synced income details for {$count}/{$total} orders", __METHOD__);
-        return $count;
     }
 
     /**
