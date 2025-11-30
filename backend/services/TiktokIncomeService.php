@@ -78,7 +78,7 @@ class TiktokIncomeService
                 // Sleep slightly to respect rate limits
                 usleep(200000); // 0.2s
                 
-                if ($count >= 40) {
+                if ($count >= 20) {
                     break;
                 }
             }
