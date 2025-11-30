@@ -34,7 +34,7 @@ $lastSync = \common\models\SyncLog::find()
                 <h3 class="card-title">
                     <?= Html::encode($this->title) ?>
                     <?php if ($lastSync): ?>
-                        <small class="text-muted" style="font-size: 0.6em; margin-left: 10px;color: red;">
+                        <small style="font-size: 0.6em; margin-left: 10px;color: red;">
                             (อัปเดตล่าสุด: <?= Yii::$app->formatter->asDatetime($lastSync->end_time, 'php:d/m/Y H:i:s') ?>)
                         </small>
                     <?php endif; ?>
