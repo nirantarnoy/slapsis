@@ -56,6 +56,7 @@ class ShopeeIncomeService
                 ->andWhere(['IS NOT', 'order_sn', null])
                 ->andWhere(['NOT IN', 'order_sn', $syncedOrderSns])
                 ->distinct()
+                ->orderBy(['id' => SORT_DESC])
                 ->column();
 
             $count = 0;

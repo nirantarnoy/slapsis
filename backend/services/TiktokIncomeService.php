@@ -55,6 +55,7 @@ class TiktokIncomeService
                 ->andWhere(['IS NOT', 'order_id', null])
                 ->andWhere(['NOT IN', 'order_id', $syncedOrderIds])
                 ->distinct()
+                ->orderBy(['id' => SORT_DESC])
                 ->column();
 
             $count = 0;
@@ -78,7 +79,7 @@ class TiktokIncomeService
                 // Sleep slightly to respect rate limits
                 usleep(200000); // 0.2s
                 
-                if ($count >= 20) {
+                if ($count >= 40) {
                     break;
                 }
             }
