@@ -218,4 +218,57 @@ class TiktokIncomeController extends Controller
 
         return $summary;
     }
+
+    public function actionDebug()
+    {
+        $channel = \backend\models\OnlineChannel::findOne(['name' => 'Tiktok']);
+        echo "<h1>TikTok Income Sync Debug</h1>";
+        echo "Channel: " . ($channel ? "Found (ID: {$channel->id})" : '<span style="color:red">Not Found</span>') . "<br>";
+        
+        if ($channel) {
+            $totalOrders = \backend\models\Order::find()->where(['channel_id' => $channel->id])->count();
+            echo "Total Orders in DB: <strong>$totalOrders</strong><br>";
+            
+            $syncedCount = TiktokIncomeDetails::find()->count();
+            echo "Already Synced Orders: <strong>$syncedCount</strong><br>";
+            
+            // Check pending
+            $syncedIds = TiktokIncomeDetails::find()->select('order_id')->column();
+            $query = \backend\models\Order::find()
+                ->where(['channel_id' => $channel->id])
+                ->andWhere(['IS NOT', 'order_id', null])
+                ->andWhere(['NOT IN', 'order_id', $syncedIds]);
+                
+            $pendingCount = $query->count();
+            echo "Pending Orders to Sync: <strong>$pendingCount</strong><br>";
+            
+            if ($pendingCount > 0) {
+                $pendingOrders = $query->limit(5)->all();
+                echo "<hr><h3>Testing Sync for first 5 pending orders:</h3>";
+                
+                $service = new \backend\services\TiktokIncomeService();
+                
+                foreach ($pendingOrders as $order) {
+                    $parts = explode('_', $order->order_id);
+                    $actualOrderId = $parts[0];
+                    
+                    echo "Syncing Order: <strong>{$order->order_id}</strong> (Actual ID: $actualOrderId) ... ";
+                    
+                    try {
+                        $result = $service->syncOrderIncome($actualOrderId, $order->order_id);
+                        if ($result) {
+                            echo "<span style='color:green'>SUCCESS</span>";
+                        } else {
+                            echo "<span style='color:red'>FAILED</span>";
+                        }
+                    } catch (\Exception $e) {
+                        echo "<span style='color:red'>ERROR: " . $e->getMessage() . "</span>";
+                    }
+                    echo "<br>";
+                }
+            } else {
+                echo "<hr><h3 style='color:green'>All orders are synced!</h3>";
+            }
+        }
+    }
 }
