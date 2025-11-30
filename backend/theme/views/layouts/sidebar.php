@@ -89,10 +89,28 @@
                 <?php //endif;?>
                 <?php //if(\Yii::$app->user->can('site/index')):?>
                 <li class="nav-item">
-                    <a href="<?=\Yii\helpers\Url::to(['feereport/index',true])?>" class="nav-link feereport">
+                    <a href="<?=\Yii\helpers\Url::to(['income-compare/index',true])?>" class="nav-link income-compare">
                         <i class="nav-icon fas fa-list"></i>
                         <p>
-                            ค่าธรรมเนียม
+                            ค่าธรรมเนียมรวม
+                            <!--                                <i class="right fas fa-angle-left"></i>-->
+                        </p>
+                    </a>
+                </li>
+              <li class="nav-item">
+                    <a href="<?=\Yii\helpers\Url::to(['shopee-income/index',true])?>" class="nav-link shopee-income">
+                        <i class="nav-icon fas fa-list"></i>
+                        <p>
+                            ค่าธรรมเนียม Shopee
+                            <!--                                <i class="right fas fa-angle-left"></i>-->
+                        </p>
+                    </a>
+                </li>
+         <li class="nav-item">
+                    <a href="<?=\Yii\helpers\Url::to(['tiktok-income/index',true])?>" class="nav-link tiktok-income">
+                        <i class="nav-icon fas fa-list"></i>
+                        <p>
+                            ค่าธรรมเนียม Tiktok
                             <!--                                <i class="right fas fa-angle-left"></i>-->
                         </p>
                     </a>
