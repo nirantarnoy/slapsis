@@ -45,36 +45,41 @@ class TiktokIncomeService
             }
 
             // Get list of already synced orders
+            // Get list of already synced orders
             $syncedOrderIds = TiktokIncomeDetails::find()
                 ->select('order_id')
                 ->column();
+            $syncedMap = array_flip($syncedOrderIds);
 
-            $orderIds = Order::find()
+            // Get all candidate order IDs from Order table
+            $candidateOrderIds = Order::find()
                 ->select('order_id')
                 ->where(['channel_id' => $tiktokChannel->id])
                 ->andWhere(['IS NOT', 'order_id', null])
-                ->andWhere(['NOT IN', 'order_id', $syncedOrderIds])
                 ->distinct()
+                ->orderBy(['id' => SORT_DESC])
                 ->column();
 
             $count = 0;
-            $total = count($orderIds);
-            Yii::info("Found {$total} TikTok orders to sync income details", __METHOD__);
+            $total = count($candidateOrderIds);
+            Yii::info("Found {$total} candidate TikTok orders. Checking against " . count($syncedMap) . " synced orders.", __METHOD__);
 
-            foreach ($orderIds as $index => $order_id) {
+            foreach ($candidateOrderIds as $order_id) {
                 if (empty($order_id)) continue;
 
-                // order_id in DB might be combined like 'ORDERID_ITEMID', but API needs pure Order ID
-                // Assuming order_id in DB is the actual TikTok Order ID or contains it.
-                // If unique_order_id is 'ORDERID_ITEMID', we need to extract ORDERID.
-                // Based on OrderSyncService: $unique_order_id = $order_id . '_' . $item['id'];
-            
-            $parts = explode('_', $order_id);
-            $actualOrderId = $parts[0];
+                $parts = explode('_', $order_id);
+                $actualOrderId = $parts[0];
 
-                if ($this->syncOrderIncome($actualOrderId,$order_id)) {
-                    $count++;
+                // Check if already synced
+                if (isset($syncedMap[$actualOrderId])) {
+                    continue;
                 }
+
+                if ($this->syncOrderIncome($actualOrderId, $order_id)) {
+                    $count++;
+                    $syncedMap[$actualOrderId] = true; // Mark as synced
+                }
+                
                 // Sleep slightly to respect rate limits
                 usleep(200000); // 0.2s
                 

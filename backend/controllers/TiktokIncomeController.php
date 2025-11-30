@@ -232,30 +232,42 @@ class TiktokIncomeController extends Controller
             $syncedCount = TiktokIncomeDetails::find()->count();
             echo "Already Synced Orders: <strong>$syncedCount</strong><br>";
             
-            // Check pending
+            // Check pending using PHP logic
             $syncedIds = TiktokIncomeDetails::find()->select('order_id')->column();
-            $query = \backend\models\Order::find()
+            $syncedMap = array_flip($syncedIds);
+            
+            $allOrders = \backend\models\Order::find()
+                ->select('order_id')
                 ->where(['channel_id' => $channel->id])
                 ->andWhere(['IS NOT', 'order_id', null])
-                ->andWhere(['NOT IN', 'order_id', $syncedIds]);
+                ->column();
                 
-            $pendingCount = $query->count();
-            echo "Pending Orders to Sync: <strong>$pendingCount</strong><br>";
+            $pendingOrders = [];
+            foreach ($allOrders as $oid) {
+                $parts = explode('_', $oid);
+                $pureId = $parts[0];
+                if (!isset($syncedMap[$pureId])) {
+                    $pendingOrders[] = $oid;
+                }
+            }
+                
+            $pendingCount = count($pendingOrders);
+            echo "Pending Orders to Sync (Real): <strong>$pendingCount</strong><br>";
             
             if ($pendingCount > 0) {
-                $pendingOrders = $query->limit(5)->all();
+                $toSync = array_slice($pendingOrders, 0, 5);
                 echo "<hr><h3>Testing Sync for first 5 pending orders:</h3>";
                 
                 $service = new \backend\services\TiktokIncomeService();
                 
-                foreach ($pendingOrders as $order) {
-                    $parts = explode('_', $order->order_id);
+                foreach ($toSync as $order_id) {
+                    $parts = explode('_', $order_id);
                     $actualOrderId = $parts[0];
                     
-                    echo "Syncing Order: <strong>{$order->order_id}</strong> (Actual ID: $actualOrderId) ... ";
+                    echo "Syncing Order: <strong>{$order_id}</strong> (Actual ID: $actualOrderId) ... ";
                     
                     try {
-                        $result = $service->syncOrderIncome($actualOrderId, $order->order_id);
+                        $result = $service->syncOrderIncome($actualOrderId, $order_id);
                         if ($result) {
                             echo "<span style='color:green'>SUCCESS</span>";
                         } else {
