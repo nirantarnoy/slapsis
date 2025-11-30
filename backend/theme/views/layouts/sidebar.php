@@ -90,7 +90,7 @@
                 <?php //if(\Yii::$app->user->can('site/index')):?>
                 <li class="nav-item">
                     <a href="<?=\Yii\helpers\Url::to(['income-compare/index',true])?>" class="nav-link income-compare">
-                        <i class="nav-icon fas fa-list"></i>
+                        <i class="nav-icon fas fa-chart-line"></i>
                         <p>
                             ค่าธรรมเนียมรวม
                             <!--                                <i class="right fas fa-angle-left"></i>-->
@@ -99,7 +99,7 @@
                 </li>
               <li class="nav-item">
                     <a href="<?=\Yii\helpers\Url::to(['shopee-income/index',true])?>" class="nav-link shopee-income">
-                        <i class="nav-icon fas fa-list"></i>
+                        <i class="nav-icon fas fa-money-bill-wave"></i>
                         <p>
                             ค่าธรรมเนียม Shopee
                             <!--                                <i class="right fas fa-angle-left"></i>-->
