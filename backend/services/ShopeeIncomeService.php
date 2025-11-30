@@ -35,7 +35,7 @@ class ShopeeIncomeService
         $log = new SyncLog();
         $log->type = SyncLog::TYPE_INCOME;
         $log->platform = SyncLog::PLATFORM_SHOPEE;
-        $log->start_time = date('Y-m-d H:i:s');
+        $log->start_time = date('Y-m-d H:i:s', strtotime('+7 hours'));
         $log->status = SyncLog::STATUS_PENDING;
         $log->save();
 
@@ -78,7 +78,7 @@ class ShopeeIncomeService
 
             Yii::info("Synced income details for {$count}/{$total} orders", __METHOD__);
 
-            $log->end_time = date('Y-m-d H:i:s');
+            $log->end_time = date('Y-m-d H:i:s', strtotime('+7 hours'));
             $log->status = SyncLog::STATUS_SUCCESS;
             $log->total_records = $count;
             $log->save();
@@ -86,7 +86,7 @@ class ShopeeIncomeService
             return $count;
 
         } catch (\Exception $e) {
-            $log->end_time = date('Y-m-d H:i:s');
+            $log->end_time = date('Y-m-d H:i:s', strtotime('+7 hours'));
             $log->status = SyncLog::STATUS_FAILED;
             $log->message = $e->getMessage();
             $log->save();
