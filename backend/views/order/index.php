@@ -14,6 +14,11 @@ use yii\widgets\Pjax;
 
 $this->title = 'จัดการคำสั่งซื้อ';
 $this->params['breadcrumbs'][] = $this->title;
+
+$lastSync = \common\models\SyncLog::find()
+    ->where(['type' => \common\models\SyncLog::TYPE_ORDER, 'status' => \common\models\SyncLog::STATUS_SUCCESS])
+    ->orderBy(['end_time' => SORT_DESC])
+    ->one();
 ?>
     <div class="order-index">
         <?php
@@ -26,7 +31,14 @@ $this->params['breadcrumbs'][] = $this->title;
         ?>
         <div class="card">
             <div class="card-header">
-                <h3 class="card-title"><?= Html::encode($this->title) ?></h3>
+                <h3 class="card-title">
+                    <?= Html::encode($this->title) ?>
+                    <?php if ($lastSync): ?>
+                        <small class="text-muted" style="font-size: 0.6em; margin-left: 10px;">
+                            (อัปเดตล่าสุด: <?= Yii::$app->formatter->asDatetime($lastSync->end_time, 'php:d/m/Y H:i:s') ?>)
+                        </small>
+                    <?php endif; ?>
+                </h3>
                 <div class="card-tools">
                     <?= Html::a('<i class="fas fa-plus"></i> เพิ่มคำสั่งซื้อ', ['create'], ['class' => 'btn btn-success btn-sm']) ?>
                     <?= Html::a('<i class="fas fa-chart-line"></i> ดูรายงาน', ['report'], ['class' => 'btn btn-info btn-sm']) ?>
