@@ -61,10 +61,10 @@ class TiktokIncomeService
             // If unique_order_id is 'ORDERID_ITEMID', we need to extract ORDERID.
             // Based on OrderSyncService: $unique_order_id = $order_id . '_' . $item['id'];
            
-           // $parts = explode('_', $order_id);
-           // $actualOrderId = $parts[0];
+           $parts = explode('_', $order_id);
+           $actualOrderId = $parts[0];
 
-            if ($this->syncOrderIncome($order_id)) {
+            if ($this->syncOrderIncome($actualOrderId,$order_id)) {
                 $count++;
             }
             // Sleep slightly to respect rate limits
@@ -84,7 +84,7 @@ class TiktokIncomeService
      * @param string $order_id
      * @return bool
      */
-    public function syncOrderIncome($order_id)
+    public function syncOrderIncome($order_id,$origin_order_id)
     {
         $tokenModel = TiktokToken::find()
             ->where(['status' => 'active'])
@@ -111,7 +111,7 @@ class TiktokIncomeService
             $this->fetchShopCipher($tokenModel);
         }
 
-        return $this->fetchAndSaveSettlementDetail($tokenModel, $order_id);
+        return $this->fetchAndSaveSettlementDetail($tokenModel, $order_id,$origin_order_id);
     }
 
     private function fetchShopCipher($tokenModel)
@@ -162,7 +162,7 @@ class TiktokIncomeService
         return null;
     }
 
-    private function fetchAndSaveSettlementDetail($tokenModel, $order_id)
+    private function fetchAndSaveSettlementDetail($tokenModel, $order_id,$origin_order_id)
     {
         $accessToken = $tokenModel->access_token;
         $shopCipher = $tokenModel->shop_cipher;
@@ -226,10 +226,9 @@ class TiktokIncomeService
             // Note: order_id in TiktokIncomeDetails is the pure order ID.
             // Order table might have order_id as pure ID or combined (ID_ITEMID). 
             $order = Order::find()
-                ->where(['or', 
-                    ['order_id' => $order_id],
-                    ['like', 'order_id', $order_id . '_%', false]
-                ])
+                ->where(
+                    ['order_id' => $origin_order_id]
+                )
                 ->one();
                 
             if ($order) {
