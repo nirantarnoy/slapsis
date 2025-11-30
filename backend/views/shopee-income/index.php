@@ -75,13 +75,11 @@ $this->params['breadcrumbs'][] = $this->title;
                             <td colspan="3"><strong>รายได้ (Income)</strong></td>
                         </tr>
                         <?php foreach ($summary['income'] as $label => $amount): ?>
-                        <?php if ($amount != 0): ?>
                         <tr>
                             <td style="width: 50px;"></td>
                             <td><?= $label ?></td>
                             <td class="text-right"><?= number_format($amount, 2) ?></td>
                         </tr>
-                        <?php endif; ?>
                         <?php endforeach; ?>
                         <tr class="success">
                             <td colspan="2" class="text-right"><strong>รวมรายได้ (Total Income)</strong></td>
@@ -93,13 +91,11 @@ $this->params['breadcrumbs'][] = $this->title;
                             <td colspan="3"><strong>ค่าใช้จ่าย (Expenses)</strong></td>
                         </tr>
                         <?php foreach ($summary['expense'] as $label => $amount): ?>
-                        <?php if ($amount != 0): ?>
                         <tr>
                             <td></td>
                             <td><?= $label ?></td>
                             <td class="text-right"><?= number_format($amount, 2) ?></td>
                         </tr>
-                        <?php endif; ?>
                         <?php endforeach; ?>
                         <tr class="danger">
                             <td colspan="2" class="text-right"><strong>รวมค่าใช้จ่าย (Total Expenses)</strong></td>
