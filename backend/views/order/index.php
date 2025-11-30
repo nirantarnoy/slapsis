@@ -40,9 +40,9 @@ $lastSync = \common\models\SyncLog::find()
                     <?php endif; ?>
                 </h3>
                 <div class="card-tools">
-                    <?= Html::a('<i class="fas fa-plus"></i> เพิ่มคำสั่งซื้อ', ['create'], ['class' => 'btn btn-success btn-sm']) ?>
+                    <?php //echo Html::a('<i class="fas fa-plus"></i> เพิ่มคำสั่งซื้อ', ['create'], ['class' => 'btn btn-success btn-sm']) ?>
                     <?= Html::a('<i class="fas fa-chart-line"></i> ดูรายงาน', ['report'], ['class' => 'btn btn-info btn-sm']) ?>
-                    <div class="btn-group">
+                    <!-- <div class="btn-group">
                         <button type="button" class="btn btn-primary btn-sm dropdown-toggle" data-toggle="dropdown">
                             <i class="fas fa-sync"></i> ดึงข้อมูล
                         </button>
@@ -54,7 +54,7 @@ $lastSync = \common\models\SyncLog::find()
                                 ]) ?>
                             <?php endforeach; ?>
                         </div>
-                    </div>
+                    </div> -->
                 </div>
             </div>
             <div class="card-body">
