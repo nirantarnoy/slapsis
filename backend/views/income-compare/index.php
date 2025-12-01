@@ -65,7 +65,7 @@ $this->params['breadcrumbs'][] = $this->title;
                         </tr>
                         <tr>
                             <th>สุทธิ</th>
-                            <td class="text-right" style="font-weight: bold;"><?= number_format($shopeeSummary['total_income'] + $shopeeSummary['total_expense'], 2) ?></td>
+                            <td class="text-right" style="font-weight: bold;"><?= number_format($shopeeSummary['total_income'] - $shopeeSummary['total_expense'], 2) ?></td>
                         </tr>
                     </table>
                 </div>
@@ -145,7 +145,7 @@ $this->params['breadcrumbs'][] = $this->title;
                             'series' => [[
                                 'name' => 'Income',
                                 'data' => [
-                                    ['Shopee', $shopeeSummary['total_income']],
+                                    ['Shopee', $shopeeSummary['total_income']-$shopeeSummary['total_expense']],
                                     ['TikTok', $tiktokSummary['total_income']],
                                 ]
                             ]],
