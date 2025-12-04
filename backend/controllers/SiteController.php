@@ -77,19 +77,27 @@ class SiteController extends Controller
 
     public function actionIndex()
     {
-
         // รับค่าวันที่จาก request หรือใช้ค่า default (30 วันย้อนหลัง)
         $fromDate = Yii::$app->request->get('from_date', date('Y-m-d', strtotime('-30 days')));
         $toDate = Yii::$app->request->get('to_date', date('Y-m-d'));
 
-        // แปลงวันที่เป็น timestamp
-        $fromTimestamp = strtotime($fromDate);
-        $toTimestamp = strtotime($toDate . ' 23:59:59');
+        // Fetch connected TikTok Shops
+        $tiktokShops = (new \yii\db\Query())
+            ->from('tiktok_tokens')
+            ->where(['status' => 'active'])
+            ->all();
 
+        // Fetch connected Shopee Shops
+        $shopeeShops = (new \yii\db\Query())
+            ->from('shopee_tokens')
+            ->where(['status' => 'active'])
+            ->all();
 
         return $this->render('index', [
             'fromDate' => $fromDate,
             'toDate' => $toDate,
+            'tiktokShops' => $tiktokShops,
+            'shopeeShops' => $shopeeShops,
         ]);
     }
 
