@@ -6,7 +6,7 @@ use yii\helpers\Url;
 use yii\grid\ActionColumn;
 use kartik\grid\GridView;
 use yii\widgets\Pjax;
-use yii\bootstrap4\LinkPager;
+use yii\widgets\LinkPager;
 
 /** @var yii\web\View $this */
 /** @var backend\models\ProductSearch $searchModel */
@@ -121,10 +121,9 @@ $this->params['breadcrumbs'][] = $this->title;
             ],
             'pager' => [
                 'class' => LinkPager::className(),
-                'options' => ['class' => 'flex pl-0 list-none rounded my-0'],
+                'options' => ['class' => 'pagination flex pl-0 list-none rounded my-0'],
                 'linkOptions' => ['class' => 'relative block py-2 px-3 leading-tight bg-white border border-gray-300 text-gray-800 border-r-0 hover:bg-gray-200'],
                 'disabledListItemSubTagOptions' => ['class' => 'relative block py-2 px-3 leading-tight bg-white border border-gray-300 text-gray-400 border-r-0'],
-                'activeLinkAttributes' => ['class' => 'relative block py-2 px-3 leading-tight bg-indigo-50 border border-indigo-500 text-indigo-600 border-r-0 z-10'],
             ],
         ]); ?>
         <?php Pjax::end(); ?>
@@ -141,4 +140,18 @@ $this->registerJs(<<<JS
     });
 JS
 );
+
+$this->registerCss("
+    .pagination li.active a {
+        position: relative;
+        display: block;
+        padding: 0.5rem 0.75rem;
+        margin-left: -1px;
+        line-height: 1.25;
+        color: #4f46e5;
+        background-color: #eef2ff;
+        border: 1px solid #6366f1;
+        z-index: 10;
+    }
+");
 ?>
