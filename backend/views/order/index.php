@@ -91,11 +91,97 @@ $lastSync = \common\models\SyncLog::find()
                         'options' => ['placeholder' => 'ทุกช่องทาง'],
                         'pluginOptions' => ['allowClear' => true],
                     ]),
+                    'headerOptions' => ['class' => 'px-3 py-3'],
+                    'contentOptions' => ['class' => 'px-3 py-3'],
+                ],
+                [
+                    'attribute' => 'sku',
+                    'headerOptions' => ['class' => 'px-3 py-3'],
+                    'contentOptions' => ['class' => 'px-3 py-3 font-mono text-xs'],
+                ],
+                [
+                    'attribute' => 'product_name',
+                    'headerOptions' => ['class' => 'px-3 py-3'],
+                    'contentOptions' => ['class' => 'px-3 py-3 max-w-xs truncate'],
+                ],
+                [
+                    'attribute' => 'quantity',
+                    'format' => 'integer',
+                    'headerOptions' => ['class' => 'px-3 py-3 text-center'],
+                    'contentOptions' => ['class' => 'px-3 py-3 text-center font-semibold text-gray-700'],
+                ],
+                [
+                    'attribute' => 'total_amount',
+                    'format' => ['decimal', 2],
+                    'headerOptions' => ['class' => 'px-3 py-3 text-right'],
+                    'contentOptions' => ['class' => 'px-3 py-3 text-right font-medium text-emerald-600'],
                 ],
                 [
                     'attribute' => 'order_date',
                     'value' => function ($model) {
                         return Yii::$app->formatter->asDatetime($model->order_date, 'php:d/m/Y H:i');
+                    },
+                    'filter' => DateRangePicker::widget([
+                        'model' => $searchModel,
+                        'attribute' => 'dateRange',
+                        'convertFormat' => true,
+                        'pluginOptions' => [
+                            'locale' => ['format' => 'd/m/Y', 'separator' => ' - '],
+                            'opens' => 'left',
+                        ],
+                    ]),
+                    'headerOptions' => ['class' => 'px-3 py-3'],
+                    'contentOptions' => ['class' => 'px-3 py-3 text-xs text-gray-500'],
+                ],
+                [
+                    'attribute' => 'order_status',
+                    'format' => 'raw',
+                    'value' => function($model) {
+                        $status = strtoupper($model->order_status);
+                        $statusClass = 'bg-gray-100 text-gray-800'; // Default
+                        
+                        // Success/Completed
+                        if (in_array($status, ['COMPLETED', 'DELIVERED', 'FINISH'])) {
+                            $statusClass = 'bg-emerald-100 text-emerald-800';
+                        }
+                        // Cancelled/Failed
+                        elseif (in_array($status, ['CANCELLED', 'FAILED', 'RETURNED'])) {
+                            $statusClass = 'bg-red-100 text-red-800';
+                        }
+                        // Shipping/In Transit
+                        elseif (in_array($status, ['SHIPPED', 'TO_SHIP', 'READY_TO_SHIP', 'IN_TRANSIT'])) {
+                            $statusClass = 'bg-blue-100 text-blue-800';
+                        }
+                        // Pending/Processing
+                        elseif (in_array($status, ['PENDING', 'PROCESSING', 'UNPAID', 'TO_CONFIRM_RECEIVE'])) {
+                            $statusClass = 'bg-amber-100 text-amber-800';
+                        }
+                        
+                        return '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ' . $statusClass . '">
+                            ' . $model->order_status . '
+                        </span>';
+                    },
+                    'headerOptions' => ['class' => 'px-3 py-3 text-center'],
+                    'contentOptions' => ['class' => 'px-3 py-3 text-center'],
+                ],
+                [
+                    'class' => 'kartik\grid\ActionColumn',
+                    'dropdown' => false,
+                    'vAlign' => 'middle',
+                    'urlCreator' => function ($action, $model, $key, $index) {
+                        return [$action, 'id' => $key];
+                    },
+                    'viewOptions' => ['class' => 'text-blue-600 hover:text-blue-900 mx-1', 'title' => 'ดูรายละเอียด', 'data-toggle' => 'tooltip'],
+                    'updateOptions' => ['class' => 'text-indigo-600 hover:text-indigo-900 mx-1', 'title' => 'แก้ไข', 'data-toggle' => 'tooltip'],
+                    'deleteOptions' => ['class' => 'text-red-600 hover:text-red-900 mx-1', 'title' => 'ลบ', 'data-toggle' => 'tooltip'],
+                    'headerOptions' => ['class' => 'px-3 py-3 text-center'],
+                    'contentOptions' => ['class' => 'px-3 py-3 text-center whitespace-nowrap'],
+                ],
+            ],
+        ]); ?>
+        <?php Pjax::end(); ?>
+    </div>
+</div>
 
 <?php
 $syncUrl = \yii\helpers\Url::to(['sync-orders']);
