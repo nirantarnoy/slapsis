@@ -23,156 +23,124 @@ $this->registerJsFile(
 );
 
 ?>
-    <div class="authitem-index">
+<div class="authitem-index space-y-6">
 
+    <!-- Header & Actions -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <h1 class="text-2xl font-bold text-gray-800 flex items-center gap-2">
+                <i class="fas fa-key text-indigo-600"></i>
+                <?= Html::encode($this->title) ?>
+            </h1>
+            <p class="text-sm text-gray-500 mt-1">จัดการสิทธิ์การใช้งานระบบ (Roles & Permissions)</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <?= Html::a('<i class="fas fa-plus mr-1"></i> สร้างใหม่', ['create'], [
+                'class' => 'inline-flex items-center px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-medium text-sm shadow-sm'
+            ]) ?>
+        </div>
+    </div>
+
+    <!-- Search (Optional) -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4">
+        <?php echo $this->render('_search', ['model' => $searchModel]); ?>
+    </div>
+
+    <!-- Grid -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <?php $session = Yii::$app->session; ?>
         <?php Pjax::begin(); ?>
-        <?php // echo $this->render('_search', ['model' => $searchModel]); ?>
-        <div class="panel panel-headline">
-            <div class="panel-heading">
-                <div class="row">
-                    <div class="col-lg-10">
-                        <p>
-                            <?= Html::a(Yii::t('app', '<i class="fa fa-plus"></i> สร้างใหม่'), ['create'], ['class' => 'btn btn-success']) ?>
-                        </p>
-                    </div>
-                    <div class="col-lg-2" style="text-align: right">
-                        <form id="form-perpage" class="form-inline" action="<?= Url::to(['authen/index'], true) ?>"
-                              method="post">
-                            <div class="form-group">
-                                <label>แสดง </label>
-                                <select class="form-control" name="perpage" id="perpage">
-                                    <option value="20" <?= $perpage == '20' ? 'selected' : '' ?>>20</option>
-                                    <option value="50" <?= $perpage == '50' ? 'selected' : '' ?> >50</option>
-                                    <option value="100" <?= $perpage == '100' ? 'selected' : '' ?>>100</option>
-                                </select>
-                                <label> รายการ</label>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-            </div>
-            <div class="panel-body">
-                <div class="row">
-                    <div class="col-lg-9">
-                        <div class="form-inline">
-                            <?php echo $this->render('_search', ['model' => $searchModel]); ?>
-                        </div>
-                    </div>
-                </div>
-                <div class="table-responsive">
-                    <div class="table-grid">
-                        <?= GridView::widget([
-                            'dataProvider' => $dataProvider,
-                            // 'filterModel' => $searchModel,
-                            'emptyCell' => '-',
-                            'layout' => "{items}\n{summary}\n<div class='text-center'>{pager}</div>",
-                            'summary' => "แสดง {begin} - {end} ของทั้งหมด {totalCount} รายการ",
-                            'showOnEmpty' => false,
-                            //    'bordered' => true,
-                            //     'striped' => false,
-                            //    'hover' => true,
-                            'id' => 'product-grid',
-                            //'tableOptions' => ['class' => 'table table-hover'],
-                            'emptyText' => '<div style="color: red;text-align: center;"> <b>ไม่พบรายการไดๆ</b> <span> เพิ่มรายการโดยการคลิกที่ปุ่ม </span><span class="text-success">"สร้างใหม่"</span></div>',
-                            'columns' => [
-                                ['class' => 'yii\grid\SerialColumn', 'contentOptions' => ['style' => 'vertical-align: middle;text-align: center']],
-                                ['class' => 'yii\grid\CheckboxColumn', 'headerOptions' => ['style' => 'text-align: center'], 'contentOptions' => ['style' => 'vertical-align: middle;text-align: center;']],
-                                // 'id',
-                                [
-                                    'attribute' => 'name',
-                                    'contentOptions' => ['style' => 'vertical-align: middle'],
-                                ],
-                                [
-                                    'attribute' => 'description',
-                                    'contentOptions' => ['style' => 'vertical-align: middle'],
-                                ],
-                                [
-                                    'attribute' => 'rule_name',
-                                    'contentOptions' => ['style' => 'vertical-align: middle'],
-                                ],
-                                [
-                                    'attribute' => 'type',
-                                    'contentOptions' => ['style' => 'vertical-align: middle'],
-                                    'value' => function ($data) {
-                                        if ($data->type == 1) {
-                                            return 'Role';
-                                        } else {
-                                            return 'Permission';
-                                        }
-                                    }
-                                ],
-
-                                [
-
-                                    'header' => 'ตัวเลือก',
-                                    'headerOptions' => ['style' => 'text-align:center;', 'class' => 'activity-view-link',],
-                                    'class' => 'yii\grid\ActionColumn',
-                                    'contentOptions' => ['style' => 'text-align: center'],
-                                    'template' => '{view} {update}{delete}',
-                                    'buttons' => [
-                                        'view' => function ($url, $data, $index) {
-                                            $options = [
-                                                'title' => Yii::t('yii', 'View'),
-                                                'aria-label' => Yii::t('yii', 'View'),
-                                                'data-pjax' => '0',
-                                            ];
-                                            return Html::a(
-                                                '<span class="fas fa-eye btn btn-xs btn-default"></span>', $url, $options);
-                                        },
-                                        'update' => function ($url, $data, $index) {
-                                            $options = array_merge([
-                                                'title' => Yii::t('yii', 'Update'),
-                                                'aria-label' => Yii::t('yii', 'Update'),
-                                                'data-pjax' => '0',
-                                                'id' => 'modaledit',
-                                            ]);
-                                            return Html::a(
-                                                '<span class="fas fa-edit btn btn-xs btn-default"></span>', $url, [
-                                                'id' => 'activity-view-link',
-                                                //'data-toggle' => 'modal',
-                                                // 'data-target' => '#modal',
-                                                'data-id' => $index,
-                                                'data-pjax' => '0',
-                                                // 'style'=>['float'=>'rigth'],
-                                            ]);
-                                        },
-                                        'delete' => function ($url, $data, $index) {
-                                            $options = array_merge([
-                                                'title' => Yii::t('yii', 'Delete'),
-                                                'aria-label' => Yii::t('yii', 'Delete'),
-                                                //'data-confirm' => Yii::t('yii', 'Are you sure you want to delete this item?'),
-                                                //'data-method' => 'post',
-                                                //'data-pjax' => '0',
-                                                'data-url' => $url,
-                                                'onclick' => 'recDelete($(this));'
-                                            ]);
-                                            return Html::a('<span class="fas fa-trash-alt btn btn-xs btn-default"></span>', 'javascript:void(0)', $options);
-                                        }
-                                    ]
-                                ],
-                            ],
-                            'pager' => ['class' => LinkPager::className()],
-                        ]); ?>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <?= GridView::widget([
+            'dataProvider' => $dataProvider,
+            'emptyCell' => '-',
+            'layout' => "{items}\n<div class='px-4 py-3 border-t border-gray-100 flex items-center justify-between'>{summary}\n{pager}</div>",
+            'summary' => "แสดง {begin} - {end} ของทั้งหมด {totalCount} รายการ",
+            'showOnEmpty' => false,
+            'tableOptions' => ['class' => 'w-full text-sm text-left text-gray-500'],
+            'headerRowOptions' => ['class' => 'text-xs text-gray-700 uppercase bg-gray-50 border-b border-gray-100'],
+            'rowOptions' => function($model){
+                return ['class' => 'bg-white border-b border-gray-100 hover:bg-gray-50 transition-colors'];
+            },
+            'emptyText' => '<div class="text-center py-8"><p class="text-gray-500">ไม่พบรายการใดๆ</p></div>',
+            'columns' => [
+                [
+                    'class' => 'yii\grid\SerialColumn',
+                    'headerOptions' => ['class' => 'px-3 py-3 text-center', 'width' => '60'],
+                    'contentOptions' => ['class' => 'px-3 py-3 text-center font-medium text-gray-400'],
+                ],
+                [
+                    'class' => 'yii\grid\CheckboxColumn',
+                    'headerOptions' => ['class' => 'px-3 py-3 text-center', 'width' => '40'],
+                    'contentOptions' => ['class' => 'px-3 py-3 text-center'],
+                ],
+                [
+                    'attribute' => 'name',
+                    'headerOptions' => ['class' => 'px-3 py-3'],
+                    'contentOptions' => ['class' => 'px-3 py-3 font-medium text-gray-900'],
+                ],
+                [
+                    'attribute' => 'description',
+                    'headerOptions' => ['class' => 'px-3 py-3'],
+                    'contentOptions' => ['class' => 'px-3 py-3 text-gray-500'],
+                ],
+                [
+                    'attribute' => 'rule_name',
+                    'headerOptions' => ['class' => 'px-3 py-3'],
+                    'contentOptions' => ['class' => 'px-3 py-3 text-gray-500'],
+                ],
+                [
+                    'attribute' => 'type',
+                    'headerOptions' => ['class' => 'px-3 py-3'],
+                    'contentOptions' => ['class' => 'px-3 py-3'],
+                    'value' => function ($data) {
+                        if ($data->type == 1) {
+                            return '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Role</span>';
+                        } else {
+                            return '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800">Permission</span>';
+                        }
+                    }
+                ],
+                [
+                    'header' => 'ตัวเลือก',
+                    'class' => 'yii\grid\ActionColumn',
+                    'headerOptions' => ['class' => 'px-3 py-3 text-center', 'width' => '120'],
+                    'contentOptions' => ['class' => 'px-3 py-3 text-center whitespace-nowrap'],
+                    'template' => '{view} {update} {delete}',
+                    'buttons' => [
+                        'view' => function ($url, $data, $index) {
+                            return Html::a('<i class="fas fa-eye"></i>', $url, [
+                                'title' => Yii::t('yii', 'View'),
+                                'class' => 'text-blue-600 hover:text-blue-900 mx-1 transition-colors'
+                            ]);
+                        },
+                        'update' => function ($url, $data, $index) {
+                            return Html::a('<i class="fas fa-pencil-alt"></i>', $url, [
+                                'title' => Yii::t('yii', 'Update'),
+                                'class' => 'text-indigo-600 hover:text-indigo-900 mx-1 transition-colors'
+                            ]);
+                        },
+                        'delete' => function ($url, $data, $index) {
+                            return Html::a('<i class="fas fa-trash"></i>', 'javascript:void(0)', [
+                                'title' => Yii::t('yii', 'Delete'),
+                                'class' => 'text-red-600 hover:text-red-900 mx-1 transition-colors',
+                                'data-url' => $url,
+                                'onclick' => 'recDelete($(this));'
+                            ]);
+                        }
+                    ]
+                ],
+            ],
+            'pager' => ['class' => LinkPager::className()],
+        ]); ?>
         <?php Pjax::end(); ?>
     </div>
+</div>
+
 <?php
 $this->registerJsFile('@web/js/sweetalert.min.js', ['depends' => [\yii\web\JqueryAsset::className()]], static::POS_END);
 $this->registerCssFile('@web/css/sweetalert.css');
-//$url_to_delete =  Url::to(['product/bulkdelete'],true);
 $this->registerJs('
-    $(function(){
-        $("#perpage").change(function(){
-            $("#form-perpage").submit();
-        });
-    });
-
-   function recDelete(e){
-        //e.preventDefault();
+    function recDelete(e){
         var url = e.attr("data-url");
         swal({
               title: "ต้องการลบรายการนี้ใช่หรือไม่",
@@ -186,6 +154,5 @@ $this->registerJs('
               e.trigger("click");        
         });
     }
-
     ', static::POS_END);
 ?>
