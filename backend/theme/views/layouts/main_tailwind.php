@@ -20,7 +20,7 @@ AppAsset::register($this);
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Prompt:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -29,7 +29,7 @@ AppAsset::register($this);
             theme: {
                 extend: {
                     fontFamily: {
-                        sans: ['"Prompt"', '"Outfit"', 'sans-serif'],
+                        sans: ['"Prompt"', 'sans-serif'],
                     },
                     colors: {
                         primary: '#4F46E5', // Indigo 600
