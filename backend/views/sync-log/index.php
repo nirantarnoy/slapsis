@@ -133,6 +133,28 @@ $this->params['breadcrumbs'][] = $this->title;
                     'contentOptions' => ['class' => 'px-3 py-3 text-center'],
                 ],
             ],
+            'pager' => [
+                'class' => \yii\widgets\LinkPager::className(),
+                'options' => ['class' => 'pagination flex pl-0 list-none rounded my-0'],
+                'linkOptions' => ['class' => 'relative block py-2 px-3 leading-tight bg-white border border-gray-300 text-gray-800 border-r-0 hover:bg-gray-200'],
+                'disabledListItemSubTagOptions' => ['class' => 'relative block py-2 px-3 leading-tight bg-white border border-gray-300 text-gray-400 border-r-0'],
+            ],
         ]); ?>
     </div>
 </div>
+
+<?php
+$this->registerCss("
+    .pagination li.active a {
+        position: relative;
+        display: block;
+        padding: 0.5rem 0.75rem;
+        margin-left: -1px;
+        line-height: 1.25;
+        color: #4f46e5;
+        background-color: #eef2ff;
+        border: 1px solid #6366f1;
+        z-index: 10;
+    }
+");
+?>
