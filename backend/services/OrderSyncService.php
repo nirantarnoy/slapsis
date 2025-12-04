@@ -57,7 +57,8 @@ class OrderSyncService
             $log = new SyncLog();
             $log->type = SyncLog::TYPE_ORDER;
             $log->platform = strtolower($channel->name);
-            $log->start_time = date('Y-m-d H:i:s', strtotime('+7 hours'));
+          //  $log->start_time = date('Y-m-d H:i:s', strtotime('+7 hours'));
+            $log->start_time = date('Y-m-d H:i:s');
             $log->status = SyncLog::STATUS_PENDING;
             $log->save();
 
@@ -73,13 +74,15 @@ class OrderSyncService
                 }
                 $totalSynced += $count;
 
-                $log->end_time = date('Y-m-d H:i:s', strtotime('+7 hours'));
+               // $log->end_time = date('Y-m-d H:i:s', strtotime('+7 hours'));
+                $log->end_time = date('Y-m-d H:i:s');
                 $log->status = SyncLog::STATUS_SUCCESS;
                 $log->total_records = $count;
                 $log->save();
 
             } catch (\Exception $e) {
-                $log->end_time = date('Y-m-d H:i:s', strtotime('+7 hours'));
+               // $log->end_time = date('Y-m-d H:i:s', strtotime('+7 hours'));
+                $log->end_time = date('Y-m-d H:i:s');
                 $log->status = SyncLog::STATUS_FAILED;
                 $log->message = $e->getMessage();
                 $log->save();
