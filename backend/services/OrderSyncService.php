@@ -4246,3 +4246,172 @@ class OrderSyncService
         return $result;
     }
 }
+                'transaction_count' => count($transactions),
+                'order' => [
+                    'commission_fee' => $order->commission_fee,
+                    'transaction_fee' => $order->transaction_fee,
+                    'actual_income' => $order->actual_income,
+                ],
+                'log' => implode("\n", $log),
+                'payment_data' => $orderDetails['payment'] ?? null,
+            ];
+
+        } catch (\Exception $e) {
+            $log[] = "\nEXCEPTION: " . $e->getMessage();
+            $log[] = "\nStack trace:\n" . $e->getTraceAsString();
+
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+                'log' => implode("\n", $log),
+            ];
+        }
+    }
+
+    /**
+     * Debug: ดู transactions ที่มีอยู่
+     * @param OnlineChannel|int $channel
+     * @return array
+     */
+    public function debugTikTokTransactions($channel)
+    {
+        $channel_id = is_object($channel) ? $channel->id : (int)$channel;
+
+        $transactions = ShopeeTransaction::find()
+            ->where(['channel_id' => $channel_id])
+            ->andWhere(['like', 'transaction_id', 'TT_%', false])
+            ->orderBy(['transaction_date' => SORT_DESC])
+            ->all();
+
+        $byCategory = [];
+        $total = 0;
+
+        foreach ($transactions as $t) {
+            $category = $t->fee_category ?? 'UNKNOWN';
+            if (!isset($byCategory[$category])) {
+                $byCategory[$category] = [
+                    'count' => 0,
+                    'total_amount' => 0,
+                ];
+            }
+            $byCategory[$category]['count']++;
+            $byCategory[$category]['total_amount'] += abs($t->amount);
+            $total += abs($t->amount);
+        }
+
+        return [
+            'total_transactions' => count($transactions),
+            'total_amount' => $total,
+            'by_category' => $byCategory,
+            'sample_transactions' => array_map(function($t) {
+                return [
+                    'id' => $t->transaction_id,
+                    'type' => $t->transaction_type,
+                    'category' => $t->fee_category,
+                    'amount' => $t->amount,
+                    'reason' => $t->reason,
+                    'order_sn' => $t->order_sn,
+                    'date' => $t->transaction_date,
+                ];
+            }, array_slice($transactions, 0, 10)),
+        ];
+    }
+
+
+    /**
+     * ตัวอย่างการใช้งานใน Controller
+     */
+
+// Controller Action สำหรับ Debug TikTok
+    public function actionDebugTiktokFees($channel_id = null, $order_id = null)
+    {
+        $service = new OrderSyncService();
+
+        if (!$channel_id) {
+            // หา TikTok channel
+            $channel = OnlineChannel::find()
+                ->where(['platform' => 'tiktok'])
+                ->one();
+            if ($channel) {
+                $channel_id = $channel->id;
+            } else {
+                echo "No TikTok channel found\n";
+                return;
+            }
+        }
+
+        echo "<h1>TikTok Fee Debug</h1>";
+
+        // 1. เช็ค orders
+        echo "<h2>1. Orders Overview</h2><pre>";
+        $ordersInfo = $service->debugTikTokOrders($channel_id);
+        print_r($ordersInfo);
+        echo "</pre>";
+
+        // 2. เช็ค transactions
+        echo "<h2>2. Transactions Overview</h2><pre>";
+        $transInfo = $service->debugTikTokTransactions($channel_id);
+        print_r($transInfo);
+        echo "</pre>";
+
+        // 3. ทดสอบดึง order detail
+        if ($order_id) {
+            echo "<h2>3. Order Detail Test</h2><pre>";
+            $orderDetail = $service->debugTikTokOrderDetail($order_id, $channel_id);
+            print_r($orderDetail);
+            echo "</pre>";
+
+            echo "<h2>4. Sync Single Order Test</h2><pre>";
+            $syncResult = $service->debugSyncSingleTikTokOrder($order_id, $channel_id);
+            echo $syncResult['log'];
+            echo "</pre>";
+        } else {
+            // ลองดึง order แรก
+            $firstOrder = Order::find()
+                ->where(['channel_id' => $channel_id])
+                ->one();
+
+            if ($firstOrder) {
+                echo "<h2>3. Testing with first order: {$firstOrder->order_id}</h2><pre>";
+                $syncResult = $service->debugSyncSingleTikTokOrder($firstOrder->order_id, $channel_id);
+                echo $syncResult['log'];
+                echo "</pre>";
+            }
+        }
+    }
+    public function debugTikTokOrderDetail($order_id, $channel = null)
+    {
+        $tokenModel = TiktokToken::find()
+            ->where(['status' => 'active'])
+            ->orderBy(['created_at' => SORT_DESC])
+            ->one();
+
+        if (!$tokenModel) {
+            return ['error' => 'No active TikTok token found'];
+        }
+
+        $app_key = '6h9n461r774e1';
+        $app_secret = '1c45a0c25224293abd7de681049f90de3363389a';
+        $shop_id = $tokenModel->shop_id;
+        $access_token = $tokenModel->access_token;
+
+        // เพิ่ม verbose output
+        echo "=== TikTok Order Detail API Test ===\n";
+        echo "Order ID: $order_id\n";
+        echo "Shop ID: $shop_id\n";
+        echo "App Key: " . substr($app_key, 0, 10) . "...\n";
+        echo "Access Token: " . substr($access_token, 0, 20) . "...\n\n";
+
+        $result = $this->getTikTokOrderDetail($order_id, $shop_id, $app_key, $app_secret, $access_token);
+
+        if ($result === null) {
+            echo "ERROR: getTikTokOrderDetail returned NULL\n";
+            echo "Check logs for details\n";
+        } else {
+            echo "SUCCESS: Got order details\n";
+            echo "Payment data exists: " . (!empty($result['payment']) ? 'YES' : 'NO') . "\n";
+        }
+
+        return $result;
+    }
+}
