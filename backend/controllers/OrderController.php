@@ -282,12 +282,39 @@ class OrderController extends Controller
     public function actionShopeeIncome(){
         $service = new \backend\services\ShopeeIncomeService();
 //$service->syncOrderIncome($order_no);
-$service->syncAllOrders();
+        $service->syncAllOrders();
     }
     public function actionTiktokIncome(){
         $service = new \backend\services\TiktokIncomeService();
 //$service->syncOrderIncome($order_no);
-$service->syncAllOrders();
+        $service->syncAllOrders();
+    }
+
+    public function actionTestSyncShopee()
+    {
+        $channel = OnlineChannel::find()->where(['name' => 'Shopee'])->one();
+        if (!$channel) {
+            $channel = OnlineChannel::findOne(1);
+        }
+
+        if (!$channel) {
+            echo "Shopee Channel not found";
+            return;
+        }
+
+        echo "<h1>Testing New Shopee Sync Service</h1>";
+        echo "Channel: " . $channel->name . " (ID: " . $channel->id . ")<br>";
+
+        try {
+            $service = new \backend\services\NewTestOrderSyncService();
+            $count = $service->syncShopeeOrders($channel);
+            echo "<h2>Sync Complete</h2>";
+            echo "Total orders processed/saved: " . $count;
+        } catch (\Exception $e) {
+            echo "<h2>Error Occurred</h2>";
+            echo "Message: " . $e->getMessage();
+            echo "<pre>" . $e->getTraceAsString() . "</pre>";
+        }
     }
 
     protected function findModel($id)
