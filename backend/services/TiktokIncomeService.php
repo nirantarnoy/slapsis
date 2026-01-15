@@ -34,7 +34,7 @@ class TiktokIncomeService
         $log = new SyncLog();
         $log->type = SyncLog::TYPE_INCOME;
         $log->platform = SyncLog::PLATFORM_TIKTOK;
-        $log->start_time = date('Y-m-d H:i:s', strtotime('+7 hours'));
+        $log->start_time = date('Y-m-d H:i:s');
         $log->status = SyncLog::STATUS_PENDING;
         $log->save();
 
@@ -94,7 +94,7 @@ class TiktokIncomeService
             
             Yii::info("Synced income details for {$count}/{$totalPending} pending orders", __METHOD__);
             
-            $log->end_time = date('Y-m-d H:i:s', strtotime('+7 hours'));
+            $log->end_time = date('Y-m-d H:i:s');
             $log->status = SyncLog::STATUS_SUCCESS;
             $log->total_records = $count;
             $log->save();
@@ -102,7 +102,7 @@ class TiktokIncomeService
             return $count;
 
         } catch (\Exception $e) {
-            $log->end_time = date('Y-m-d H:i:s', strtotime('+7 hours'));
+            $log->end_time = date('Y-m-d H:i:s');
             $log->status = SyncLog::STATUS_FAILED;
             $log->message = $e->getMessage();
             $log->save();

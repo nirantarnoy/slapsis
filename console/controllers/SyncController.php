@@ -17,6 +17,13 @@ class SyncController extends Controller
     {
         echo "Starting Sync Process...\n";
 
+        $log = new \common\models\SyncLog();
+        $log->type = \common\models\SyncLog::TYPE_ORDER;
+        $log->platform = 'all';
+        $log->start_time = date('Y-m-d H:i:s');
+        $log->status = \common\models\SyncLog::STATUS_PENDING;
+        $log->save();
+
         // 1. Sync Orders
         echo "Syncing Orders...\n";
         try {
@@ -50,9 +57,20 @@ class SyncController extends Controller
             if (!empty($errors)) {
                 echo "Errors: " . implode(", ", $errors) . "\n";
             }
+
+            $log->end_time = date('Y-m-d H:i:s');
+            $log->status = \common\models\SyncLog::STATUS_SUCCESS;
+            $log->total_records = $totalSynced;
+            $log->save();
+
         } catch (\Exception $e) {
             echo "Error Syncing Orders: " . $e->getMessage() . "\n";
             Yii::error("Console Sync Error: " . $e->getMessage(), __METHOD__);
+            
+            $log->end_time = date('Y-m-d H:i:s');
+            $log->status = \common\models\SyncLog::STATUS_FAILED;
+            $log->message = $e->getMessage();
+            $log->save();
         }
 
 

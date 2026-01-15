@@ -191,16 +191,33 @@ class OrderController extends Controller
     public function actionSyncOrders()
     {
         $channelId = Yii::$app->request->post('channel_id');
+        
+        $log = new \common\models\SyncLog();
+        $log->type = \common\models\SyncLog::TYPE_ORDER;
+        $log->platform = $channelId == 1 ? \common\models\SyncLog::PLATFORM_SHOPEE : \common\models\SyncLog::PLATFORM_TIKTOK;
+        $log->start_time = date('Y-m-d H:i:s');
+        $log->status = \common\models\SyncLog::STATUS_PENDING;
+        $log->save();
 
         try {
             // เรียกใช้ service สำหรับ sync ข้อมูล
             $service = new \backend\services\OrderSyncService();
             $result = $service->syncOrders($channelId);
 
+            $log->end_time = date('Y-m-d H:i:s');
+            $log->status = \common\models\SyncLog::STATUS_SUCCESS;
+            $log->total_records = $result['count'];
+            $log->save();
+
             Yii::$app->session->setFlash('success',
                 "ดึงข้อมูลเรียบร้อยแล้ว จำนวน {$result['count']} รายการ"
             );
         } catch (\Exception $e) {
+            $log->end_time = date('Y-m-d H:i:s');
+            $log->status = \common\models\SyncLog::STATUS_FAILED;
+            $log->message = $e->getMessage();
+            $log->save();
+
             Yii::$app->session->setFlash('error', 'เกิดข้อผิดพลาด: ' . $e->getMessage());
         }
 
