@@ -7,11 +7,7 @@ use Yii;
 use backend\models\Order;
 use backend\models\OnlineChannel;
 use backend\models\ShopeeToken;
-
-// สมมติว่ามีตาราง shopee_tokens
 use backend\models\TiktokToken;
-
-// สมมติว่ามีตาราง tiktok_tokens
 use yii\base\Exception;
 use GuzzleHttp\Client;
 use yii\helpers\Json;
@@ -28,7 +24,94 @@ class NewTestSyncShopeeService
         ]);
     }
 
-    //// SHOPEE
+    /**
+     * Refresh Shopee access token
+     * @param ShopeeToken $tokenModel
+     * @return bool
+     */
+    private function refreshShopeeToken($tokenModel)
+    {
+        try {
+            $partner_id = 2012399; // ใส่ partner_id จริง
+            $partner_key = 'shpk72476151525864414e4b6e475449626679624f695a696162696570417043'; // ใส่ partner_key จริง
+            $refresh_token = $tokenModel->refresh_token;
+            $shop_id = $tokenModel->shop_id;
+
+            $timestamp = time();
+            $path = "/api/v2/auth/access_token/get";
+
+            // ✅ แก้ base_string ให้ถูกต้อง (ไม่รวม shop_id และ refresh_token)
+            $base_string = $partner_id . $path . $timestamp;
+            $sign = hash_hmac('sha256', $base_string, $partner_key);
+
+            // ✅ แยก partner_id และ timestamp ไปเป็น query parameters
+            $queryParams = [
+                'partner_id' => $partner_id,
+                'timestamp' => $timestamp,
+                'sign' => $sign,
+            ];
+
+            $jsonPayload = [
+                'shop_id' => (int)$shop_id,
+                'partner_id' => (int)$partner_id,
+                'refresh_token' => $refresh_token,
+            ];
+
+            // ✅ เปลี่ยนจาก form_params เป็น json
+            $response = $this->httpClient->post('https://partner.shopeemobile.com' . $path, [
+                'headers' => [
+                    'Content-Type' => 'application/json'
+                ],
+                'query' => $queryParams,
+                'json' => $jsonPayload,
+                'timeout' => 30
+            ]);
+
+            Yii::info('Http token refresh is: ' . $response->getStatusCode());
+
+            // ✅ เช็ค HTTP status code
+            if ($response->getStatusCode() !== 200) {
+                Yii::error('HTTP Error: ' . $response->getStatusCode(), __METHOD__);
+                return false;
+            }
+
+            $body = $response->getBody()->getContents();
+            $data = Json::decode($body);
+
+            // ✅ เพิ่มการเช็ค error response
+            if (isset($data['error'])) {
+                if (!empty($data['error'])) {
+                    Yii::error("Shopee API Error: {$data['error']} - " . ($data['message'] ?? 'Unknown error'), __METHOD__);
+                    return false;
+                }
+
+            }
+
+            if (isset($data['access_token'])) {
+                $expiresAt = date('Y-m-d H:i:s', time() + (int)($data['expire_in'] ?? 14400));
+
+                $tokenModel->access_token = $data['access_token'];
+                $tokenModel->refresh_token = $data['refresh_token'];
+                $tokenModel->expires_at = $expiresAt;
+                $tokenModel->updated_at = date('Y-m-d H:i:s');
+
+                if ($tokenModel->save()) {
+                    Yii::info("Token refreshed successfully for shop_id: $shop_id", __METHOD__);
+                    return true;
+                } else {
+                    Yii::error('Failed to save token model: ' . Json::encode($tokenModel->errors), __METHOD__);
+                    return false;
+                }
+            } else {
+                Yii::error('No access_token in response: ' . $body, __METHOD__);
+                return false;
+            }
+
+        } catch (\Exception $e) {
+            Yii::error('Failed to refresh Shopee token: ' . $e->getMessage(), __METHOD__);
+            return false;
+        }
+    }
 
     private function syncShopeeTransactionFeesV2($channel, $fromTime, $toTime)
     {
@@ -179,13 +262,6 @@ class NewTestSyncShopeeService
         return $totalCount;
     }
 
-    /**
-     * Process individual Shopee wallet transaction
-     * @param int $channel_id
-     * @param array $transaction
-     * @param string $shop_id
-     * @return bool
-     */
     private function processShopeeWalletTransaction($channel_id, $transaction, $shop_id)
     {
         try {
