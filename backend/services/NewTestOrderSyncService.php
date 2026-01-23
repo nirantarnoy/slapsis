@@ -33,7 +33,7 @@ class NewTestOrderSyncService
     public function syncShopeeOrders($channel)
     {
         $tokenModel = ShopeeToken::find()
-            ->where(['status' => 'active'])
+
             ->orderBy(['created_at' => SORT_DESC])
             ->one();
 
@@ -87,33 +87,49 @@ class NewTestOrderSyncService
 
                 Yii::info("Shopee Sync: Fetching order list. Path: $path, Params: " . Json::encode($params), __METHOD__);
 
-                $response = $this->httpClient->get('https://partner.shopeemobile.com' . $path, [
-                    'query' => $params,
-                    'timeout' => 30
-                ]);
+                try {
+                    $response = $this->httpClient->get('https://partner.shopeemobile.com' . $path, [
+                        'query' => $params,
+                        'timeout' => 30,
+                        'http_errors' => false // ปิดการโยน exception เพื่อให้เราเช็ค status code เองได้
+                    ]);
 
-                if ($response->getStatusCode() !== 200) {
-                    Yii::error("HTTP Shopee Sync Error: {$response->getStatusCode()}", __METHOD__);
-                    break;
-                }
-
-                $rawBody = (string)$response->getBody();
-                Yii::info("Shopee Sync: Raw Response: " . $rawBody, __METHOD__);
-                $data = Json::decode($rawBody);
-
-                if (!empty($data['error'])) {
-                    Yii::error("Shopee API Error Sync: {$data['error']} - " . ($data['message'] ?? 'Unknown error'), __METHOD__);
-                    
-                    // Retry logic for auth errors
-                    if (in_array($data['error'], ['error_auth', 'error_permission', 'error_token', 'error_invalid_token'])) {
-                        Yii::info("Attempting to refresh token due to error: {$data['error']}", __METHOD__);
-                        if ($this->refreshShopeeToken($tokenModel)) {
-                            $access_token = $tokenModel->access_token;
-                            $shop_id = $tokenModel->shop_id;
-                            Yii::info("Token refreshed. Retrying with new token...", __METHOD__);
-                            continue; // Retry the loop with new token
+                    if ($response->getStatusCode() !== 200) {
+                        $errorBody = (string)$response->getBody();
+                        Yii::error("HTTP Shopee Sync Error: {$response->getStatusCode()} - Body: $errorBody", __METHOD__);
+                        
+                        // ถ้าเป็น 403 หรือ 401 ให้ลอง refresh token
+                        if (in_array($response->getStatusCode(), [401, 403])) {
+                            Yii::info("Attempting to refresh token due to HTTP {$response->getStatusCode()}", __METHOD__);
+                            if ($this->refreshShopeeToken($tokenModel)) {
+                                $access_token = $tokenModel->access_token;
+                                Yii::info("Token refreshed. Retrying with new token...", __METHOD__);
+                                continue;
+                            }
                         }
+                        break;
                     }
+
+                    $rawBody = (string)$response->getBody();
+                    Yii::info("Shopee Sync: Raw Response: " . $rawBody, __METHOD__);
+                    $data = Json::decode($rawBody);
+
+                    if (!empty($data['error'])) {
+                        Yii::error("Shopee API Error Sync: {$data['error']} - " . ($data['message'] ?? 'Unknown error'), __METHOD__);
+                        
+                        // Retry logic for auth errors
+                        if (in_array($data['error'], ['error_auth', 'error_permission', 'error_token', 'error_invalid_token', 'invalid_acceess_token'])) {
+                            Yii::info("Attempting to refresh token due to API error: {$data['error']}", __METHOD__);
+                            if ($this->refreshShopeeToken($tokenModel)) {
+                                $access_token = $tokenModel->access_token;
+                                Yii::info("Token refreshed. Retrying with new token...", __METHOD__);
+                                continue; 
+                            }
+                        }
+                        break;
+                    }
+                } catch (\Exception $e) {
+                    Yii::error("Exception during Shopee API call: " . $e->getMessage(), __METHOD__);
                     break;
                 }
 
@@ -315,6 +331,7 @@ class NewTestOrderSyncService
                 $tokenModel->access_token = $data['access_token'];
                 $tokenModel->refresh_token = $data['refresh_token'];
                 $tokenModel->expires_at = date('Y-m-d H:i:s', time() + (int)($data['expire_in'] ?? 14400));
+                $tokenModel->status = ShopeeToken::STATUS_ACTIVE;
                 $tokenModel->updated_at = date('Y-m-d H:i:s');
                 return $tokenModel->save();
             }
