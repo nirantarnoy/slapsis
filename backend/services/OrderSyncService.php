@@ -82,7 +82,7 @@ class OrderSyncService
     private function syncShopeeOrders($channel)
     {
         $tokenModel = ShopeeToken::find()
-            ->where(['status' => 'active'])
+            
             ->orderBy(['created_at' => SORT_DESC])
             ->one();
 
@@ -468,7 +468,7 @@ class OrderSyncService
     private function syncTikTokOrders($channel)
     {
         $tokenModel = TiktokToken::find()
-            ->where(['status' => 'active'])
+            
             ->orderBy(['created_at' => SORT_DESC])
             ->one();
 
@@ -748,6 +748,7 @@ class OrderSyncService
                 $tokenModel->access_token = $data['access_token'];
                 $tokenModel->refresh_token = $data['refresh_token'];
                 $tokenModel->expires_at = $expiresAt;
+                $tokenModel->status = ShopeeToken::STATUS_ACTIVE;
                 $tokenModel->updated_at = date('Y-m-d H:i:s');
 
                 if ($tokenModel->save()) {
@@ -808,6 +809,7 @@ class OrderSyncService
                 $tokenModel->access_token = $data['data']['access_token'];
                 $tokenModel->refresh_token = $data['data']['refresh_token'];
                 $tokenModel->expires_at = date('Y-m-d H:i:s', time() + $data['data']['access_token_expire_in']);
+                $tokenModel->status = TiktokToken::STATUS_ACTIVE;
                 $tokenModel->updated_at = date('Y-m-d H:i:s');
 
                 return $tokenModel->save();
@@ -952,7 +954,7 @@ class OrderSyncService
 //    private function syncShopeeTransactionFees($channel, $fromTime = null, $toTime = null)
 //    {
 //        $tokenModel = ShopeeToken::find()
-//            ->where(['status' => 'active'])
+//            
 //            ->orderBy(['created_at' => SORT_DESC])
 //            ->one();
 //
@@ -1256,7 +1258,7 @@ class OrderSyncService
 //        }
 //
 //        $tokenModel = ShopeeToken::find()
-//            ->where(['status' => 'active'])
+//            
 //            ->orderBy(['created_at' => SORT_DESC])
 //            ->one();
 //
@@ -1378,7 +1380,7 @@ class OrderSyncService
     private function syncShopeeTransactionFees($channel, $fromTime = null, $toTime = null)
     {
         $tokenModel = ShopeeToken::find()
-            ->where(['status' => 'active'])
+            
             ->orderBy(['created_at' => SORT_DESC])
             ->one();
 
@@ -1769,7 +1771,7 @@ class OrderSyncService
         }
 
         $tokenModel = ShopeeToken::find()
-            ->where(['status' => 'active'])
+            
             ->orderBy(['created_at' => SORT_DESC])
             ->one();
 
@@ -1963,7 +1965,7 @@ class OrderSyncService
     private function getShopeeEscrowDetail($channel, $fromTime, $toTime)
     {
         $tokenModel = ShopeeToken::find()
-            ->where(['status' => 'active'])
+            
             ->orderBy(['created_at' => SORT_DESC])
             ->one();
 
@@ -2038,7 +2040,7 @@ class OrderSyncService
     private function getShopeeSettlementList($channel, $fromTime, $toTime)
     {
         $tokenModel = ShopeeToken::find()
-            ->where(['status' => 'active'])
+            
             ->orderBy(['created_at' => SORT_DESC])
             ->one();
 
@@ -2346,7 +2348,7 @@ class OrderSyncService
     private function syncShopeeSettlements($channel, $fromTime, $toTime)
     {
         $tokenModel = ShopeeToken::find()
-            ->where(['status' => 'active'])
+            
             ->orderBy(['created_at' => SORT_DESC])
             ->one();
 
@@ -2560,7 +2562,7 @@ class OrderSyncService
         }
 
         $tokenModel = TiktokToken::find()
-            ->where(['status' => 'active'])
+            
             ->orderBy(['created_at' => SORT_DESC])
             ->one();
 
@@ -3025,7 +3027,7 @@ class OrderSyncService
         }
 
         $tokenModel = TiktokToken::find()
-            ->where(['status' => 'active'])
+            
             ->orderBy(['created_at' => SORT_DESC])
             ->one();
 
@@ -3785,7 +3787,7 @@ class OrderSyncService
     public function debugTikTokOrderDetailx($order_id, $channel = null)
     {
         $tokenModel = TiktokToken::find()
-            ->where(['status' => 'active'])
+            
             ->orderBy(['created_at' => SORT_DESC])
             ->one();
 
@@ -3942,7 +3944,7 @@ class OrderSyncService
         }
 
         $tokenModel = TiktokToken::find()
-            ->where(['status' => 'active'])
+            
             ->orderBy(['created_at' => SORT_DESC])
             ->one();
 
@@ -4189,7 +4191,7 @@ class OrderSyncService
     public function debugTikTokOrderDetail($order_id, $channel = null)
     {
         $tokenModel = TiktokToken::find()
-            ->where(['status' => 'active'])
+            
             ->orderBy(['created_at' => SORT_DESC])
             ->one();
 

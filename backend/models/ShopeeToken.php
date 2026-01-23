@@ -35,7 +35,7 @@ class ShopeeToken extends ActiveRecord
             'shop_id' => 'Shop ID',
             'access_token' => 'Access Token',
             'refresh_token' => 'Refresh Token',
-            'expire_in' => 'Expires At',
+            'expire_in' => 'Expires In',
             'status' => 'Status',
             'expires_at'=>'Expires At',
             'created_at' => 'Created At',
@@ -51,11 +51,14 @@ class ShopeeToken extends ActiveRecord
     public function beforeSave($insert)
     {
         if (parent::beforeSave($insert)) {
+            $now = date('Y-m-d H:i:s');
             if ($insert) {
-                $this->created_at = time();
-                $this->status = self::STATUS_ACTIVE;
+                $this->created_at = $now;
+                if (empty($this->status)) {
+                    $this->status = self::STATUS_ACTIVE;
+                }
             }
-          //  $this->updated_at = time();
+            $this->updated_at = $now;
             return true;
         }
         return false;
@@ -67,6 +70,9 @@ class ShopeeToken extends ActiveRecord
      */
     public function isExpired()
     {
-        return $this->expires_at && $this->expires_at < time();
+        if (empty($this->expires_at)) {
+            return true;
+        }
+        return strtotime($this->expires_at) < time();
     }
 }

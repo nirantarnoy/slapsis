@@ -19,10 +19,10 @@ class TiktokToken extends ActiveRecord
     {
         return [
             [['shop_id', 'access_token'], 'required'],
-            [['expire_in', 'created_at','expires_at'], 'integer'],
+            [['expire_in'], 'integer'],
+            [['created_at', 'updated_at', 'expires_at'], 'safe'],
             [['shop_id', 'access_token', 'refresh_token'], 'string', 'max' => 500],
             [['status'], 'string', 'max' => 20],
-            [['updated_at'],'safe'],
             [['status'], 'in', 'range' => [self::STATUS_ACTIVE, self::STATUS_EXPIRED, self::STATUS_REVOKED]],
         ];
     }
@@ -34,9 +34,9 @@ class TiktokToken extends ActiveRecord
             'shop_id' => 'Shop ID',
             'access_token' => 'Access Token',
             'refresh_token' => 'Refresh Token',
-            'expire_in' => 'Expires At',
+            'expire_in' => 'Expires In',
             'status' => 'Status',
-            'expires_at'=>'Expires At',
+            'expires_at' => 'Expires At',
             'created_at' => 'Created At',
             'updated_at' => 'Updated At',
         ];
@@ -50,11 +50,14 @@ class TiktokToken extends ActiveRecord
     public function beforeSave($insert)
     {
         if (parent::beforeSave($insert)) {
+            $now = date('Y-m-d H:i:s');
             if ($insert) {
-                $this->created_at = time();
-                $this->status = self::STATUS_ACTIVE;
+                $this->created_at = $now;
+                if (empty($this->status)) {
+                    $this->status = self::STATUS_ACTIVE;
+                }
             }
-            //$this->updated_at = time();
+            $this->updated_at = $now;
             return true;
         }
         return false;
@@ -66,6 +69,9 @@ class TiktokToken extends ActiveRecord
      */
     public function isExpired()
     {
-        return $this->expires_at && $this->expires_at < time();
+        if (empty($this->expires_at)) {
+            return true;
+        }
+        return strtotime($this->expires_at) < time();
     }
 }
