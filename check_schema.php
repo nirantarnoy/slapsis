@@ -20,7 +20,7 @@ $table = Yii::$app->db->getTableSchema('order');
 if ($table) {
     echo "Table 'order' columns:\n";
     foreach ($table->columns as $column) {
-        echo "- {$column->name} ({$column->type})\n";
+        echo "- {$column->name} ({$column->type}) " . ($column->allowNull ? "NULL" : "NOT NULL") . "\n";
     }
 } else {
     echo "Table 'order' not found.\n";

@@ -31,14 +31,18 @@ class Product extends \common\models\Product
                 'attributes' => [
                     ActiveRecord::EVENT_BEFORE_INSERT => 'created_by',
                 ],
-                'value' => Yii::$app->user->id,
+                'value' => function ($event) {
+                    return Yii::$app->has('user') && Yii::$app->user->id ? Yii::$app->user->id : 1;
+                },
             ],
             'timestamuby' => [
                 'class' => \yii\behaviors\AttributeBehavior::className(),
                 'attributes' => [
                     ActiveRecord::EVENT_BEFORE_UPDATE => 'updated_by',
                 ],
-                'value' => Yii::$app->user->id,
+                'value' => function ($event) {
+                    return Yii::$app->has('user') && Yii::$app->user->id ? Yii::$app->user->id : 1;
+                },
             ],
 //            'timestampcompany' => [
 //                'class' => \yii\behaviors\AttributeBehavior::className(),
