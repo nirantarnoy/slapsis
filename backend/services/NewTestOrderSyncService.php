@@ -265,11 +265,14 @@ class NewTestOrderSyncService
 
                     if ($order->save()) {
                         $count++;
+                    } else {
+                        echo "Error saving order $unique_order_id: " . Json::encode($order->getErrors()) . "\n";
                     }
                 }
             }
 
         } catch (\Exception $e) {
+            echo "Exception in processShopeeOrdersBatch: " . $e->getMessage() . "\n";
             Yii::error('Error processing Shopee batch: ' . $e->getMessage(), __METHOD__);
         }
 
