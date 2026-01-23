@@ -84,7 +84,7 @@ class NewTestOrderSyncService
                     $params['cursor'] = $cursor;
                 }
 
-                Yii::info("Fetching Shopee order list with params: " . Json::encode($params), __METHOD__);
+                Yii::info("Shopee Sync: Fetching order list. Path: $path, Params: " . Json::encode($params), __METHOD__);
 
                 $response = $this->httpClient->get('https://partner.shopeemobile.com' . $path, [
                     'query' => $params,
@@ -96,10 +96,23 @@ class NewTestOrderSyncService
                     break;
                 }
 
-                $data = Json::decode((string)$response->getBody());
+                $rawBody = (string)$response->getBody();
+                Yii::info("Shopee Sync: Raw Response: " . $rawBody, __METHOD__);
+                $data = Json::decode($rawBody);
 
                 if (!empty($data['error'])) {
                     Yii::error("Shopee API Error Sync: {$data['error']} - " . ($data['message'] ?? 'Unknown error'), __METHOD__);
+                    
+                    // Retry logic for auth errors
+                    if (in_array($data['error'], ['error_auth', 'error_permission', 'error_token', 'error_invalid_token'])) {
+                        Yii::info("Attempting to refresh token due to error: {$data['error']}", __METHOD__);
+                        if ($this->refreshShopeeToken($tokenModel)) {
+                            $access_token = $tokenModel->access_token;
+                            $shop_id = $tokenModel->shop_id;
+                            Yii::info("Token refreshed. Retrying with new token...", __METHOD__);
+                            continue; // Retry the loop with new token
+                        }
+                    }
                     break;
                 }
 
@@ -173,7 +186,9 @@ class NewTestOrderSyncService
                 return 0;
             }
 
-            $data = Json::decode($response->getBody()->getContents());
+            $rawBody = $response->getBody()->getContents();
+            Yii::info("Shopee Sync: Batch Detail Raw Response: " . $rawBody, __METHOD__);
+            $data = Json::decode($rawBody);
 
             if (!empty($data['error'])) {
                 Yii::error("Shopee API Error for batch orders: {$data['error']} - " . ($data['message'] ?? 'Unknown error'), __METHOD__);
@@ -271,9 +286,17 @@ class NewTestOrderSyncService
                 'timeout' => 30
             ]);
 
-            if ($response->getStatusCode() !== 200) return false;
-            $data = Json::decode($response->getBody()->getContents());
-            if (!empty($data['error'])) return false;
+            if ($response->getStatusCode() !== 200) {
+                Yii::error("Refresh Token HTTP Error: " . $response->getStatusCode(), __METHOD__);
+                return false;
+            }
+            $body = $response->getBody()->getContents();
+            Yii::info("Refresh Token Response: " . $body, __METHOD__);
+            $data = Json::decode($body);
+            if (!empty($data['error'])) {
+                Yii::error("Refresh Token API Error: {$data['error']} - " . ($data['message'] ?? 'Unknown error'), __METHOD__);
+                return false;
+            }
 
             if (isset($data['access_token'])) {
                 $tokenModel->access_token = $data['access_token'];
