@@ -38,17 +38,23 @@ class NewTestOrderSyncService
             ->one();
 
         if (!$tokenModel) {
+            echo "No active Shopee token found for channel: " . $channel->id . "\n";
             Yii::warning('No active Shopee token found for channel: ' . $channel->id, __METHOD__);
             return 0;
         }
 
+        echo "Found active token for shop_id: " . $tokenModel->shop_id . "\n";
+
         // ตรวจสอบ token หมดอายุ
         if (strtotime($tokenModel->expires_at) < time()) {
+            echo "Access Token is expired, attempting to refresh...\n";
             Yii::info('Access Token is expired, attempting to refresh...', __METHOD__);
             if (!$this->refreshShopeeToken($tokenModel)) {
+                echo "Failed to refresh Shopee token.\n";
                 Yii::warning('Failed to refresh Shopee token for channel: ' . $channel->id, __METHOD__);
                 return 0;
             }
+            echo "Token refreshed successfully.\n";
         }
 
         $partner_id = 2012399;
@@ -97,18 +103,22 @@ class NewTestOrderSyncService
                 }
 
                 $rawBody = (string)$response->getBody();
+                echo "Shopee Sync: Received response. Length: " . strlen($rawBody) . "\n";
                 Yii::info("Shopee Sync: Raw Response: " . $rawBody, __METHOD__);
                 $data = Json::decode($rawBody);
 
                 if (!empty($data['error'])) {
+                    echo "Shopee API Error: " . $data['error'] . " - " . ($data['message'] ?? 'No message') . "\n";
                     Yii::error("Shopee API Error Sync: {$data['error']} - " . ($data['message'] ?? 'Unknown error'), __METHOD__);
                     
                     // Retry logic for auth errors
                     if (in_array($data['error'], ['error_auth', 'error_permission', 'error_token', 'error_invalid_token'])) {
+                        echo "Attempting to refresh token due to auth error...\n";
                         Yii::info("Attempting to refresh token due to error: {$data['error']}", __METHOD__);
                         if ($this->refreshShopeeToken($tokenModel)) {
                             $access_token = $tokenModel->access_token;
                             $shop_id = $tokenModel->shop_id;
+                            echo "Token refreshed. Retrying...\n";
                             Yii::info("Token refreshed. Retrying with new token...", __METHOD__);
                             continue; // Retry the loop with new token
                         }
@@ -117,11 +127,13 @@ class NewTestOrderSyncService
                 }
 
                 if (empty($data['response']['order_list'])) {
+                    echo "No orders found in this range.\n";
                     Yii::info('Shopee response valid but no order_list found', __METHOD__);
                     break;
                 }
 
                 $orderList = $data['response']['order_list'];
+                echo "Found " . count($orderList) . " orders in list. Processing...\n";
                 $orderSns = array_column($orderList, 'order_sn');
 
                 // Batch process order details (Shopee allows up to 50 SNs per call)
@@ -191,13 +203,17 @@ class NewTestOrderSyncService
             $data = Json::decode($rawBody);
 
             if (!empty($data['error'])) {
+                echo "Shopee API Error (Batch): " . $data['error'] . " - " . ($data['message'] ?? 'No message') . "\n";
                 Yii::error("Shopee API Error for batch orders: {$data['error']} - " . ($data['message'] ?? 'Unknown error'), __METHOD__);
                 return 0;
             }
 
             if (empty($data['response']['order_list'])) {
+                echo "No order details returned in batch.\n";
                 return 0;
             }
+
+            echo "Processing details for " . count($data['response']['order_list']) . " orders...\n";
 
             $allowed_statuses = ['READY_TO_SHIP', 'PROCESSED', 'SHIPPED', 'COMPLETED', 'TO_CONFIRM_RECEIVE'];
 
@@ -206,6 +222,7 @@ class NewTestOrderSyncService
                 $order_status = strtoupper($orderDetail['order_status'] ?? 'UNKNOWN');
 
                 if (!in_array($order_status, $allowed_statuses)) {
+                    echo "Skip order $order_sn with status $order_status (Not in allowed list)\n";
                     Yii::debug("Skip order $order_sn with status $order_status", __METHOD__);
                     continue;
                 }
@@ -216,7 +233,12 @@ class NewTestOrderSyncService
                     $unique_order_id = $order_sn . '_' . $item['item_id'];
 
                     $existingOrder = Order::findOne(['order_id' => $unique_order_id]);
-                    if ($existingOrder) continue;
+                    if ($existingOrder) {
+                        // echo "Order $unique_order_id already exists. Skipping.\n";
+                        continue;
+                    }
+
+                    echo "Saving new order: $unique_order_id\n";
 
                     $order = new Order();
                     $order->order_id = $unique_order_id;
