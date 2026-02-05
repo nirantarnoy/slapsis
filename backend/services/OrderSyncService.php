@@ -487,13 +487,19 @@ class OrderSyncService
 
         // ✅ Refresh token ถ้าหมดอายุ
         if ($tokenModel->expires_at && strtotime($tokenModel->expires_at) < time()) {
-            $this->refreshTikTokToken($tokenModel);
+            echo "TikTok Access Token expired. Attempting refresh...\n";
+            if ($this->refreshTikTokToken($tokenModel)) {
+                echo "Refresh successful.\n";
+            } else {
+                echo "Refresh failed!\n";
+            }
         }
 
         // ✅ Fetch shop_cipher ถ้ายังไม่มี
         if (empty($tokenModel->shop_cipher)) {
-            Yii::info("Access token is: " . substr($tokenModel->access_token, 0, 20) . "...", __METHOD__);
+            echo "Shop cipher missing. Fetching...\n";
             $this->fetchShopCipher($tokenModel);
+            echo "New Shop Cipher: " . $tokenModel->shop_cipher . "\n";
         }
 
         $appKey = '6h9n461r774e1';
@@ -533,6 +539,7 @@ class OrderSyncService
                     'create_time_ge' => strtotime("-$days days"),
                     'create_time_lt' => $timestamp,
                 ];
+                echo "Searching for Orders with status: " . $body['order_status'] . " from " . date('Y-m-d H:i:s', $body['create_time_ge']) . "\n";
                 $bodyJson = json_encode($body);
 
                 // ✅ สร้าง signature ด้วย HMAC-SHA256 พร้อม body
@@ -566,10 +573,12 @@ class OrderSyncService
                 Yii::info('Orders API response: ' . json_encode($result), __METHOD__);
 
                 if (isset($result['code']) && $result['code'] !== 0) {
+                    echo "TikTok API Error: [" . $result['code'] . "] " . $result['message'] . "\n";
                     throw new \Exception("TikTok API error [{$result['code']}] {$result['message']}");
                 }
 
                 $orders = $result['data']['orders'] ?? [];
+                echo "Found " . count($orders) . " orders in this page.\n";
                 foreach ($orders as $order) {
                     $save_row_count = $this->processTikTokOrder($channel, $order);
                     if ($save_row_count > 0) {

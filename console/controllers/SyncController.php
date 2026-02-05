@@ -107,8 +107,21 @@ class SyncController extends Controller
         $tiktokChannel = \backend\models\OnlineChannel::find()->where(['name' => 'Tiktok', 'status' => \backend\models\OnlineChannel::STATUS_ACTIVE])->one();
         
         if ($tiktokChannel) {
+            // Check Token Status explicitly
+            $token = \backend\models\TiktokToken::find()->orderBy(['created_at' => SORT_DESC])->one();
+            if ($token) {
+                echo "Token Found: " . substr($token->access_token, 0, 10) . "...\n";
+                echo "Expires At: " . $token->expires_at . " (Now: " . date('Y-m-d H:i:s') . ")\n";
+                if (strtotime($token->expires_at) < time()) {
+                    echo "Status: EXPIRED! Attempting to refresh inside service...\n";
+                } else {
+                    echo "Status: ACTIVE\n";
+                }
+            } else {
+                echo "Status: NO TOKEN FOUND in tiktok_token table!\n";
+            }
+
             $orderService = new OrderSyncService();
-            // We pass the channel ID and days to syncOrders
             $res = $orderService->syncOrders($tiktokChannel->id, $days);
             echo "TikTok Orders Sync completed.\n";
             echo "Total records: " . $res['count'] . "\n";
