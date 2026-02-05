@@ -535,11 +535,11 @@ class OrderSyncService
 
                 // ✅ Body JSON สำหรับ POST request
                 $body = [
-                    'order_status' => 'DELIVERED', // UNPAID , ON_HOLD , IN_TRANSIT , DELIVERED , COMPLETED , CANCELLED
+                    // 'order_status' => 'DELIVERED', // เอาออกเพื่อให้ดึงทุกสถานะ หรือเลือกใช้เฉพาะที่ต้องการ
                     'create_time_ge' => strtotime("-$days days"),
                     'create_time_lt' => $timestamp,
                 ];
-                echo "Searching for Orders with status: " . $body['order_status'] . " from " . date('Y-m-d H:i:s', $body['create_time_ge']) . "\n";
+                echo "Searching for ALL Orders from " . date('Y-m-d H:i:s', $body['create_time_ge']) . "\n";
                 $bodyJson = json_encode($body);
 
                 // ✅ สร้าง signature ด้วย HMAC-SHA256 พร้อม body
