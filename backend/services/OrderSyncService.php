@@ -594,15 +594,11 @@ class OrderSyncService
         } catch (\GuzzleHttp\Exception\ClientException $e) {
             $statusCode = $e->getResponse()->getStatusCode();
             $body = $e->getResponse() ? $e->getResponse()->getBody()->getContents() : 'No response';
+            echo "HTTP Client Error [$statusCode]: $body\n";
             Yii::error("ClientException [$statusCode]: $body", __METHOD__);
 
-            // ถ้าได้ 401 ลองใช้วิธีอื่น
-            if ($statusCode == 401) {
-                Yii::error("401 Unauthorized - trying alternative signature method", __METHOD__);
-                // อาจจะต้อง retry ด้วยวิธีอื่น
-            }
-
         } catch (\Exception $e) {
+            echo "Sync Error: " . $e->getMessage() . "\n";
             Yii::error("TikTok sync error: " . $e->getMessage(), __METHOD__);
         }
 
