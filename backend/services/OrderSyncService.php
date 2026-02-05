@@ -36,7 +36,7 @@ class OrderSyncService
      * @return array
      * @throws Exception
      */
-    public function syncOrders($channelId = null, $days = 7)
+    public function syncOrders($channelId = null, $days = 7, $refresh = 0)
     {
         $channels = [];
 
@@ -57,7 +57,7 @@ class OrderSyncService
             try {
                 switch ($channel->name) {
                     case 'Tiktok':
-                        $totalSynced += $this->syncTikTokOrders($channel, $days);
+                        $totalSynced += $this->syncTikTokOrders($channel, $days, $refresh);
                         break;
                     case 'Shopee':
                         $totalSynced += $this->syncShopeeOrders($channel);
@@ -473,7 +473,7 @@ class OrderSyncService
      * @param int $days
      * @return int
      */
-    private function syncTikTokOrders($channel, $days = 7)
+    private function syncTikTokOrders($channel, $days = 7, $refresh = 0)
     {
         $tokenModel = TiktokToken::find()
             
@@ -485,11 +485,14 @@ class OrderSyncService
             return 0;
         }
 
-        // ✅ Refresh token ถ้าหมดอายุ
-        if ($tokenModel->expires_at && strtotime($tokenModel->expires_at) < time()) {
-            echo "TikTok Access Token expired. Attempting refresh...\n";
+        // ✅ Refresh token ถ้าหมดอายุ หรือถูกสั่ง Force Refresh
+        if ($refresh || ($tokenModel->expires_at && strtotime($tokenModel->expires_at) < time())) {
+            echo "Attempting to refresh TikTok Access Token...\n";
             if ($this->refreshTikTokToken($tokenModel)) {
                 echo "Refresh successful.\n";
+                // ดึงค่าใหม่หลังจากเซฟ
+                $tokenModel = TiktokToken::findOne($tokenModel->id);
+                $accessToken = $tokenModel->access_token;
             } else {
                 echo "Refresh failed!\n";
             }
@@ -3881,7 +3884,7 @@ class OrderSyncService
      * @param OnlineChannel|int $channel
      * @return array
      */
-    public function debugTikTokOrders($channel)
+    public function actionTiktokOrders($days = 7, $refresh = 0)
     {
         $channel_id = is_object($channel) ? $channel->id : (int)$channel;
 

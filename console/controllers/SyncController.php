@@ -99,9 +99,9 @@ class SyncController extends Controller
 
     /**
      * Sync TikTok orders only
-     * Usage: php yii sync/tiktok-orders [days]
+     * Usage: php yii sync/tiktok-orders [days] [refresh]
      */
-    public function actionTiktokOrders($days = 7)
+    public function actionTiktokOrders($days = 7, $refresh = 0)
     {
         echo "Starting TikTok Order Sync (Last $days days)...\n";
         $tiktokChannel = \backend\models\OnlineChannel::find()->where(['name' => 'Tiktok', 'status' => \backend\models\OnlineChannel::STATUS_ACTIVE])->one();
@@ -116,13 +116,14 @@ class SyncController extends Controller
                     echo "Status: EXPIRED! Attempting to refresh inside service...\n";
                 } else {
                     echo "Status: ACTIVE\n";
+                    if ($refresh) echo "Force Refresh requested...\n";
                 }
             } else {
                 echo "Status: NO TOKEN FOUND in tiktok_token table!\n";
             }
 
             $orderService = new OrderSyncService();
-            $res = $orderService->syncOrders($tiktokChannel->id, $days);
+            $res = $orderService->syncOrders($tiktokChannel->id, $days, $refresh);
             echo "TikTok Orders Sync completed.\n";
             echo "Total records: " . $res['count'] . "\n";
             if (!empty($res['errors'])) {
