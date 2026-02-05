@@ -32,10 +32,11 @@ class OrderSyncService
     /**
      * Sync orders from online channel
      * @param int $channelId
+     * @param int $days
      * @return array
      * @throws Exception
      */
-    public function syncOrders($channelId = null)
+    public function syncOrders($channelId = null, $days = 7)
     {
         $channels = [];
 
@@ -56,7 +57,7 @@ class OrderSyncService
             try {
                 switch ($channel->name) {
                     case 'Tiktok':
-                        $totalSynced += $this->syncTikTokOrders($channel);
+                        $totalSynced += $this->syncTikTokOrders($channel, $days);
                         break;
                     case 'Shopee':
                         $totalSynced += $this->syncShopeeOrders($channel);
@@ -73,6 +74,7 @@ class OrderSyncService
             'errors' => $errors
         ];
     }
+
 
     /**
      * Sync orders from Shopee using real API
@@ -465,7 +467,13 @@ class OrderSyncService
     }
 
 
-    private function syncTikTokOrders($channel)
+    /**
+     * Sync orders from TikTok Shop using real API
+     * @param OnlineChannel $channel
+     * @param int $days
+     * @return int
+     */
+    private function syncTikTokOrders($channel, $days = 7)
     {
         $tokenModel = TiktokToken::find()
             
@@ -522,7 +530,7 @@ class OrderSyncService
                 // ✅ Body JSON สำหรับ POST request
                 $body = [
                     'order_status' => 'DELIVERED', // UNPAID , ON_HOLD , IN_TRANSIT , DELIVERED , COMPLETED , CANCELLED
-                    'create_time_ge' => strtotime('-7 days'),
+                    'create_time_ge' => strtotime("-$days days"),
                     'create_time_lt' => $timestamp,
                 ];
                 $bodyJson = json_encode($body);
