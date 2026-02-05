@@ -13,69 +13,26 @@ class SyncController extends Controller
     /**
      * Sync orders and income for all channels
      */
-    public function actionIndex()
+    /**
+     * Sync everything (TikTok & Shopee Orders + Income)
+     * Usage: php yii sync
+     */
+    public function actionIndex($days = 7)
     {
-        echo "Starting Sync Process...\n";
+        echo "Starting Full Sync Process (Last $days days)...\n";
 
-        $log = new \common\models\SyncLog();
-        $log->type = \common\models\SyncLog::TYPE_ORDER;
-        $log->platform = 'all';
-        $log->start_time = date('Y-m-d H:i:s');
-        $log->status = \common\models\SyncLog::STATUS_PENDING;
-        $log->save();
-
-        // 1. Sync Orders
-        echo "Syncing Orders...\n";
-        try {
-            $totalSynced = 0;
-            $errors = [];
-
-            // 1.1 Sync TikTok (Original Service)
-            $tiktokChannel = \backend\models\OnlineChannel::find()->where(['name' => 'Tiktok', 'status' => \backend\models\OnlineChannel::STATUS_ACTIVE])->one();
-            if ($tiktokChannel) {
-                echo "Syncing TikTok Orders...\n";
-                $orderService = new OrderSyncService();
-                $res = $orderService->syncOrders($tiktokChannel->id);
-                $totalSynced += $res['count'];
-                if (!empty($res['errors'])) {
-                    $errors = array_merge($errors, $res['errors']);
-                }
-                echo "TikTok Orders Synced. Count: " . $res['count'] . "\n";
-            }
-
-            // 1.2 Sync Shopee (New Improved Service)
-            $shopeeChannel = \backend\models\OnlineChannel::find()->where(['name' => 'Shopee', 'status' => \backend\models\OnlineChannel::STATUS_ACTIVE])->one();
-            if ($shopeeChannel) {
-                echo "Syncing Shopee Orders (New Logic)...\n";
-                $newShopeeService = new \backend\services\NewTestOrderSyncService();
-                $shopeeCount = $newShopeeService->syncShopeeOrders($shopeeChannel);
-                $totalSynced += $shopeeCount;
-                echo "Shopee Orders Synced. Count: " . $shopeeCount . "\n";
-            }
-
-            echo "Total Orders Synced: " . $totalSynced . "\n";
-            if (!empty($errors)) {
-                echo "Errors: " . implode(", ", $errors) . "\n";
-            }
-
-            $log->end_time = date('Y-m-d H:i:s');
-            $log->status = \common\models\SyncLog::STATUS_SUCCESS;
-            $log->total_records = $totalSynced;
-            $log->save();
-
-        } catch (\Exception $e) {
-            echo "Error Syncing Orders: " . $e->getMessage() . "\n";
-            Yii::error("Console Sync Error: " . $e->getMessage(), __METHOD__);
-            
-            $log->end_time = date('Y-m-d H:i:s');
-            $log->status = \common\models\SyncLog::STATUS_FAILED;
-            $log->message = $e->getMessage();
-            $log->save();
+        // 1. Sync All Orders
+        $orderService = new OrderSyncService();
+        $res = $orderService->syncOrders(null, $days);
+        
+        echo "\n--- Order Sync Summary ---\n";
+        echo "Total Records: " . $res['count'] . "\n";
+        if (!empty($res['errors'])) {
+            echo "Errors: " . implode(", ", $res['errors']) . "\n";
         }
 
-
         // 2. Sync TikTok Income
-        echo "Syncing TikTok Income...\n";
+        echo "\nSyncing TikTok Income...\n";
         try {
             $tiktokService = new TiktokIncomeService();
             $count = $tiktokService->syncAllOrders();
@@ -85,16 +42,16 @@ class SyncController extends Controller
         }
 
         // 3. Sync Shopee Income
-        echo "Syncing Shopee Income...\n";
+        echo "\nSyncing Shopee Income...\n";
         try {
-            $shopeeService = new ShopeeIncomeService();
+            $shopeeService = new \backend\services\ShopeeIncomeService();
             $count = $shopeeService->syncAllOrders();
             echo "Shopee Income Synced. Count: " . $count . "\n";
         } catch (\Exception $e) {
             echo "Error Syncing Shopee Income: " . $e->getMessage() . "\n";
         }
 
-        echo "Sync Process Completed.\n";
+        echo "\nFull Sync Process Completed.\n";
     }
 
     /**
@@ -147,6 +104,58 @@ class SyncController extends Controller
             echo "TikTok Income Synced. Count: " . $count . "\n";
         } catch (\Exception $e) {
             echo "Error Syncing TikTok Income: " . $e->getMessage() . "\n";
+        }
+    }
+
+    /**
+     * Sync Shopee orders only
+     * Usage: php yii sync/shopee-orders [days] [refresh]
+     */
+    public function actionShopeeOrders($days = 15, $refresh = 0)
+    {
+        echo "Starting Shopee Order Sync (Last $days days)...\n";
+        $shopeeChannel = \backend\models\OnlineChannel::find()->where(['name' => 'Shopee', 'status' => \backend\models\OnlineChannel::STATUS_ACTIVE])->one();
+        
+        if ($shopeeChannel) {
+            $token = \backend\models\ShopeeToken::find()->orderBy(['created_at' => SORT_DESC])->one();
+            if ($token) {
+                echo "Token Found für Shop ID: " . $token->shop_id . "\n";
+                echo "Expires At: " . $token->expires_at . " (Now: " . date('Y-m-d H:i:s') . ")\n";
+                if (strtotime($token->expires_at) < time()) {
+                    echo "Status: EXPIRED! Attempting to refresh inside service...\n";
+                } else {
+                    echo "Status: ACTIVE\n";
+                    if ($refresh) echo "Force Refresh requested...\n";
+                }
+            } else {
+                echo "Status: NO TOKEN FOUND in shopee_token table!\n";
+            }
+
+            $orderService = new \backend\services\OrderSyncService();
+            $res = $orderService->syncOrders($shopeeChannel->id, $days, $refresh);
+            echo "Shopee Orders Sync completed.\n";
+            echo "Total records: " . $res['count'] . "\n";
+            if (!empty($res['errors'])) {
+                echo "Errors: " . implode(", ", $res['errors']) . "\n";
+            }
+        } else {
+            echo "Error: Shopee Channel not found or inactive.\n";
+        }
+    }
+
+    /**
+     * Sync Shopee income only
+     * Usage: php yii sync/shopee-income
+     */
+    public function actionShopeeIncome()
+    {
+        echo "Starting Shopee Income Sync...\n";
+        try {
+            $shopeeService = new \backend\services\ShopeeIncomeService();
+            $count = $shopeeService->syncAllOrders();
+            echo "Shopee Income Synced. Count: " . $count . "\n";
+        } catch (\Exception $e) {
+            echo "Error Syncing Shopee Income: " . $e->getMessage() . "\n";
         }
     }
 }

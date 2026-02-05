@@ -60,7 +60,7 @@ class OrderSyncService
                         $totalSynced += $this->syncTikTokOrders($channel, $days, $refresh);
                         break;
                     case 'Shopee':
-                        $totalSynced += $this->syncShopeeOrders($channel);
+                        $totalSynced += $this->syncShopeeOrders($channel, $days, $refresh);
                         break;
                 }
             } catch (\Exception $e) {
@@ -79,9 +79,11 @@ class OrderSyncService
     /**
      * Sync orders from Shopee using real API
      * @param OnlineChannel $channel
+     * @param int $days
+     * @param int $refresh
      * @return int
      */
-    private function syncShopeeOrders($channel)
+    private function syncShopeeOrders($channel, $days = 10, $refresh = 0)
     {
         $tokenModel = ShopeeToken::find()
             
@@ -93,12 +95,15 @@ class OrderSyncService
             return $this->shopeeSampleOrders($channel);
         }
 
-        // ตรวจสอบ token หมดอายุ
-        if (strtotime($tokenModel->expires_at) < time()) {
-            Yii::error('Access Token is expired');
+        // ตรวจสอบ token หมดอายุ หรือสั่ง Force Refresh
+        if ($refresh || ($tokenModel->expires_at && strtotime($tokenModel->expires_at) < time())) {
+            echo "Attempting to refresh Shopee Access Token...\n";
             if (!$this->refreshShopeeToken($tokenModel)) {
-                Yii::warning('Failed to refresh Shopee token for channel: ' . $channel->id, __METHOD__);
-                return $this->shopeeSampleOrders($channel);
+                echo "Refresh failed!\n";
+                // return 0; // Don't use sample orders if refresh fails and we are in sync mode
+            } else {
+                echo "Refresh successful.\n";
+                $tokenModel = ShopeeToken::findOne($tokenModel->id);
             }
         }
 
@@ -125,12 +130,13 @@ class OrderSyncService
                     'timestamp' => $timestamp,
                     'access_token' => $access_token,
                     'time_range_field' => 'create_time',
-                    'time_from' => strtotime('-10 day'),
+                    'time_from' => strtotime("-$days day"),
                     'time_to' => time(),
                     'page_size' => $page_size,
                     'response_optional_fields' => 'order_status',
-                    'order_status' => 'SHIPPED', // optional
+                    // 'order_status' => 'SHIPPED', // เอาออกเพื่อให้ดึงทุกสถานะ
                 ];
+                echo "Shopee: Searching for Orders from " . date('Y-m-d H:i:s', $params['time_from']) . "\n";
 
                 if (!empty($cursor)) {
                     $params['cursor'] = $cursor;
